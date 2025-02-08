@@ -1,1 +1,1 @@
-from pathlib import Path\nfrom typing import List, Dict\nimport mujoco\nimport mujoco.viewer\nimport numpy as np\nfrom loop_rate_limiters import RateLimiter\nimport mink\n\n_HERE = Path(__file__).parent\n_XML = _HERE / \
+from pathlib import Path\nfrom typing import List, Dict, Optional\nimport mujoco\nimport mujoco.viewer\nimport numpy as np\nfrom loop_rate_limiters import RateLimiter\nimport mink\n\n# Define the path to the XML file\n_HERE = Path(__file__).parent\n_XML = _HERE / \
