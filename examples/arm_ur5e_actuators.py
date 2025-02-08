@@ -1,1 +1,1 @@
-from pathlib import Path\n\nimport mujoco\nimport mujoco.viewer\nimport numpy as np\nfrom loop_rate_limiters import RateLimiter\n\nimport mink\n\n# Constants for better readability and consistency\nHERE = Path(__file__).parent\nXML_PATH = HERE / \
+from pathlib import Path\n\nimport mujoco\nimport mujoco.viewer\nimport numpy as np\nfrom loop_rate_limiters import RateLimiter\n\nimport mink\n\n# Constants for better readability and consistency\n_XML_PATH = Path(__file__).parent / \
