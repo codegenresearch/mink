@@ -1,1 +1,1 @@
-from pathlib import Path\nfrom typing import Optional, Sequence, Dict, List, Tuple, Any\nimport mujoco\nimport mujoco.viewer\nimport numpy as np\nfrom loop_rate_limiters import RateLimiter\nimport mink\n_HERE = Path(__file__).parent\n_XML = _HERE / "aloha" / "scene.xml"\n# Single arm joint names.\n_JOINT_NAMES = [\
+from pathlib import Path\nfrom typing import List, Dict\nimport mujoco\nimport mujoco.viewer\nimport numpy as np\nfrom loop_rate_limiters import RateLimiter\nimport mink\n\n_HERE = Path(__file__).parent\n_XML = _HERE / \
