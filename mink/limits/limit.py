@@ -1,1 +1,1 @@
-"""All kinematic limits derive from the :class:`Limit` base class."""\nimport abc\nfrom typing import NamedTuple, Optional\nimport numpy as np\nfrom ..configuration import Configuration\nclass Constraint(NamedTuple):\n    r"""Linear inequality constraint of the form :math:`G(q) \Delta q \leq h(q)`.\\"""\
+"""Base class for defining kinematic limits in a robot model.\"""\
