@@ -1,1 +1,1 @@
-"""Abstract base class for defining kinematic limits in a robot model.\"""\
+"""Abstract base class for defining kinematic limits in a robot model.",""\
