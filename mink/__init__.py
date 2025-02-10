@@ -24,7 +24,7 @@ from .limits import (
     Limit,
     VelocityLimit,
 )
-from .solve_ik import solve_ik
+from .solve_ik import build_ik, solve_ik
 from .tasks import (
     ComTask,
     DampingTask,
@@ -36,9 +36,11 @@ from .tasks import (
     Task,
 )
 from .utils import (
+    build_ik,
     custom_configuration_vector,
     get_body_geom_ids,
     get_freejoint_dims,
+    get_subtree_body_ids,
     get_subtree_geom_ids,
     move_mocap_to_frame,
     set_mocap_pose_from_frame,
@@ -48,6 +50,7 @@ from .utils import (
 __all__ = (
     "ComTask",
     "Configuration",
+    "build_ik",
     "solve_ik",
     "DampingTask",
     "FrameTask",
@@ -80,6 +83,9 @@ __all__ = (
     "custom_configuration_vector",
     "get_freejoint_dims",
     "move_mocap_to_frame",
-    "get_subtree_geom_ids",
+    "get_subtree_body_ids",
     "get_body_geom_ids",
 )
+
+
+**Note:** There was a duplicate entry for `get_subtree_body_ids` in the `utils` import list. I have corrected this in the revised code snippet.
