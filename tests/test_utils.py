@@ -129,15 +129,26 @@ class TestUtils(absltest.TestCase):
                 <geom name="b4/g1" type="sphere" size=".1" mass=".1"/>
               </body>
             </body>
+            <body name="b5" pos="2 2 2">
+              <joint type="free"/>
+              <geom name="b5/g1" type="sphere" size=".1" mass=".1"/>
+            </body>
           </worldbody>
         </mujoco>
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         b1_id = model.body("b1").id
-        actual_geom_ids = utils.get_subtree_geom_ids(model, b1_id)
+        actual_geom_ids = set(utils.get_subtree_geom_ids(model, b1_id))
         geom_names = ["b1/g1", "b1/g2", "b2/g1"]
-        expected_geom_ids = [model.geom(g).id for g in geom_names]
-        self.assertListEqual(actual_geom_ids, expected_geom_ids)
+        expected_geom_ids = {model.geom(g).id for g in geom_names}
+        self.assertSetEqual(actual_geom_ids, expected_geom_ids)
+
+        # Test for a body with no children
+        b5_id = model.body("b5").id
+        actual_geom_ids = set(utils.get_subtree_geom_ids(model, b5_id))
+        geom_names = ["b5/g1"]
+        expected_geom_ids = {model.geom(g).id for g in geom_names}
+        self.assertSetEqual(actual_geom_ids, expected_geom_ids)
 
     def test_get_subtree_body_ids(self):
         xml_str = """
@@ -159,15 +170,26 @@ class TestUtils(absltest.TestCase):
                 <geom type="sphere" size=".1" mass=".1"/>
               </body>
             </body>
+            <body name="b5" pos="2 2 2">
+              <joint type="free"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+            </body>
           </worldbody>
         </mujoco>
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         b1_id = model.body("b1").id
-        actual_body_ids = utils.get_subtree_body_ids(model, b1_id)
+        actual_body_ids = set(utils.get_subtree_body_ids(model, b1_id))
         body_names = ["b1", "b2"]
-        expected_body_ids = [model.body(g).id for g in body_names]
-        self.assertListEqual(actual_body_ids, expected_body_ids)
+        expected_body_ids = {model.body(g).id for g in body_names}
+        self.assertSetEqual(actual_body_ids, expected_body_ids)
+
+        # Test for a body with no children
+        b5_id = model.body("b5").id
+        actual_body_ids = set(utils.get_subtree_body_ids(model, b5_id))
+        body_names = ["b5"]
+        expected_body_ids = {model.body(g).id for g in body_names}
+        self.assertSetEqual(actual_body_ids, expected_body_ids)
 
     def test_gravity_compensation(self):
         # Implementing a mock gravity compensation function for testing purposes
