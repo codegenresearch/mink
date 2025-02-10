@@ -12,9 +12,8 @@ _XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
-    data = mujoco.MjData(model)
-
     configuration = mink.Configuration(model)
+    data = configuration.data
 
     tasks = [
         end_effector_task := mink.FrameTask(
@@ -49,18 +48,16 @@ if __name__ == "__main__":
 
     mid = model.body("target").mocapid[0]
 
-    # Initialize to the home keyframe.
-    configuration.update_from_keyframe("home")
-
-    # Initialize the mocap target at the end-effector site.
-    mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
-
     solver = "quadprog"
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
+
+        # Initialize to the home keyframe.
+        configuration.update_from_keyframe("home")
+        mujoco.mj_forward(model, data)
 
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
@@ -81,7 +78,7 @@ if __name__ == "__main__":
                 limits=limits
             )
             configuration.integrate_inplace(vel, rate.dt)
-            mujoco.mj_camlight(model, data)
+            mujoco.mj_forward(model, data)
 
             # Note the below are optional: they are used to visualize the output of the
             # fromto sensor which is used by the collision avoidance constraint.
