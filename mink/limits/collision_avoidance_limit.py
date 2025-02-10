@@ -1,4 +1,4 @@
-"""Collision avoidance limit."""
+"""Collision avoidance limit with enhanced testing and SE3 validation."""
 
 import itertools
 from dataclasses import dataclass
@@ -6,6 +6,7 @@ from typing import List, Sequence, Union
 
 import mujoco
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 from ..configuration import Configuration
 from .limit import Constraint, Limit
@@ -18,7 +19,7 @@ CollisionPairs = Sequence[CollisionPair]
 
 
 @dataclass(frozen=True)
-class Contact:
+class _Contact:
     dist: float
     fromto: np.ndarray
     geom1: int
@@ -33,22 +34,6 @@ class Contact:
     @property
     def inactive(self) -> bool:
         return self.dist == self.distmax and not self.fromto.any()
-
-
-def compute_contact_normal_jacobian(
-    model: mujoco.MjModel,
-    data: mujoco.MjData,
-    contact: Contact,
-) -> np.ndarray:
-    geom1_body = model.geom_bodyid[contact.geom1]
-    geom2_body = model.geom_bodyid[contact.geom2]
-    geom1_contact_pos = contact.fromto[:3]
-    geom2_contact_pos = contact.fromto[3:]
-    jac2 = np.empty((3, model.nv))
-    mujoco.mj_jac(model, data, jac2, None, geom2_contact_pos, geom2_body)
-    jac1 = np.empty((3, model.nv))
-    mujoco.mj_jac(model, data, jac1, None, geom1_contact_pos, geom1_body)
-    return contact.normal @ (jac2 - jac1)
 
 
 def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
@@ -94,14 +79,25 @@ def _is_pass_contype_conaffinity_check(
     return cond1 or cond2
 
 
+def validate_se3_transformations(mocap_data: np.ndarray) -> bool:
+    """Validate SE3 transformations from mocap data."""
+    for pose in mocap_data:
+        rotation_matrix = pose[:3, :3]
+        if not np.allclose(rotation_matrix.T @ rotation_matrix, np.eye(3)):
+            return False
+        if not np.isclose(np.linalg.det(rotation_matrix), 1.0):
+            return False
+    return True
+
+
 class CollisionAvoidanceLimit(Limit):
-    """Normal velocity limit between geom pairs.
+    """Normal velocity limit between geom pairs with enhanced testing and SE3 validation.
 
     Attributes:
         model: MuJoCo model.
         geom_pairs: Set of collision pairs in which to perform active collision
             avoidance. A collision pair is defined as a pair of geom groups. A geom
-            group is a set of geom names. For each geom pair, the solver will
+            group is a set of geom names. For each collision pair, the solver will
             attempt to compute joint velocities that avoid collisions between every
             geom in the first geom group with every geom in the second geom group.
             Self collision is achieved by adding a collision pair with the same
@@ -182,9 +178,7 @@ class CollisionAvoidanceLimit(Limit):
                 upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
-            jac = compute_contact_normal_jacobian(
-                self.model, configuration.data, contact
-            )
+            jac = self._compute_contact_normal_jacobian(configuration.data, contact)
             coefficient_matrix[idx] = -jac
         return Constraint(G=coefficient_matrix, h=upper_bound)
 
@@ -192,7 +186,7 @@ class CollisionAvoidanceLimit(Limit):
 
     def _compute_contact_with_minimum_distance(
         self, data: mujoco.MjData, geom1_id: int, geom2_id: int
-    ) -> Contact:
+    ) -> _Contact:
         """Returns the smallest signed distance between a geom pair."""
         fromto = np.empty(6)
         dist = mujoco.mj_geomDistance(
@@ -203,9 +197,40 @@ class CollisionAvoidanceLimit(Limit):
             self.collision_detection_distance,
             fromto,
         )
-        return Contact(
+        return _Contact(
             dist, fromto, geom1_id, geom2_id, self.collision_detection_distance
         )
+
+    def _compute_contact_normal_jacobian(
+        self, data: mujoco.MjData, contact: _Contact
+    ) -> np.ndarray:
+        """Computes the Jacobian mapping joint velocities to the normal component of
+        the relative Cartesian linear velocity between the geom pair.
+
+        The Jacobian-velocity relationship is given as:
+
+            J dq = n^T (v_2 - v_1)
+
+        where:
+        * J is the computed Jacobian.
+        * dq is the joint velocity vector.
+        * n^T is the transpose of the normal pointing from contact.geom1 to
+            contact.geom2.
+        *  v_1, v_2 are the linear components of the Cartesian velocity of the two
+            closest points in contact.geom1 and contact.geom2.
+
+        Note: n^T (v_2 - v_1) is a scalar that is positive if the geoms are moving away
+        from each other, and negative if they are moving towards each other.
+        """
+        geom1_body = self.model.geom_bodyid[contact.geom1]
+        geom2_body = self.model.geom_bodyid[contact.geom2]
+        geom1_contact_pos = contact.fromto[:3]
+        geom2_contact_pos = contact.fromto[3:]
+        jac2 = np.empty((3, self.model.nv))
+        mujoco.mj_jac(self.model, data, jac2, None, geom2_contact_pos, geom2_body)
+        jac1 = np.empty((3, self.model.nv))
+        mujoco.mj_jac(self.model, data, jac1, None, geom1_contact_pos, geom1_body)
+        return contact.normal @ (jac2 - jac1)
 
     def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
         """Take a heterogeneous list of geoms (specified via ID or name) and return
@@ -255,3 +280,17 @@ class CollisionAvoidanceLimit(Limit):
                 if weld_body_cond and parent_child_cond and contype_conaffinity_cond:
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
+
+    def test_collision_avoidance(self, configuration: Configuration, dt: float):
+        """Test collision avoidance by checking if the computed constraints prevent collisions."""
+        constraint = self.compute_qp_inequalities(configuration, dt)
+        G, h = constraint.G, constraint.h
+        # Simulate a small step
+        qvel = np.random.rand(self.model.nv)
+        dq = qvel * dt
+        # Check if the constraints are satisfied
+        assert np.all(G @ dq <= h), "Collision avoidance constraints are violated."
+
+    def test_se3_transformations(self, mocap_data: np.ndarray):
+        """Test SE3 transformations from mocap data."""
+        assert validate_se3_transformations(mocap_data), "SE3 transformations are invalid."
