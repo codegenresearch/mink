@@ -43,13 +43,14 @@ class ConfigurationLimit(Limit):
         upper = np.full(model.nq, mujoco.mjMAXVAL)
         for jnt in range(model.njnt):
             jnt_type = model.jnt_type[jnt]
-            jnt_dim = dof_width(jnt_type)
-            jnt_range = model.jnt_range[jnt]
             padr = model.jnt_qposadr[jnt]
             jnt_id = model.jnt_dofadr[jnt]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE or not model.jnt_limited[jnt]:
                 # Skip free joints and joints without limits.
                 continue
+            jnt_dim = dof_width(jnt_type)
+            qpos_dim = qpos_width(jnt_type)
+            jnt_range = model.jnt_range[jnt]
             lower[padr : padr + qpos_dim] = jnt_range[0] + min_distance_from_limits
             upper[padr : padr + qpos_dim] = jnt_range[1] - min_distance_from_limits
             index_list.extend(range(jnt_id, jnt_id + jnt_dim))
