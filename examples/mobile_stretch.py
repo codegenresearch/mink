@@ -46,13 +46,14 @@ if __name__ == "__main__":
         assert base_task.transform_target_to_world is not None
 
         transform_fingertip_target_to_world = configuration.get_transform_frame_to_world(
-            frame_name="link_grasp_center", frame_type="site"
+            "link_grasp_center", "site"
         )
         center_translation = transform_fingertip_target_to_world.translation()[:2]
         fingertip_task.set_target(transform_fingertip_target_to_world)
         mink.move_mocap_to_frame(model, data, "EE_target", "link_grasp_center", "site")
 
         rate = RateLimiter(frequency=100.0, warn=False)
+        dt = rate.dt
         t = 0.0
         while viewer.is_running():
             # Update task targets
@@ -67,11 +68,11 @@ if __name__ == "__main__":
             base_task.set_target(mink.SE3.from_mocap_id(data, mid))
 
             # Compute velocity and integrate into the next configuration.
-            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
-            configuration.integrate_inplace(vel, rate.dt)
+            vel = mink.solve_ik(configuration, tasks, dt, solver, 1e-3)
+            configuration.integrate_inplace(vel, dt)
             mujoco.mj_camlight(model, data)
 
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
-            t += rate.dt
+            t += dt
