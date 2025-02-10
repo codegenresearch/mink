@@ -8,10 +8,10 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "kuka_iiwa_14" / "scene.xml"
+_XML = _HERE / "kuka_iiwa_14" / "scene.xml"
 
 if __name__ == "__main__":
-    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
     ## =================== ##
@@ -31,7 +31,10 @@ if __name__ == "__main__":
         posture_task := mink.PostureTask(model=model, cost=1e-2),
     ]
 
-    # IK settings
+    ## =================== ##
+    ## IK Settings.
+    ## =================== ##
+
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
