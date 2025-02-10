@@ -33,7 +33,7 @@ class MatrixLieGroup(abc.ABC):
         assert isinstance(other, MatrixLieGroup)
         return self.multiply(other=other)
 
-    # Factory.
+    # Factory methods.
 
     @classmethod
     @abc.abstractmethod
@@ -53,7 +53,7 @@ class MatrixLieGroup(abc.ABC):
         """Draws a random sample from the group."""
         raise NotImplementedError
 
-    # Accessors
+    # Accessors.
 
     @abc.abstractmethod
     def as_matrix(self) -> np.ndarray:
@@ -65,7 +65,7 @@ class MatrixLieGroup(abc.ABC):
         """Returns the underlying parameters."""
         raise NotImplementedError
 
-    # Operations
+    # Operations.
 
     @abc.abstractmethod
     def apply(self, target: np.ndarray) -> np.ndarray:
@@ -103,7 +103,7 @@ class MatrixLieGroup(abc.ABC):
         """Normalizes the group element."""
         raise NotImplementedError
 
-    # Right and left plus and minus
+    # Right and left plus and minus.
 
     # Eqn. 25.
     def rplus(self, other: np.ndarray) -> Self:
@@ -133,7 +133,7 @@ class MatrixLieGroup(abc.ABC):
         """Alias for rminus."""
         return self.rminus(other)
 
-    # Jacobians
+    # Jacobians.
 
     @classmethod
     @abc.abstractmethod
