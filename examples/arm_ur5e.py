@@ -26,9 +26,8 @@ if __name__ == "__main__":
     ]
 
     # Enable collision avoidance between the following geoms:
-    wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
-        (wrist_3_geoms, ["floor", "wall"]),
+        (["wrist_3_link"], ["floor", "wall"]),
     ]
 
     limits = [
@@ -60,8 +59,7 @@ if __name__ == "__main__":
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
         # Initialize to the home keyframe.
-        mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
-        configuration.update(data.qpos)
+        configuration.update_from_keyframe("home")
         mujoco.mj_forward(model, data)
 
         # Initialize the mocap target at the end-effector site.
@@ -83,9 +81,6 @@ if __name__ == "__main__":
                 limits=limits
             )
             configuration.integrate_inplace(vel, rate.dt)
-            mujoco.mj_forward(model, data)
-
-            # Update camera light.
             mujoco.mj_camlight(model, data)
 
             # Note the below are optional: they are used to visualize the output of the
