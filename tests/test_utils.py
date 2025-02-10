@@ -21,7 +21,7 @@ class TestUtils(absltest.TestCase):
         self.data = mujoco.MjData(self.model)
         self.q0 = self.data.qpos.copy()
 
-    def test_custom_configuration_vector_invalid_keyframe(self):
+    def test_custom_configuration_vector_throws_error_if_keyframe_invalid(self):
         with self.assertRaises(InvalidKeyframe):
             utils.custom_configuration_vector(self.model, "stand123")
 
@@ -29,7 +29,7 @@ class TestUtils(absltest.TestCase):
         q = utils.custom_configuration_vector(self.model, "stand")
         np.testing.assert_allclose(q, self.model.key("stand").qpos)
 
-    def test_custom_configuration_vector_invalid_joint_shape(self):
+    def test_custom_configuration_vector_raises_error_if_jnt_shape_invalid(self):
         with self.assertRaises(ValueError):
             utils.custom_configuration_vector(
                 self.model,
@@ -49,7 +49,7 @@ class TestUtils(absltest.TestCase):
             q_expected[qid] = value
         np.testing.assert_array_almost_equal(q, q_expected)
 
-    def test_move_mocap_to_frame_invalid_body(self):
+    def test_move_mocap_to_frame_throws_error_if_body_not_mocap(self):
         with self.assertRaises(InvalidMocapBody):
             utils.move_mocap_to_frame(
                 self.model,
@@ -218,11 +218,3 @@ class TestUtils(absltest.TestCase):
 
 if __name__ == "__main__":
     absltest.main()
-
-
-This revised code addresses the feedback by:
-1. Correcting the syntax issue by removing any misplaced comments or instructions.
-2. Ensuring test method names are descriptive and follow a consistent naming pattern.
-3. Using `with self.assertRaises` for assertions, as it is more commonly used in the provided examples.
-4. Ensuring XML strings are consistent and well-structured.
-5. Adding a test case for `get_subtree_transform` with a body that has no geometries to ensure comprehensive coverage.
