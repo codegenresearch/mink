@@ -60,9 +60,9 @@ def main():
 
     # Inverse Kinematics settings.
     solver = "quadprog"
-    position_threshold = 1e-4
-    orientation_threshold = 1e-4
-    max_iterations = 20
+    pos_threshold = 1e-4
+    ori_threshold = 1e-4
+    max_iters = 20
 
     key_callback = KeyCallback()
 
@@ -82,25 +82,25 @@ def main():
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "pinch_site_target", "pinch_site", "site")
 
-        rate_limiter = RateLimiter(frequency=200.0)
+        rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update the task target.
-            target_pose = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
-            end_effector_task.set_target(target_pose)
+            T_wt = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
+            end_effector_task.set_target(T_wt)
 
             # Compute velocity and integrate into the next configuration.
-            for _ in range(max_iterations):
+            for i in range(max_iters):
                 tasks_to_use = [*tasks, damping_task] if key_callback.fix_base else tasks
-                velocity = mink.solve_ik(
-                    configuration, tasks_to_use, rate_limiter.dt, solver, damping=1e-3
+                vel = mink.solve_ik(
+                    configuration, tasks_to_use, rate.dt, solver, damping=1e-3
                 )
-                configuration.integrate_inplace(velocity, rate_limiter.dt)
+                configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if the target is achieved.
-                error = end_effector_task.compute_error(configuration)
-                position_achieved = np.linalg.norm(error[:3]) <= position_threshold
-                orientation_achieved = np.linalg.norm(error[3:]) <= orientation_threshold
-                if position_achieved and orientation_achieved:
+                err = end_effector_task.compute_error(configuration)
+                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
+                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
+                if pos_achieved and ori_achieved:
                     break
 
             # Update the control signals.
@@ -112,7 +112,7 @@ def main():
 
             # Visualize at fixed FPS.
             viewer.sync()
-            rate_limiter.sleep()
+            rate.sleep()
 
 if __name__ == "__main__":
     main()
