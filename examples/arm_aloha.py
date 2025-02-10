@@ -78,12 +78,8 @@ def setup_collision_avoidance(model: mujoco.MjModel) -> mink.CollisionAvoidanceL
     """
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
-    frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
-    table_geom = ["table"]
     collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),
-        (l_wrist_geoms, frame_geoms + table_geom),
-        (r_wrist_geoms, frame_geoms + table_geom),
     ]
     return mink.CollisionAvoidanceLimit(
         model=model,
@@ -112,21 +108,21 @@ def main() -> None:
 
     # Define tasks for the end-effectors and posture.
     tasks = [
-        l_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        r_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        posture_task := mink.PostureTask(
+        mink.PostureTask(
             posture_cost=0.01,
             lm_damping=1.0,
         ),
@@ -169,9 +165,9 @@ def main() -> None:
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
-            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
-            posture_task.set_target_from_configuration(configuration)
+            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            tasks[2].set_target_from_configuration(configuration)
 
             # Compute velocity and integrate into the next configuration.
             for _ in range(max_iters):
@@ -186,16 +182,15 @@ def main() -> None:
                 configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if the tasks are achieved.
-                l_err = l_ee_task.compute_error(configuration)
+                l_err = tasks[0].compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
 
-                r_err = r_ee_task.compute_error(configuration)
+                r_err = tasks[1].compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
 
-                if (l_pos_achieved and l_ori_achieved and
-                    r_pos_achieved and r_ori_achieved):
+                if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
                     break
 
             # Apply control signals.
