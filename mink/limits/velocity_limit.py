@@ -18,10 +18,10 @@ class VelocityLimit(Limit):
     Floating base joints are ignored.
 
     Attributes:
-        indices: 1D numpy array of tangent indices corresponding to velocity-limited joints.
-        limit: 1D numpy array of maximum allowed velocity magnitude for velocity-limited joints, in
+        indices: 1D numpy array of shape (nb,) containing tangent indices corresponding to velocity-limited joints.
+        limit: 1D numpy array of shape (nb,) containing maximum allowed velocity magnitude for velocity-limited joints, in
             [m]/[s] for slide joints and [rad]/[s] for hinge joints.
-        projection_matrix: 2D numpy array representing the projection from tangent space to subspace with
+        projection_matrix: 2D numpy array of shape (nb, nv) representing the projection from tangent space to subspace with
             velocity-limited joints.
     """
 
@@ -46,17 +46,17 @@ class VelocityLimit(Limit):
         for joint_name, max_vel in velocities.items():
             jid = model.joint(joint_name).id
             jnt_type = model.jnt_type[jid]
-            jnt_dim = dof_width(jnt_type)
+            vdim = dof_width(jnt_type)
             vadr = model.jnt_dofadr[jid]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
-                raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
+                raise LimitDefinitionError(f"Free joint '{joint_name}' is not supported.")
             max_vel = np.atleast_1d(max_vel)
-            if max_vel.shape != (jnt_dim,):
+            if max_vel.shape != (vdim,):
                 raise LimitDefinitionError(
-                    f"Joint {joint_name} must have a limit of shape ({jnt_dim},). "
+                    f"Joint '{joint_name}' must have a limit of shape ({vdim},). "
                     f"Got: {max_vel.shape}"
                 )
-            index_list.extend(range(vadr, vadr + jnt_dim))
+            index_list.extend(range(vadr, vadr + vdim))
             limit_list.extend(max_vel.tolist())
 
         self.indices = np.array(index_list)
@@ -89,7 +89,8 @@ class VelocityLimit(Limit):
 
         Returns:
             Pair :math:`(G, h)` representing the inequality constraint as
-            :math:`G \Delta q \leq h`.
+            :math:`G \Delta q \leq h`. Here, :math:`G` is a 2D numpy array of shape
+            (2 * nb, nv) and :math:`h` is a 1D numpy array of shape (2 * nb,).
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
