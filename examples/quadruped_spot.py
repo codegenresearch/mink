@@ -87,12 +87,15 @@ if __name__ == "__main__":
 
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
-                vel = mink.solve_ik(configuration, tasks, rate.dt, solver, damping=1e-3)
+                vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
 
-                eef_err = eef_task.compute_error(configuration)
-                pos_achieved = bool(np.linalg.norm(eef_err[:3]) <= pos_threshold)
-                ori_achieved = bool(np.linalg.norm(eef_err[3:]) <= ori_threshold)
+                pos_achieved = True
+                ori_achieved = True
+                for task in tasks:
+                    err = task.compute_error(configuration)
+                    pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
+                    ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
 
                 if pos_achieved and ori_achieved:
                     break
