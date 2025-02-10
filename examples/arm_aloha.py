@@ -4,7 +4,6 @@ import mujoco.viewer
 import numpy as np
 from loop_rate_limiters import RateLimiter
 import mink
-from typing import Optional, Sequence
 
 _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
@@ -60,7 +59,6 @@ def compensate_gravity(
     model: mujoco.MjModel,
     data: mujoco.MjData,
     subtree_ids: Sequence[int],
-    qfrc_applied: Optional[np.ndarray] = None,
 ) -> None:
     """Compute and apply forces to counteract gravity for the specified subtrees.
 
@@ -68,17 +66,14 @@ def compensate_gravity(
         model (mujoco.MjModel): The MuJoCo model.
         data (mujoco.MjData): The MuJoCo data.
         subtree_ids (Sequence[int]): A list of body IDs for which to compute gravity compensation.
-        qfrc_applied (Optional[np.ndarray]): An optional array to store the applied forces. If None, `data.qfrc_applied` is used.
     """
-    if qfrc_applied is None:
-        qfrc_applied = data.qfrc_applied
-
+    data.qfrc_applied[:] = 0  # Reset applied forces
     for body_id in subtree_ids:
         jacp = np.zeros(3 * model.nv)
         mujoco.mj_jacSubtreeCom(model, data, jacp, None, body_id)
         total_mass = model.body_subtreemass[body_id]
         gravity_force = total_mass * model.opt.gravity[2]
-        qfrc_applied += gravity_force * jacp
+        data.qfrc_applied += gravity_force * jacp
 
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
@@ -198,7 +193,6 @@ if __name__ == "__main__":
             # Apply gravity compensation
             left_subtree_ids = get_subtree_body_ids(model, "left/wrist_link")
             right_subtree_ids = get_subtree_body_ids(model, "right/wrist_link")
-            data.qfrc_applied[:] = 0  # Reset applied forces
             compensate_gravity(model, data, left_subtree_ids + right_subtree_ids)
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
