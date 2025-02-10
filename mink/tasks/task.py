@@ -79,7 +79,12 @@ class Task(abc.ABC):
         r"""Compute the task error function at the current configuration.
 
         The error function :math:`e(q) \in \mathbb{R}^{k}` is the quantity that the task
-        aims to drive to zero (:math:`k` is the dimension of the task).
+        aims to drive to zero (:math:`k` is the dimension of the task). It appears in the
+        first-order task dynamics:
+
+        .. math::
+
+            J(q) \Delta q = -\alpha e(q)
 
         Args:
             configuration: Robot configuration :math:`q`.
