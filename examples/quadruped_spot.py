@@ -7,17 +7,23 @@ from loop_rate_limiters import RateLimiter
 
 import mink
 
-# File description: This script sets up and runs an inverse kinematics (IK) simulation for the Boston Dynamics Spot robot using the MuJoCo physics engine.
+## =================== ##
+## File description: This script sets up and runs an inverse kinematics (IK) simulation for the Boston Dynamics Spot robot using the MuJoCo physics engine.
+## =================== ##
 
 _HERE = Path(__file__).parent
 _XML = _HERE / "boston_dynamics_spot" / "scene.xml"
 
 if __name__ == "__main__":
-    # Load model and data
+    ## =================== ##
+    ## Load model and data
+    ## =================== ##
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Setup IK configuration
+    ## =================== ##
+    ## Setup IK configuration
+    ## =================== ##
     configuration = mink.Configuration(model)
 
     feet = ["FL", "FR", "HR", "HL"]
@@ -50,56 +56,68 @@ if __name__ == "__main__":
 
     tasks = [base_task, posture_task, *feet_tasks, eef_task]
 
-    # Define mocap IDs for targets
+    ## =================== ##
+    ## Define mocap IDs for targets
+    ## =================== ##
     base_mid = model.body("body_target").mocapid[0]
     feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
     eef_mid = model.body("EE_target").mocapid[0]
 
-    # IK settings
+    ## =================== ##
+    ## IK settings
+    ## =================== ##
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
     max_iters = 20
 
-    # Error handling for IK settings
-    if pos_threshold <= 0 or ori_threshold <= 0:
-        raise ValueError("Position and orientation thresholds must be greater than zero.")
-    if max_iters <= 0:
-        raise ValueError("Maximum iterations must be greater than zero.")
-
-    # Launch MuJoCo viewer
+    ## =================== ##
+    ## Launch MuJoCo viewer
+    ## =================== ##
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
-        # Reset data to the home keyframe and update configuration
+        ## =================== ##
+        ## Reset data to the home keyframe and update configuration
+        ## =================== ##
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
 
-        # Set initial targets for tasks
+        ## =================== ##
+        ## Set initial targets for tasks
+        ## =================== ##
         posture_task.set_target_from_configuration(configuration)
         for foot in feet:
             mink.move_mocap_to_frame(model, data, f"{foot}_target", foot, "geom")
         mink.move_mocap_to_frame(model, data, "body_target", "body", "body")
         mink.move_mocap_to_frame(model, data, "EE_target", "EE", "site")
 
-        # Set up rate limiter for simulation loop
+        ## =================== ##
+        ## Set up rate limiter for simulation loop
+        ## =================== ##
         rate = RateLimiter(frequency=500.0)
         while viewer.is_running():
-            # Update task targets
+            ## =================== ##
+            ## Update task targets
+            ## =================== ##
             base_task.set_target(mink.SE3.from_mocap_id(data, base_mid))
             for i, task in enumerate(feet_tasks):
                 task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
             eef_task.set_target(mink.SE3.from_mocap_id(data, eef_mid))
 
-            # Compute velocity and integrate into the next configuration
+            ## =================== ##
+            ## Compute velocity and integrate into the next configuration
+            ## =================== ##
             for i in range(max_iters):
                 vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
 
-                # Check if position and orientation goals are achieved
+                ## =================== ##
+                ## Check if position and orientation goals are achieved
+                ## =================== ##
                 pos_achieved = True
                 ori_achieved = True
                 for task in [eef_task, base_task, *feet_tasks]:
@@ -110,10 +128,14 @@ if __name__ == "__main__":
                     print(f"Exiting after {i} iterations.")
                     break
 
-            # Update control signals and step the simulation
+            ## =================== ##
+            ## Update control signals and step the simulation
+            ## =================== ##
             data.ctrl = configuration.q[7:]
             mujoco.mj_step(model, data)
 
-            # Visualize at fixed FPS
+            ## =================== ##
+            ## Visualize at fixed FPS
+            ## =================== ##
             viewer.sync()
             rate.sleep()
