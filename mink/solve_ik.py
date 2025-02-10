@@ -8,11 +8,18 @@ import qpsolvers
 from .configuration import Configuration
 from .limits import ConfigurationLimit, Limit
 from .tasks import Objective, Task
-
+from .exceptions import InvalidInputError
 
 def _compute_qp_objective(
     configuration: Configuration, tasks: Sequence[Task], damping: float
 ) -> Objective:
+    if not isinstance(configuration, Configuration):
+        raise InvalidInputError("Invalid configuration provided.")
+    if not all(isinstance(task, Task) for task in tasks):
+        raise InvalidInputError("All tasks must be instances of Task.")
+    if damping < 0:
+        raise InvalidInputError("Damping must be non-negative.")
+
     H = np.eye(configuration.model.nv) * damping
     c = np.zeros(configuration.model.nv)
     for task in tasks:
@@ -27,8 +34,13 @@ def _compute_qp_inequalities(
 ) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
     if limits is None:
         limits = [ConfigurationLimit(configuration.model)]
-    G_list: list[np.ndarray] = []
-    h_list: list[np.ndarray] = []
+    if not all(isinstance(limit, Limit) for limit in limits):
+        raise InvalidInputError("All limits must be instances of Limit.")
+    if dt <= 0:
+        raise InvalidInputError("Integration timestep must be positive.")
+
+    G_list = []
+    h_list = []
     for limit in limits:
         inequality = limit.compute_qp_inequalities(configuration, dt)
         if not inequality.inactive:
@@ -99,6 +111,8 @@ def solve_ik(
     configuration.check_limits(safety_break=safety_break)
     problem = build_ik(configuration, tasks, dt, damping, limits)
     result = qpsolvers.solve_problem(problem, solver=solver, **kwargs)
+    if result is None:
+        raise RuntimeError("QP solver failed to find a solution.")
     dq = result.x
     assert dq is not None
     v: np.ndarray = dq / dt
