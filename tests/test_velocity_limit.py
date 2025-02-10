@@ -16,20 +16,15 @@ class TestVelocityLimit(absltest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Load a model for testing."""
-        cls.model = load_robot_description("ur5e_mj_description")
+        cls.model = load_robot_description("g1_mj_description")
 
     def setUp(self):
         """Initialize a configuration and velocity limits for testing."""
         self.configuration = Configuration(self.model)
-        self.configuration.update_from_keyframe("home")
+        self.configuration.update_from_keyframe("stand")
         # NOTE: These velocities are arbitrary and do not match real hardware.
         self.velocities = {
-            "shoulder_pan_joint": np.pi,
-            "shoulder_lift_joint": np.pi,
-            "elbow_joint": np.pi,
-            "wrist_1_joint": np.pi,
-            "wrist_2_joint": np.pi,
-            "wrist_3_joint": np.pi,
+            self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
         }
 
     def test_dimensions(self):
@@ -37,8 +32,8 @@ class TestVelocityLimit(absltest.TestCase):
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
         nb = nv - len(get_freejoint_dims(self.model)[1])
-        self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+        self.assertEqual(limit.projection_matrix.shape, (nb, nv))
 
     def test_model_with_no_limit(self):
         """Test behavior with no velocity limits."""
@@ -52,12 +47,10 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_model_with_subset_of_velocities_limited(self):
         """Test behavior with a subset of velocity limits."""
-        velocities = {
-            "wrist_1_joint": 3.14,
-            "wrist_2_joint": 3.14,
-            "wrist_3_joint": 3.14,
+        partial_velocities = {
+            self.model.joint(i).name: 3.14 for i in range(1, 4)
         }
-        limit = VelocityLimit(self.model, velocities)
+        limit = VelocityLimit(self.model, partial_velocities)
         nb = 3
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
@@ -66,7 +59,7 @@ class TestVelocityLimit(absltest.TestCase):
     def test_indices(self):
         """Test the indices of the velocity limits."""
         limit = VelocityLimit(self.model, self.velocities)
-        expected_indices = np.array([2, 3, 4, 5, 6, 7])
+        expected_indices = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
         self.assertTrue(np.allclose(limit.indices, expected_indices))
 
     def test_ball_joint_velocity_limits(self):
