@@ -43,8 +43,8 @@ class Configuration:
 
         Args:
             model: Mujoco model.
-            q: Configuration to initialize from. If None, the configuration is
-                initialized to the default configuration `qpos0`.
+            q: Configuration to initialize from. If None, the configuration
+                is initialized to the default configuration `qpos0`.
         """
         self.model = model
         self.data = mujoco.MjData(model)
@@ -232,6 +232,8 @@ class Configuration:
             velocity: The velocity in tangent space.
             dt: Integration duration in [s].
         """
+        # Improve posture task integration by clamping velocity to avoid overshooting
+        velocity = np.clip(velocity, -0.5, 0.5)  # Adjust velocity limits as needed
         mujoco.mj_integratePos(self.model, self.data.qpos, velocity, dt)
         self.update()
 
