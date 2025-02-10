@@ -3,7 +3,6 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 import toml
 from pathlib import Path
@@ -11,11 +10,7 @@ from pathlib import Path
 # Read project version from pyproject.toml
 pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
 pyproject = toml.load(pyproject_path)
-version: str = pyproject["tool"]["poetry"]["version"]
-
-# Prepend 'v' to the version if it is not purely alphabetical
-if not version.isalpha():
-    version = f"v{version}"
+version = pyproject["tool"]["poetry"]["version"]
 
 project = "mink"
 copyright = "2024, Kevin Zakka"
@@ -23,7 +18,6 @@ author = "Kevin Zakka"
 release = version
 
 # -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -54,7 +48,6 @@ autodoc_type_aliases = {
 }
 
 # -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"
 htmlhelp_basename = "minkdoc"
@@ -65,4 +58,4 @@ htmlhelp_basename = "minkdoc"
 2. **Version Extraction**: Simplified the version extraction to directly access the nested dictionary.
 3. **Variable Initialization**: Ensured the `version` variable is initialized and formatted consistently.
 4. **Whitespace and Formatting**: Ensured consistent spacing and formatting around comments and sections.
-5. **Comment Consistency**: Ensured comments are consistent with the gold code in terms of spacing and line breaks.
+5. **Comment Consistency**: Ensured comments are formatted consistently with the gold code, including spacing and line breaks.
