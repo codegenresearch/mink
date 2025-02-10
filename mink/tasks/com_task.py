@@ -21,8 +21,7 @@ class ComTask(Task):
     uniform across all CoM coordinates or specific to each coordinate.
 
     Attributes:
-        k: Dimension of the CoM position vector, typically 3 for 3D space.
-        target_com: Target position of the CoM in the world frame.
+        target_com: Desired center-of-mass position in the world frame.
     """
 
     k: int = 3
@@ -62,7 +61,7 @@ class ComTask(Task):
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"(identical cost for all coordinates) or ({self.k},) for specific "
+                f"(aka identical cost for all coordinates) or ({self.k},) for specific "
                 f"costs per coordinate. Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
@@ -121,7 +120,7 @@ class ComTask(Task):
         """
         if self.target_com is None:
             raise TargetNotSet(self.__class__.__name__)
-        return configuration.data.subtree_com[1] - self.target_com
+        return self.target_com - configuration.data.subtree_com[1]
 
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the CoM task Jacobian.
