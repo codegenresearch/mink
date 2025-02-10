@@ -33,8 +33,6 @@ pygments_style = "sphinx"
 # Autodoc configuration
 autodoc_default_options = {
     "members": True,
-    "undoc-members": True,
-    "show-inheritance": True,
     "member-order": "bysource",
     "inherited-members": False,
     "exclude-members": "__init__, __post_init__, __new__",
@@ -44,11 +42,6 @@ autodoc_class_signature = "separated"
 
 napoleon_numpy_docstring = False
 napoleon_use_rtype = False
-
-# Type aliases (if applicable)
-autodoc_type_aliases = {
-    "npt.ArrayLike": "ArrayLike",
-}
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
