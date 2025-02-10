@@ -44,32 +44,32 @@ class MatrixLieGroup(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def from_matrix(cls, matrix: np.ndarray) -> Self:
-        """Creates a group member from a matrix."""
+        """Get group member from matrix representation."""
         raise NotImplementedError
 
     @classmethod
     @abc.abstractmethod
     def sample_uniform(cls) -> Self:
-        """Draws a uniform sample from the group."""
+        """Draw a uniform sample from the group."""
         raise NotImplementedError
 
     # Accessors.
 
     @abc.abstractmethod
     def as_matrix(self) -> np.ndarray:
-        """Returns the transformation as a matrix."""
+        """Get transformation as a matrix."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def parameters(self) -> np.ndarray:
-        """Returns the underlying parameters."""
+        """Get underlying parameters."""
         raise NotImplementedError
 
     # Operations.
 
     @abc.abstractmethod
     def apply(self, target: np.ndarray) -> np.ndarray:
-        """Applies the group action to a point or set of points."""
+        """Applies group action to a point."""
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -80,22 +80,22 @@ class MatrixLieGroup(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def exp(cls, tangent: np.ndarray) -> Self:
-        """Computes expm(wedge(tangent))."""
+        """Computes `expm(wedge(tangent))`."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def log(self) -> np.ndarray:
-        """Computes vee(logm(transformation matrix))."""
+        """Computes `vee(logm(transformation matrix))`."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def adjoint(self) -> np.ndarray:
-        """Computes the adjoint representation."""
+        """Computes the adjoint."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def inverse(self) -> Self:
-        """Computes the inverse transformation."""
+        """Computes the inverse of the transform."""
         raise NotImplementedError
 
     @abc.abstractmethod
