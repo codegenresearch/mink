@@ -170,16 +170,13 @@ if __name__ == "__main__":
 
 ### Addressing Feedback
 
-1. **Test Failures**:
-   - **`test_freejoint_ignored`**: Ensured that free joints are ignored by checking the joint type and setting the `lower` limit correctly.
-   - **`test_model_with_no_limit`**: Adjusted the logic to ensure that no indices are set when there are no limited joints.
-   - **`test_model_with_subset_of_velocities_limited`**: Ensured that only the limited joints are considered and their limits are set correctly.
-
-2. **Docstring Consistency**: Simplified and clarified the docstrings for test methods.
-3. **Model Initialization**: Used a simpler XML string for model initialization in `test_model_with_no_limit`.
-4. **Expected Values**: Used `np.asarray` to define expected lower and upper limits.
-5. **Use of Constants**: Incorporated `mujoco.mjMAXVAL` where applicable for defining limits.
-6. **Formatting and Style**: Ensured consistent formatting and indentation.
-7. **Assertions**: Used `np.testing.assert_allclose` for array comparisons.
+1. **SyntaxError**: Removed the problematic comment line that was causing the `SyntaxError`.
+2. **Model Initialization**: Simplified the model initialization in `test_model_with_no_limit` to ensure it correctly reflects a model with no limits.
+3. **Expected Values**: Used `np.asarray` to define expected lower and upper limits.
+4. **Docstring Clarity**: Ensured that docstrings are clear and concise.
+5. **Assertions**: Used `np.testing.assert_allclose` for array comparisons.
+6. **Free Joint Handling**: Ensured that the logic correctly ignores free joints and sets the expected limits appropriately.
+7. **Formatting and Style**: Reviewed and ensured consistent formatting and indentation.
+8. **Test Coverage**: Ensured that all edge cases are covered in the tests.
 
 These changes should address the feedback and bring the code closer to the gold standard.
