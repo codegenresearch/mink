@@ -36,13 +36,21 @@ class _Contact:
 
     @property
     def normal(self) -> np.ndarray:
-        """Compute the normal vector of the contact surface."""
+        """Compute the normal vector of the contact surface.
+
+        Returns:
+            Normal vector of the contact surface.
+        """
         normal = self.fromto[3:] - self.fromto[:3]
         return normal / (np.linalg.norm(normal) + 1e-9)
 
     @property
     def inactive(self) -> bool:
-        """Check if the contact is inactive."""
+        """Check if the contact is inactive.
+
+        Returns:
+            True if the contact is inactive, False otherwise.
+        """
         return self.dist == self.distmax and not self.fromto.any()
 
 
