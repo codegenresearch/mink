@@ -86,7 +86,7 @@ if __name__ == "__main__":
         lm_damping=1.0,
     )
 
-    # When move the base, mainly focus on the motion on xy plane, minimize the rotation.
+    # When moving the base, mainly focus on the motion on the xy plane, minimize the rotation.
     posture_cost = np.zeros((model.nv,))
     posture_cost[2] = 1e-3  # Mobile Base.
     posture_cost[-16:] = 1e-3  # Leap Hand.
