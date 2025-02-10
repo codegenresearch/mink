@@ -30,14 +30,12 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Joints we wish to control.
-    # fmt: off
     joint_names = [
         # Base joints.
         "joint_x", "joint_y", "joint_th",
         # Arm joints.
         "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7",
     ]
-    # fmt: on
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -114,7 +112,9 @@ if __name__ == "__main__":
 
                 # Exit condition.
                 err = end_effector_task.compute_error(configuration)
-                if np.linalg.norm(err[:3]) <= pos_threshold and np.linalg.norm(err[3:]) <= ori_threshold:
+                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
+                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
+                if pos_achieved and ori_achieved:
                     break
 
             if not key_callback.pause:
