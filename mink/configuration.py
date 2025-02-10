@@ -46,7 +46,7 @@ class Configuration:
         model: mujoco.MjModel,
         q: Optional[np.ndarray] = None,
     ):
-        """Initialize the Configuration with a model and an optional configuration vector.
+        """Constructor.
 
         Args:
             model: Mujoco model.
@@ -82,11 +82,11 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            ValueError: If no keyframe with the specified name is found in the model.
+            mink.InvalidKeyframe: If no keyframe with the specified name is found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise ValueError(f"No keyframe named '{key_name}' found in the model.")
+            raise exceptions.InvalidKeyframe(key_name, self.model)
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
@@ -98,7 +98,7 @@ class Configuration:
                 If False, print a warning and continue execution.
 
         Raises:
-            ValueError: If the configuration is out of limits and safety_break is True.
+            mink.NotWithinConfigurationLimits: If the configuration is out of limits and safety_break is True.
         """
         for jnt in range(self.model.njnt):
             jnt_type = self.model.jnt_type[jnt]
@@ -113,8 +113,12 @@ class Configuration:
             qmax = self.model.jnt_range[jnt, 1]
             if qval < qmin - tol or qval > qmax + tol:
                 if safety_break:
-                    raise ValueError(
-                        f"Joint {jnt} value {qval} is out of limits [{qmin}, {qmax}]."
+                    raise exceptions.NotWithinConfigurationLimits(
+                        joint_id=jnt,
+                        value=qval,
+                        lower=qmin,
+                        upper=qmax,
+                        model=self.model,
                     )
                 else:
                     print(
@@ -141,17 +145,21 @@ class Configuration:
             Jacobian matrix :math:`{}_B J_{WB}` of the frame velocity relative to the world frame.
 
         Raises:
-            ValueError: If the frame type is not supported.
-            ValueError: If the frame name is not found in the model.
+            mink.UnsupportedFrame: If the frame type is not supported.
+            mink.InvalidFrame: If the frame name is not found in the model.
         """
         if frame_type not in consts.SUPPORTED_FRAMES:
-            raise ValueError(f"Unsupported frame type: {frame_type}. Supported types: {consts.SUPPORTED_FRAMES}")
+            raise exceptions.UnsupportedFrame(frame_type, consts.SUPPORTED_FRAMES)
 
         frame_id = mujoco.mj_name2id(
             self.model, consts.FRAME_TO_ENUM[frame_type], frame_name
         )
         if frame_id == -1:
-            raise ValueError(f"No {frame_type} frame named '{frame_name}' found in the model.")
+            raise exceptions.InvalidFrame(
+                frame_name=frame_name,
+                frame_type=frame_type,
+                model=self.model,
+            )
 
         jac = np.empty((6, self.model.nv))
         jac_func = consts.FRAME_TO_JAC_FUNC[frame_type]
@@ -176,17 +184,21 @@ class Configuration:
             Pose of the frame relative to the world frame.
 
         Raises:
-            ValueError: If the frame type is not supported.
-            ValueError: If the frame name is not found in the model.
+            mink.UnsupportedFrame: If the frame type is not supported.
+            mink.InvalidFrame: If the frame name is not found in the model.
         """
         if frame_type not in consts.SUPPORTED_FRAMES:
-            raise ValueError(f"Unsupported frame type: {frame_type}. Supported types: {consts.SUPPORTED_FRAMES}")
+            raise exceptions.UnsupportedFrame(frame_type, consts.SUPPORTED_FRAMES)
 
         frame_id = mujoco.mj_name2id(
             self.model, consts.FRAME_TO_ENUM[frame_type], frame_name
         )
         if frame_id == -1:
-            raise ValueError(f"No {frame_type} frame named '{frame_name}' found in the model.")
+            raise exceptions.InvalidFrame(
+                frame_name=frame_name,
+                frame_type=frame_type,
+                model=self.model,
+            )
 
         xpos = getattr(self.data, consts.FRAME_TO_POS_ATTR[frame_type])[frame_id]
         xmat = getattr(self.data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
