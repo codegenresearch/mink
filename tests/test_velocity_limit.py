@@ -20,10 +20,8 @@ class TestVelocityLimit(absltest.TestCase):
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        # NOTE: These velocities are arbitrary and do not match real hardware.
-        self.velocities = {
-            self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
-        }
+        # Arbitrary velocities for testing.
+        self.velocities = {self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)}
 
     def test_dimensions(self):
         """Test the dimensions of the velocity limit indices and projection matrix."""
@@ -36,8 +34,8 @@ class TestVelocityLimit(absltest.TestCase):
     def test_indices(self):
         """Test the indices of the velocity-limited joints."""
         limit = VelocityLimit(self.model, self.velocities)
-        expected = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
-        self.assertTrue(np.allclose(limit.indices, expected))
+        expected_indices = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
+        self.assertTrue(np.allclose(limit.indices, expected_indices))
 
     def test_model_with_no_limit(self):
         """Test the behavior of VelocityLimit with a model that has no velocity limits."""
@@ -51,13 +49,13 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_model_with_subset_of_velocities_limited(self):
         """Test the behavior of VelocityLimit with a subset of joints having velocity limits."""
-        limit_subset = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i <= 2}
-        limit = VelocityLimit(self.model, limit_subset)
+        subset_velocities = {name: vel for name, vel in list(self.velocities.items())[:3]}
+        limit = VelocityLimit(self.model, subset_velocities)
         nb = 3
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        expected_limit = np.asarray([3.14] * nb)
+        expected_limit = np.array([3.14] * nb)
         np.testing.assert_allclose(limit.limit, expected_limit)
 
     def test_model_with_ball_joint(self):
