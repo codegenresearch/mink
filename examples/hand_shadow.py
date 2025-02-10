@@ -9,6 +9,8 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "shadow_hand" / "scene_left.xml"
 
+RATE_LIMITER_FREQUENCY = 1000.0
+RATE_LIMITER_WARN = False
 
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
@@ -18,16 +20,16 @@ if __name__ == "__main__":
     posture_task = mink.PostureTask(model, cost=1e-2)
 
     fingers = ["thumb", "first", "middle", "ring", "little"]
-    finger_tasks = []
-    for finger in fingers:
-        task = mink.FrameTask(
+    finger_tasks = [
+        mink.FrameTask(
             frame_name=finger,
             frame_type="site",
             position_cost=1.0,
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        finger_tasks.append(task)
+        for finger in fingers
+    ]
 
     tasks = [
         posture_task,
@@ -50,7 +52,7 @@ if __name__ == "__main__":
         for finger in fingers:
             mink.move_mocap_to_frame(model, data, f"{finger}_target", finger, "site")
 
-        rate = RateLimiter(frequency=500.0, warn=False)
+        rate = RateLimiter(frequency=RATE_LIMITER_FREQUENCY, warn=RATE_LIMITER_WARN)
         dt = rate.dt
         t = 0
         while viewer.is_running():
