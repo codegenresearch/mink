@@ -133,6 +133,9 @@ class TestUtils(absltest.TestCase):
               <joint type="free"/>
               <geom name="b5/g1" type="sphere" size=".1" mass=".1"/>
             </body>
+            <body name="b6" pos="3 3 3">
+              <joint type="free"/>
+            </body>
           </worldbody>
         </mujoco>
         """
@@ -144,10 +147,9 @@ class TestUtils(absltest.TestCase):
         self.assertSetEqual(actual_geom_ids, expected_geom_ids)
 
         # Test for a body with no children
-        b5_id = model.body("b5").id
-        actual_geom_ids = set(utils.get_subtree_geom_ids(model, b5_id))
-        geom_names = ["b5/g1"]
-        expected_geom_ids = {model.geom(g).id for g in geom_names}
+        b6_id = model.body("b6").id
+        actual_geom_ids = set(utils.get_subtree_geom_ids(model, b6_id))
+        expected_geom_ids = set()
         self.assertSetEqual(actual_geom_ids, expected_geom_ids)
 
     def test_get_subtree_body_ids(self):
@@ -174,6 +176,9 @@ class TestUtils(absltest.TestCase):
               <joint type="free"/>
               <geom type="sphere" size=".1" mass=".1"/>
             </body>
+            <body name="b6" pos="3 3 3">
+              <joint type="free"/>
+            </body>
           </worldbody>
         </mujoco>
         """
@@ -185,9 +190,9 @@ class TestUtils(absltest.TestCase):
         self.assertSetEqual(actual_body_ids, expected_body_ids)
 
         # Test for a body with no children
-        b5_id = model.body("b5").id
-        actual_body_ids = set(utils.get_subtree_body_ids(model, b5_id))
-        body_names = ["b5"]
+        b6_id = model.body("b6").id
+        actual_body_ids = set(utils.get_subtree_body_ids(model, b6_id))
+        body_names = ["b6"]
         expected_body_ids = {model.body(g).id for g in body_names}
         self.assertSetEqual(actual_body_ids, expected_body_ids)
 
