@@ -12,9 +12,6 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "stanford_tidybot" / "scene_mobile_kinova.xml"
 
-# Consistent frequency setting
-FREQUENCY = 200.0
-
 @dataclass
 class KeyCallback:
     fix_base: bool = False
@@ -97,7 +94,7 @@ if __name__ == "__main__":
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "pinch_site_target", "pinch_site", "site")
 
-        rate = RateLimiter(frequency=FREQUENCY, warn=False)
+        rate = RateLimiter(frequency=200.0, warn=False)
         dt = rate.period
         t = 0.0
         while viewer.is_running():
@@ -119,9 +116,7 @@ if __name__ == "__main__":
 
                 # Exit condition.
                 err = end_effector_task.compute_error(configuration)
-                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
-                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
-                if pos_achieved and ori_achieved:
+                if np.linalg.norm(err[:3]) <= pos_threshold and np.linalg.norm(err[3:]) <= ori_threshold:
                     break
 
             if not key_callback.pause:
