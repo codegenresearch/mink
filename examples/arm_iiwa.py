@@ -60,10 +60,10 @@ if __name__ == "__main__":
         # Reset the robot to the home position
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
-        posture_task.set_target_from_configuration(configuration)  # Set posture target
+        posture_task.set_target_from_configuration(configuration)
         mujoco.mj_forward(model, data)
 
-        # Initialize the mocap target at the end-effector site.
+        # Initialize the mocap target at the end-effector site
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
         # Set up the rate limiter for controlling the loop frequency
@@ -75,7 +75,7 @@ if __name__ == "__main__":
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
-            # Compute the IK solution and update the robot configuration
+            # Compute velocity and integrate into the next configuration
             for i in range(max_iters):
                 vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
