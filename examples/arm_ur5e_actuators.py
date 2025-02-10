@@ -66,6 +66,9 @@ if __name__ == "__main__":
     ori_threshold = 1e-4
     max_iters = 20
 
+    # Initialize mocap target position.
+    mid = model.body("target").mocapid[0]
+
     ## =================== ##
     ## Initialize Viewer   ##
     ## =================== ##
