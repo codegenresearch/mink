@@ -99,13 +99,16 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0, warn=False)
         dt = rate.period
         t = 0.0
+
+        # Determine tasks based on fix_base state.
+        tasks_to_use = tasks + [damping_task] if key_callback.fix_base else tasks
+
         while viewer.is_running():
             # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
             end_effector_task.set_target(T_wt)
 
             # Compute velocity and integrate into the next configuration.
-            tasks_to_use = tasks + [damping_task] if key_callback.fix_base else tasks
             for i in range(max_iters):
                 vel = mink.solve_ik(
                     configuration, tasks_to_use, rate.dt, solver, damping=1e-3
