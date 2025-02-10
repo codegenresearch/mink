@@ -33,9 +33,9 @@ class ConfigurationLimit(Limit):
                 f"{self.__class__.__name__} gain must be in the range (0, 1]"
             )
 
-        index_list = []  # List to store DoF indices that are limited.
-        lower = np.full(model.nq, -np.inf)
-        upper = np.full(model.nq, np.inf)
+        index_list: list[int] = []  # List to store DoF indices that are limited.
+        lower = np.full(model.nq, -mujoco.mjMAXVAL)
+        upper = np.full(model.nq, mujoco.mjMAXVAL)
         for jnt in range(model.njnt):
             jnt_type = model.jnt_type[jnt]
             qpos_dim = qpos_width(jnt_type)
@@ -45,7 +45,7 @@ class ConfigurationLimit(Limit):
                 continue
             lower[padr : padr + qpos_dim] = jnt_range[0] + min_distance_from_limits
             upper[padr : padr + qpos_dim] = jnt_range[1] - min_distance_from_limits
-            index_list.append(model.jnt_dofadr[jnt])
+            index_list.extend(range(model.jnt_dofadr[jnt], model.jnt_dofadr[jnt] + qpos_dim))
 
         self.indices = np.array(index_list)
         self.indices.setflags(write=False)
@@ -83,7 +83,11 @@ class ConfigurationLimit(Limit):
             Pair :math:`(G, h)` representing the inequality constraint as
             :math:`G \Delta q \leq h`, or ``None`` if there is no limit.
         """
-        del dt  # Unused.
+        if self.projection_matrix is None:
+            return Constraint()
+
+        if configuration.q.size != self.model.nq:
+            raise ValueError("Configuration size does not match the model's number of joint positions.")
 
         # Calculate the maximum allowable change in position towards the upper limit.
         delta_q_max = np.zeros(self.model.nv)
