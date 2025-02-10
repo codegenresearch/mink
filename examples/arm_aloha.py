@@ -24,8 +24,8 @@ _JOINT_NAMES = [
 _VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
 
 # Position and orientation thresholds
-_POSITION_THRESHOLD = 1e-2
-_ORIENTATION_THRESHOLD = 1e-2
+_POSITION_THRESHOLD = 1e-4
+_ORIENTATION_THRESHOLD = 1e-4
 
 
 def get_joint_and_actuator_ids(model: mujoco.MjModel, joint_names: List[str]) -> Tuple[np.ndarray, np.ndarray]:
@@ -85,10 +85,9 @@ def compute_velocity_and_integrate(
     pos_threshold: float,
     ori_threshold: float,
     max_iters: int,
-    qfrc_applied: np.ndarray
 ) -> bool:
     """Compute the velocity and integrate it into the next configuration."""
-    for i in range(max_iters):
+    for _ in range(max_iters):
         vel = mink.solve_ik(
             configuration,
             tasks,
@@ -100,27 +99,33 @@ def compute_velocity_and_integrate(
         configuration.integrate_inplace(vel, rate.dt)
 
         l_err = tasks[0].compute_error(configuration)
-        l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
-        l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-
         r_err = tasks[1].compute_error(configuration)
-        r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
-        r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
 
-        if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
+        if (np.linalg.norm(l_err[:3]) <= pos_threshold and np.linalg.norm(l_err[3:]) <= ori_threshold and
+            np.linalg.norm(r_err[:3]) <= pos_threshold and np.linalg.norm(r_err[3:]) <= ori_threshold):
             return True
     return False
 
 
-def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, subtree_ids: Sequence[int], qfrc_applied: np.ndarray) -> None:
+def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, left_subtree_id: int, right_subtree_id: int) -> None:
     """Compensate for gravity by computing the necessary forces for specified subtrees."""
-    for subtree_id in subtree_ids:
-        subtree_geoms = mink.get_subtree_geom_ids(model, subtree_id)
-        total_mass = sum(model.geom(geom_id).mass for geom_id in subtree_geoms)
-        com_pos = np.mean([model.geom(geom_id).pos for geom_id in subtree_geoms], axis=0)
-        jacobian = np.zeros((3, model.nv))
-        mujoco.mj_jacSubtreeCom(model, data, jacobian, com_pos, subtree_id)
-        qfrc_applied += total_mass * np.dot(jacobian.T, model.opt.gravity)
+    left_wrist_geoms = mink.get_subtree_geom_ids(model, left_subtree_id)
+    right_wrist_geoms = mink.get_subtree_geom_ids(model, right_subtree_id)
+
+    left_total_mass = sum(model.geom(geom_id).mass for geom_id in left_wrist_geoms)
+    right_total_mass = sum(model.geom(geom_id).mass for geom_id in right_wrist_geoms)
+
+    left_com_pos = np.mean([model.geom(geom_id).pos for geom_id in left_wrist_geoms], axis=0)
+    right_com_pos = np.mean([model.geom(geom_id).pos for geom_id in right_wrist_geoms], axis=0)
+
+    left_jacobian = np.zeros((3, model.nv))
+    right_jacobian = np.zeros((3, model.nv))
+
+    mujoco.mj_jacSubtreeCom(model, data, left_jacobian, left_com_pos, left_subtree_id)
+    mujoco.mj_jacSubtreeCom(model, data, right_jacobian, right_com_pos, right_subtree_id)
+
+    data.qfrc_applied += left_total_mass * np.dot(left_jacobian.T, model.opt.gravity)
+    data.qfrc_applied += right_total_mass * np.dot(right_jacobian.T, model.opt.gravity)
 
 
 if __name__ == "__main__":
@@ -155,6 +160,9 @@ if __name__ == "__main__":
     solver = "quadprog"
     max_iters = 2
 
+    left_subtree_id = model.body("left/wrist_link").id
+    right_subtree_id = model.body("right/wrist_link").id
+
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
@@ -168,18 +176,18 @@ if __name__ == "__main__":
         initialize_mocap_targets(model, data)
 
         rate = RateLimiter(frequency=200.0)
-        qfrc_applied = np.zeros(model.nu)
         while viewer.is_running():
             update_task_targets(model, data, l_ee_task, r_ee_task)
 
             if compute_velocity_and_integrate(
-                configuration, tasks, rate, solver, limits, 1e-5, _POSITION_THRESHOLD, _ORIENTATION_THRESHOLD, max_iters, qfrc_applied
+                configuration, tasks, rate, solver, limits, 1e-5, _POSITION_THRESHOLD, _ORIENTATION_THRESHOLD, max_iters
             ):
                 break
 
             # Compensate for gravity
-            compensate_gravity(model, data, [model.body("left/wrist_link").id, model.body("right/wrist_link").id], qfrc_applied)
-            data.ctrl[actuator_ids] = configuration.q[dof_ids] + qfrc_applied[actuator_ids]
+            compensate_gravity(model, data, left_subtree_id, right_subtree_id)
+
+            data.ctrl[actuator_ids] = configuration.q[dof_ids] + data.qfrc_applied[actuator_ids]
 
             mujoco.mj_step(model, data)
 
