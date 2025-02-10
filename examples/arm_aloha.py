@@ -43,22 +43,22 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
 
     # Define tasks for left and right end-effectors.
-    tasks = [
-        mink.FrameTask(
-            frame_name="left/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-        mink.FrameTask(
-            frame_name="right/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-    ]
+    left_ee_task = mink.FrameTask(
+        frame_name="left/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    right_ee_task = mink.FrameTask(
+        frame_name="right/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+
+    tasks = [left_ee_task, right_ee_task]
 
     # Enable collision avoidance between the following geoms:
     # geoms starting at subtree "right wrist" - "table",
@@ -108,8 +108,8 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
-            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
@@ -124,11 +124,11 @@ if __name__ == "__main__":
                 configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if both end-effectors have reached their targets.
-                l_err = tasks[0].compute_error(configuration)
+                l_err = left_ee_task.compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
 
-                r_err = tasks[1].compute_error(configuration)
+                r_err = right_ee_task.compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
 
