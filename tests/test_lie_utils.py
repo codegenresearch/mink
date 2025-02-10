@@ -1,4 +1,4 @@
-"""Tests for mink.lie.utils."""
+"""Tests for utils.py in mink.lie module."""
 
 import numpy as np
 from absl.testing import absltest
