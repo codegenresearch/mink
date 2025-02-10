@@ -22,7 +22,7 @@ _JOINT_NAMES = [
 ]
 
 # Velocity limits for each joint.
-_VELOCITY_LIMITS: Dict[str, float] = {joint: np.pi for joint in _JOINT_NAMES}
+_JOINT_VELOCITY_LIMITS: Dict[str, float] = {joint: np.pi for joint in _JOINT_NAMES}
 
 
 def compensate_gravity(
@@ -45,7 +45,7 @@ def compensate_gravity(
     for subtree_id in subtree_ids:
         total_mass = model.body_subtreemass[subtree_id]
         mujoco.mj_jacSubtreeCom(model, data, jac, subtree_id)
-        qfrc_applied[:] -= model.opt.gravity @ (total_mass * jac)
+        qfrc_applied[:] -= model.opt.gravity * (total_mass * jac)
 
 
 if __name__ == "__main__":
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         for joint in _JOINT_NAMES:
             name = f"{prefix}/{joint}"
             joint_names.append(name)
-            velocity_limits[name] = _VELOCITY_LIMITS[joint]
+            velocity_limits[name] = _JOINT_VELOCITY_LIMITS[joint]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -71,21 +71,21 @@ if __name__ == "__main__":
 
     # Define tasks for both arms and posture.
     tasks = [
-        mink.FrameTask(
+        l_ee_task := mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        mink.FrameTask(
+        r_ee_task := mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        mink.PostureTask(model, cost=1e-4),
+        posture_task := mink.PostureTask(model, cost=1e-4),
     ]
 
     # Set up collision avoidance for specified geometries.
@@ -129,7 +129,7 @@ if __name__ == "__main__":
         mujoco.mj_resetDataKeyframe(model, data, model.key("neutral_pose").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
-        tasks[-1].set_target_from_configuration(configuration)
+        posture_task.set_target_from_configuration(configuration)
 
         # Position mocap targets at the end-effector sites.
         mink.move_mocap_to_frame(model, data, "left/target", "left/gripper", "site")
@@ -138,8 +138,8 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0, warn=False)
         while viewer.is_running():
             # Update task targets.
-            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Solve IK and integrate the solution.
             for _ in range(max_iters):
@@ -154,10 +154,10 @@ if __name__ == "__main__":
                 configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if both arms have reached their targets.
-                l_err = tasks[0].compute_error(configuration)
+                l_err = l_ee_task.compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = tasks[1].compute_error(configuration)
+                r_err = r_ee_task.compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
                 if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
