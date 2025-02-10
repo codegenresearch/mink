@@ -29,7 +29,7 @@ if __name__ == "__main__":
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        posture_task := mink.PostureTask(model=model, cost=np.array([1e-2] * model.nv)),
+        posture_task := mink.PostureTask(model=model, cost=1e-2),
     ]
 
     ## =================== ##
