@@ -95,6 +95,10 @@ if __name__ == "__main__":
     model = configuration.model
     data = configuration.data
 
+    # Initialize the rate limiter with a consistent frequency.
+    frequency = 200.0
+    rate = RateLimiter(frequency=frequency, warn=False)
+
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
@@ -115,10 +119,7 @@ if __name__ == "__main__":
             "attachment_site", "site"
         )
 
-        frequency = 200.0
         while viewer.is_running():
-            rate = RateLimiter(frequency=frequency, warn=False)
-
             # Update kuka end-effector task.
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
