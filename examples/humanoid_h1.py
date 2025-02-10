@@ -16,49 +16,39 @@ if __name__ == "__main__":
     feet = ["right_foot", "left_foot"]
     hands = ["right_wrist", "left_wrist"]
 
-    tasks = []
+    tasks = [
+        pelvis_orientation_task := mink.FrameTask(
+            frame_name="pelvis",
+            frame_type="body",
+            position_cost=0.0,
+            orientation_cost=10.0,
+        ),
+        posture_task := mink.PostureTask(model, cost=1.0),
+        com_task := mink.ComTask(cost=200.0),
+    ]
 
-    # Create and add pelvis orientation task
-    pelvis_orientation_task = mink.FrameTask(
-        frame_name="pelvis",
-        frame_type="body",
-        position_cost=0.0,
-        orientation_cost=10.0,
-    )
-    tasks.append(pelvis_orientation_task)
-
-    # Create and add posture task
-    posture_task = mink.PostureTask(model, cost=1.0)
-    tasks.append(posture_task)
-
-    # Create and add COM task
-    com_task = mink.ComTask(cost=200.0)
-    tasks.append(com_task)
-
-    # Create and add feet tasks
-    feet_tasks = []
-    for foot in feet:
-        foot_task = mink.FrameTask(
+    feet_tasks = [
+        task := mink.FrameTask(
             frame_name=foot,
             frame_type="site",
             position_cost=200.0,
             orientation_cost=10.0,
             lm_damping=1.0,
         )
-        feet_tasks.append(foot_task)
+        for foot in feet
+    ]
     tasks.extend(feet_tasks)
 
-    # Create and add hand tasks
-    hand_tasks = []
-    for hand in hands:
-        hand_task = mink.FrameTask(
+    hand_tasks = [
+        task := mink.FrameTask(
             frame_name=hand,
             frame_type="site",
             position_cost=200.0,
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        hand_tasks.append(hand_task)
+        for hand in hands
+    ]
     tasks.extend(hand_tasks)
 
     com_mid = model.body("com_target").mocapid[0]
