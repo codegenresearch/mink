@@ -15,15 +15,16 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
     data = configuration.data
 
-    # Define the end-effector task
-    end_effector_task = mink.FrameTask(
-        frame_name="attachment_site",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    tasks = [end_effector_task]
+    # Define the end-effector task and tasks list
+    tasks = [
+        end_effector_task := mink.FrameTask(
+            frame_name="attachment_site",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+    ]
 
     # Define collision avoidance pairs
     collision_pairs = [
