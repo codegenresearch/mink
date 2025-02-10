@@ -29,8 +29,10 @@ if __name__ == "__main__":
     ## Setup IK.
     ## =================== ##
 
+    # Initialize the configuration for the IK solver
     configuration = mink.Configuration(model)
 
+    # Define tasks for the IK solver
     tasks = [
         end_effector_task := mink.FrameTask(
             frame_name="attachment_site",
@@ -83,6 +85,7 @@ if __name__ == "__main__":
                 pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
                 ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
+                    print(f"Exiting after {i} iterations.")
                     break
 
             # Apply the computed configuration to the robot's actuators
