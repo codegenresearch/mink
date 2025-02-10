@@ -51,11 +51,7 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_model_with_subset_of_velocities_limited(self):
         """Test the VelocityLimit object with a subset of velocity limits."""
-        limit_subset = {}
-        for i, (key, value) in enumerate(self.velocities.items()):
-            if i > 2:
-                break
-            limit_subset[key] = value
+        limit_subset = {name: vel for i, (name, vel) in enumerate(self.velocities.items()) if i < 3}
         limit = VelocityLimit(self.model, limit_subset)
         nb = 3
         nv = self.model.nv
@@ -202,22 +198,16 @@ class TestVelocityLimit(absltest.TestCase):
         }
         limit = VelocityLimit(model, velocities)
         dt = 1e-3
-        G, h = limit.compute_qp_inequalities(self.configuration, dt)
+        configuration = Configuration(model)
+        configuration.qpos = np.zeros(model.nq)  # Initialize qpos with zeros
+        configuration.qpos[6:8] = np.array([0.785, 0.785])  # Set joint angles for posture task
+        G, h = limit.compute_qp_inequalities(configuration, dt)
         self.assertIsNotNone(G)
         self.assertIsNotNone(h)
         self.assertEqual(G.shape, (4, model.nv))
         self.assertEqual(h.shape, (4,))
-        # Simulate a posture task
-        posture_task = np.array([0.785, 0.785])  # 45 degrees for each joint
-        # Update configuration directly with joint angles
-        self.configuration.qpos[6:8] = posture_task  # Assuming qpos indices for hinge1 and hinge2 are 6 and 7
-        G_task, h_task = limit.compute_qp_inequalities(self.configuration, dt)
-        self.assertIsNotNone(G_task)
-        self.assertIsNotNone(h_task)
-        self.assertEqual(G_task.shape, (4, model.nv))
-        self.assertEqual(h_task.shape, (4,))
         # Check if the posture task is within the velocity limits
-        self.assertTrue(np.all(G_task @ posture_task <= h_task))
+        self.assertTrue(np.all(G @ configuration.qpos[6:8] <= h))
 
 
 if __name__ == "__main__":
