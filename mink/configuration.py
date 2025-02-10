@@ -27,11 +27,9 @@ class Configuration:
     kinematics is computed at each time step, allowing the user to query up-to-date
     information about the robot's state.
 
-    In this context, a frame refers to a coordinate system that can be attached to
-    different elements of the robot model. Currently supported frames include
-    `body`, `geom`, and `site`.
+    Supported frames include `body`, `geom`, and `site`.
 
-    Key functionalities include:
+    Key functionalities:
 
         - Running forward kinematics to update the state.
         - Checking configuration limits.
@@ -59,9 +57,7 @@ class Configuration:
     def update(self, q: Optional[np.ndarray] = None) -> None:
         """Run forward kinematics to update the state.
 
-        This method updates the kinematic state of the model. If a configuration vector
-        `q` is provided, it overrides the internal `data.qpos` before performing the
-        kinematics update.
+        If a configuration vector `q` is provided, it overrides the internal `data.qpos`.
 
         Args:
             q: Optional configuration vector to override internal data.qpos with.
@@ -79,11 +75,11 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            ValueError: if no key named `key` was found in the model.
+            InvalidKeyframe: if no key named `key` was found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise ValueError(f"No keyframe named '{key_name}' found in the model.")
+            raise exceptions.InvalidKeyframe(key_name, self.model)
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
