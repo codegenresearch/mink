@@ -25,10 +25,8 @@ class RollPitchYaw(NamedTuple):
 class SO3(MatrixLieGroup):
     """Special orthogonal group for 3D rotations.
 
-    Represents rotations in 3D space using quaternions. The internal parameterization is
-    (qw, qx, qy, qz), where qw is the scalar part and qx, qy, qz are the vector parts of the
-    quaternion. The tangent parameterization is (omega_x, omega_y, omega_z), representing
-    the angular velocity vector.
+    Internal parameterization is (qw, qx, qy, qz). Tangent parameterization is
+    (omega_x, omega_y, omega_z).
     """
 
     wxyz: np.ndarray
@@ -120,7 +118,7 @@ class SO3(MatrixLieGroup):
     def as_matrix(self) -> np.ndarray:
         """Convert the quaternion to a 3x3 rotation matrix.
 
-        Equation 138 in the reference material.
+        Equation 138.
         """
         mat = np.zeros(9, dtype=np.float64)
         mujoco.mju_quat2Mat(mat, self.wxyz)
@@ -160,7 +158,7 @@ class SO3(MatrixLieGroup):
     def apply(self, target: np.ndarray) -> np.ndarray:
         """Apply the rotation to a 3D vector.
 
-        Equation 136 in the reference material.
+        Equation 136.
         """
         assert target.shape == (SO3.space_dim,)
         padded_target = np.concatenate([np.zeros(1, dtype=np.float64), target])
@@ -176,7 +174,7 @@ class SO3(MatrixLieGroup):
     def exp(cls, tangent: np.ndarray) -> SO3:
         """Exponential map from the tangent space to the manifold.
 
-        Equation 132 in the reference material.
+        Equation 132.
         """
         assert tangent.shape == (SO3.tangent_dim,)
         theta_squared = tangent @ tangent
@@ -196,7 +194,7 @@ class SO3(MatrixLieGroup):
     def log(self) -> np.ndarray:
         """Logarithmic map from the manifold to the tangent space.
 
-        Equation 133 in the reference material.
+        Equation 133.
         """
         w = self.wxyz[0]
         norm_sq = self.wxyz[1:] @ self.wxyz[1:]
@@ -217,7 +215,7 @@ class SO3(MatrixLieGroup):
     def adjoint(self) -> np.ndarray:
         """Return the adjoint matrix of the current rotation.
 
-        Equation 139 in the reference material.
+        Equation 139.
         """
         return self.as_matrix()
 
@@ -225,7 +223,7 @@ class SO3(MatrixLieGroup):
     def ljac(cls, other: np.ndarray) -> np.ndarray:
         """Left Jacobian of SO3.
 
-        Equation 145 and 174 in the reference material.
+        Equation 145, 174.
         """
         theta = np.sqrt(other @ other)
         use_taylor = theta < get_epsilon(theta.dtype)
@@ -243,7 +241,7 @@ class SO3(MatrixLieGroup):
     def ljacinv(cls, other: np.ndarray) -> np.ndarray:
         """Inverse of the left Jacobian of SO3.
 
-        Equation 145 and 174 in the reference material.
+        Equation 145, 174.
         """
         theta = np.sqrt(other @ other)
         use_taylor = theta < get_epsilon(theta.dtype)
