@@ -68,7 +68,7 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "trunk_target", "trunk", "body")
 
         # Set up the rate limiter
-        rate_limiter = RateLimiter(frequency=500.0, warn=False)
+        rate = RateLimiter(frequency=500.0, warn=False)
 
         # Main loop
         while viewer.is_running():
@@ -77,11 +77,11 @@ if __name__ == "__main__":
             for i, task in enumerate(feet_tasks):
                 task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
 
-            # Solve inverse kinematics, integrate, and set control signal
-            velocity = mink.solve_ik(configuration, tasks, rate_limiter.dt, solver, 1e-5)
-            configuration.integrate_inplace(velocity, rate_limiter.dt)
+            # Compute velocity, integrate, and set control signal
+            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-5)
+            configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
             # Visualize at fixed FPS
             viewer.sync()
-            rate_limiter.sleep()
+            rate.sleep()
