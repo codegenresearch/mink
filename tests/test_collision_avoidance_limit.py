@@ -5,13 +5,14 @@ import itertools
 import numpy as np
 from absl.testing import absltest
 from robot_descriptions.loaders.mujoco import load_robot_description
+import mujoco
 
 from mink import Configuration
 from mink.limits import CollisionAvoidanceLimit
 from mink.utils import get_body_geom_ids
 
 
-class CollisionAvoidanceLimitTests(absltest.TestCase):
+class TestCollisionAvoidanceLimit(absltest.TestCase):
     """Tests for the CollisionAvoidanceLimit class."""
 
     @classmethod
@@ -23,42 +24,60 @@ class CollisionAvoidanceLimitTests(absltest.TestCase):
         self.configuration.update_from_keyframe("home")
 
     def test_collision_avoidance_limit_dimensions(self):
-        geom_ids_wrist_2 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
-        geom_ids_upper_arm = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
+        """Test the dimensions of the collision avoidance limit."""
+        g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
+        g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
 
         bound_relaxation = -1e-3
         limit = CollisionAvoidanceLimit(
             model=self.model,
-            geom_pairs=[(geom_ids_wrist_2, geom_ids_upper_arm)],
+            geom_pairs=[(g1, g2)],
             bound_relaxation=bound_relaxation,
         )
 
-        expected_max_contacts = self._calculate_expected_max_contacts(geom_ids_wrist_2, geom_ids_upper_arm)
+        # Filter out non-colliding geoms
+        g1_coll = [g for g in g1 if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0]
+        g2_coll = [g for g in g2 if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0]
+
+        # Calculate expected maximum number of contacts
+        expected_max_contacts = len(list(itertools.product(g1_coll, g2_coll)))
         self.assertEqual(limit.max_num_contacts, expected_max_contacts)
 
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
 
-        self._assert_upper_bound_greater_equal_relaxation(h, bound_relaxation)
-        self._assert_inequality_constraint_dimensions(G, h, expected_max_contacts)
+        # Check that the upper bound is always greater than or equal to the relaxation bound
+        self.assertTrue(np.all(h >= bound_relaxation), "Upper bound should be greater than or equal to the relaxation bound.")
 
-    def _calculate_expected_max_contacts(self, geom_ids_1, geom_ids_2):
-        colliding_geoms_1 = self._filter_colliding_geoms(geom_ids_1)
-        colliding_geoms_2 = self._filter_colliding_geoms(geom_ids_2)
-        return len(list(itertools.product(colliding_geoms_1, colliding_geoms_2)))
+        # Check that the inequality constraint dimensions are valid
+        self.assertEqual(G.shape, (expected_max_contacts, self.model.nv), "G matrix shape mismatch.")
+        self.assertEqual(h.shape, (expected_max_contacts,), "h vector shape mismatch.")
 
-    def _filter_colliding_geoms(self, geom_ids):
-        return [
-            g
-            for g in geom_ids
-            if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0
-        ]
+    def test_collision_avoidance_limit_contact_normal_jacobian(self):
+        """Test the contact normal Jacobian against MuJoCo's implementation."""
+        g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
+        g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
 
-    def _assert_upper_bound_greater_equal_relaxation(self, h, bound_relaxation):
-        self.assertTrue(np.all(h >= bound_relaxation))
+        bound_relaxation = -1e-3
+        limit = CollisionAvoidanceLimit(
+            model=self.model,
+            geom_pairs=[(g1, g2)],
+            bound_relaxation=bound_relaxation,
+        )
 
-    def _assert_inequality_constraint_dimensions(self, G, h, expected_max_contacts):
-        self.assertEqual(G.shape, (expected_max_contacts, self.model.nv))
-        self.assertEqual(h.shape, (expected_max_contacts,))
+        G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
+
+        # Compute contact normal Jacobian using MuJoCo
+        mujoco_contacts = mujoco.MjData(self.model).contact
+        mujoco_G = np.zeros((len(mujoco_contacts), self.model.nv))
+        mujoco_h = np.zeros(len(mujoco_contacts))
+
+        for i, contact in enumerate(mujoco_contacts):
+            mujoco.mju_contactJacobian(self.model, mujoco_contacts, contact.geom1, contact.geom2, mujoco_G[i])
+            mujoco_h[i] = contact.dist - bound_relaxation
+
+        # Check that the computed G and h match MuJoCo's implementation
+        self.assertTrue(np.allclose(G, mujoco_G), "Computed G matrix does not match MuJoCo's G matrix.")
+        self.assertTrue(np.allclose(h, mujoco_h), "Computed h vector does not match MuJoCo's h vector.")
 
 
 if __name__ == "__main__":
