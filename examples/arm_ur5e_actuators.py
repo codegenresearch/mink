@@ -42,7 +42,10 @@ if __name__ == "__main__":
     # Define configuration and collision avoidance limits.
     limits = [
         mink.ConfigurationLimit(model=configuration.model),
-        mink.CollisionAvoidanceLimit(model=configuration.model, geom_pairs=collision_pairs),
+        mink.CollisionAvoidanceLimit(
+            model=configuration.model,
+            geom_pairs=collision_pairs,
+        ),
     ]
 
     # Define velocity limits.
@@ -57,9 +60,6 @@ if __name__ == "__main__":
     velocity_limit = mink.VelocityLimit(model, max_velocities)
     limits.append(velocity_limit)
 
-    # Initialize mid variable.
-    mid = model.body("target").mocapid[0]
-
     # IK settings.
     solver = "quadprog"
     pos_threshold = 1e-4
@@ -69,7 +69,12 @@ if __name__ == "__main__":
     ## =================== ##
     ## Initialize Viewer   ##
     ## =================== ##
-    with mujoco.viewer.launch_passive(model=model, data=data, show_left_ui=False, show_right_ui=False) as viewer:
+    with mujoco.viewer.launch_passive(
+        model=model,
+        data=data,
+        show_left_ui=False,
+        show_right_ui=False
+    ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
         # Reset to the home keyframe.
@@ -78,7 +83,13 @@ if __name__ == "__main__":
         mujoco.mj_forward(model, data)
 
         # Initialize the mocap target at the end-effector site.
-        mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
+        mink.move_mocap_to_frame(
+            model=model,
+            data=data,
+            mocap_name="target",
+            frame_name="attachment_site",
+            frame_type="site"
+        )
 
         # Initialize rate limiter.
         rate = RateLimiter(frequency=500.0, warn=False)
@@ -93,7 +104,14 @@ if __name__ == "__main__":
 
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
-                vel = mink.solve_ik(configuration, tasks, rate.dt, solver, damping=1e-3, limits=limits)
+                vel = mink.solve_ik(
+                    configuration=configuration,
+                    tasks=tasks,
+                    dt=rate.dt,
+                    solver=solver,
+                    damping=1e-3,
+                    limits=limits
+                )
                 configuration.integrate_inplace(vel, rate.dt)
                 err = end_effector_task.compute_error(configuration)
                 pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
