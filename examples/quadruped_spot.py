@@ -101,7 +101,7 @@ if __name__ == "__main__":
             eef_task.set_target(mink.SE3.from_mocap_id(data, eef_mid))
 
             # Compute velocity and integrate into the next configuration
-            for _ in range(max_iters):
+            for i in range(max_iters):
                 vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
 
