@@ -99,6 +99,7 @@ def main():
 
     # Generate joint names and velocity limits for both arms.
     joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
+    velocity_limits = {name: _VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
     dof_ids, actuator_ids = get_dof_and_actuator_ids(model, joint_names)
 
     configuration = mink.Configuration(model)
@@ -134,7 +135,7 @@ def main():
     # Define configuration limits.
     limits = [
         mink.ConfigurationLimit(model=model),
-        mink.VelocityLimit(model, _VELOCITY_LIMITS),
+        mink.VelocityLimit(model, velocity_limits),
         collision_avoidance_limit,
     ]
 
