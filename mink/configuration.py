@@ -30,7 +30,6 @@ class Configuration:
     information about the robot's state.
 
     Key functionalities:
-
     - Running forward kinematics to update the state.
     - Checking configuration limits.
     - Computing Jacobians for different frames.
@@ -84,9 +83,8 @@ class Configuration:
 
         Args:
             tol: Tolerance in [rad].
-            safety_break: If True, stop execution and raise an exception if the current
-                configuration is outside limits. If False, print a warning and continue
-                execution.
+            safety_break: If True, raise an exception if the current configuration is
+                outside limits. If False, print a warning and continue execution.
         """
         for jnt in range(self.model.njnt):
             jnt_type = self.model.jnt_type[jnt]
@@ -127,7 +125,7 @@ class Configuration:
 
         Args:
             frame_name: Name of the frame in the MJCF.
-            frame_type: Type of frame. Can be a geom, a body or a site.
+            frame_type: Type of frame. Can be a geom, a body, or a site.
 
         Returns:
             Jacobian :math:`{}_B J_{WB}` of the frame.
@@ -161,7 +159,7 @@ class Configuration:
 
         Args:
             frame_name: Name of the frame in the MJCF.
-            frame_type: Type of frame. Can be a geom, a body or a site.
+            frame_type: Type of frame. Can be a geom, a body, or a site.
 
         Returns:
             The pose of the frame in the world frame.
@@ -201,7 +199,7 @@ class Configuration:
         return q
 
     def integrate_inplace(self, velocity: np.ndarray, dt: float) -> None:
-        """Integrate a velocity and update the current configuration inplace.
+        """Integrate a velocity and update the current configuration in place.
 
         Args:
             velocity: The velocity in tangent space.
