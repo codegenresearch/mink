@@ -21,6 +21,8 @@ extensions = [
     "sphinx_favicon",
 ]
 
+autodoc_typehints = "both"
+
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
@@ -34,11 +36,11 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": None,
-    "exclude-members": "__weakref__",
+    "inherited-members": False,
+    "exclude-members": "__init__, __post_init__, __new__",
 }
 
-autodoc_typehints = "both"
+autodoc_class_signature = "separated"
 
 napoleon_numpy_docstring = False
 napoleon_use_rtype = False
