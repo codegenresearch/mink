@@ -51,7 +51,7 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_model_with_subset_of_velocities_limited(self):
         """Test the VelocityLimit object with a subset of velocity limits."""
-        limit_subset = {name: vel for i, (name, vel) in enumerate(self.velocities.items()) if i < 3}
+        limit_subset = {name: vel for name, vel in list(self.velocities.items())[:3]}
         limit = VelocityLimit(self.model, limit_subset)
         nb = 3
         nv = self.model.nv
@@ -169,7 +169,9 @@ class TestVelocityLimit(absltest.TestCase):
         }
         limit = VelocityLimit(model, velocities)
         dt = 1e-3
-        G, h = limit.compute_qp_inequalities(self.configuration, dt)
+        configuration = Configuration(model)
+        configuration.qpos = np.zeros(model.nq)  # Initialize qpos with zeros
+        G, h = limit.compute_qp_inequalities(configuration, dt)
         self.assertIsNotNone(G)
         self.assertIsNotNone(h)
         self.assertEqual(G.shape, (4, model.nv))
