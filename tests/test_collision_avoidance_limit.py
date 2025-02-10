@@ -23,7 +23,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("home")
 
-    def test_collision_avoidance_limit_dimensions(self):
+    def test_dimensions(self):
         """Test the dimensions of the collision avoidance limit."""
         g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
         g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
@@ -52,7 +52,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         self.assertEqual(G.shape, (expected_max_contacts, self.model.nv), "G matrix shape mismatch.")
         self.assertEqual(h.shape, (expected_max_contacts,), "h vector shape mismatch.")
 
-    def test_collision_avoidance_limit_contact_normal_jacobian(self):
+    def test_contact_normal_jacobian(self):
         """Test the contact normal Jacobian against MuJoCo's implementation."""
         g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
         g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
@@ -67,13 +67,21 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
 
         # Compute contact normal Jacobian using MuJoCo
-        mujoco_contacts = mujoco.MjData(self.model).contact
-        mujoco_G = np.zeros((len(mujoco_contacts), self.model.nv))
-        mujoco_h = np.zeros(len(mujoco_contacts))
+        data = mujoco.MjData(self.model)
+        mujoco.mj_forward(self.model, data)
+        mujoco_contacts = data.contact
 
-        for i, contact in enumerate(mujoco_contacts):
-            mujoco.mju_contactJacobian(self.model, mujoco_contacts, contact.geom1, contact.geom2, mujoco_G[i])
-            mujoco_h[i] = contact.dist - bound_relaxation
+        if len(mujoco_contacts) == 0:
+            # No contacts detected, set mujoco_G and mujoco_h to empty arrays with appropriate shapes
+            mujoco_G = np.zeros((0, self.model.nv))
+            mujoco_h = np.zeros(0)
+        else:
+            mujoco_G = np.zeros((len(mujoco_contacts), self.model.nv))
+            mujoco_h = np.zeros(len(mujoco_contacts))
+
+            for i, contact in enumerate(mujoco_contacts):
+                mujoco.mju_contactJacobian(self.model, data, contact.geom1, contact.geom2, mujoco_G[i])
+                mujoco_h[i] = contact.dist - bound_relaxation
 
         # Check that the computed G and h match MuJoCo's implementation
         self.assertTrue(np.allclose(G, mujoco_G), "Computed G matrix does not match MuJoCo's G matrix.")
