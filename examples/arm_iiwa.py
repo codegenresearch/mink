@@ -34,14 +34,14 @@ if __name__ == "__main__":
 
     # Define tasks for the IK solver
     tasks = [
-        end_effector_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="attachment_site",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        posture_task := mink.PostureTask(model=model, cost=1e-2),
+        mink.PostureTask(model=model, cost=1e-2),
     ]
 
     ## =================== ##
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         posture_task.set_target_from_configuration(configuration)
         mujoco.mj_forward(model, data)
 
-        # Initialize the mocap target at the end-effector site.
+        # Initialize the mocap target at the end-effector site
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
         # Set up the rate limiter for controlling the loop frequency
@@ -85,7 +85,6 @@ if __name__ == "__main__":
                 pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
                 ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
-                    print(f"Exiting after {i} iterations.")
                     break
 
             # Apply the computed configuration to the robot's actuators
