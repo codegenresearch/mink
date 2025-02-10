@@ -42,6 +42,8 @@ from .utils import (
     move_mocap_to_frame,
 )
 
+__version__ = "0.0.2"  # Load version from pyproject.toml
+
 __all__ = (
     "ComTask",
     "Configuration",
@@ -72,8 +74,6 @@ __all__ = (
     "FRAME_TO_JAC_FUNC",
     "FRAME_TO_POS_ATTR",
     "FRAME_TO_XMAT_ATTR",
-    "set_mocap_pose_from_frame",
-    "pose_from_mocap",
     "custom_configuration_vector",
     "get_freejoint_dims",
     "move_mocap_to_frame",
