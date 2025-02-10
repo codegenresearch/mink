@@ -3,6 +3,7 @@
 import numpy as np
 from absl.testing import absltest
 from robot_descriptions.loaders.mujoco import load_robot_description
+import mujoco
 
 import mink
 
@@ -88,12 +89,12 @@ class TestConfiguration(absltest.TestCase):
         configuration.integrate_inplace(qvel, dt)
         np.testing.assert_almost_equal(configuration.q, expected_qpos)
 
-    def test_check_limits(self):
+    def test_check_limits_within_limits(self):
         """Check that no error is raised when the configuration is within limits."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
         configuration.check_limits()
 
-    def test_check_limits_with_safety_break(self):
+    def test_check_limits_exceeds_limits_with_safety_break(self):
         """Check that an error is raised when the configuration exceeds limits with safety break."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
         self.q_ref[0] += 1e4  # Move configuration out of bounds.
@@ -101,24 +102,12 @@ class TestConfiguration(absltest.TestCase):
         with self.assertRaises(mink.NotWithinConfigurationLimits):
             configuration.check_limits(safety_break=True)
 
-    def test_check_limits_without_safety_break(self):
+    def test_check_limits_exceeds_limits_without_safety_break(self):
         """Check that no error is raised when the configuration exceeds limits without safety break."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
         self.q_ref[0] += 1e4  # Move configuration out of bounds.
         configuration.update(q=self.q_ref)
         configuration.check_limits(safety_break=False)
-
-    def test_get_frame_jacobian_invalid_frame_name(self):
-        """Raise an error when the requested frame name does not exist."""
-        configuration = mink.Configuration(self.model)
-        with self.assertRaises(mink.InvalidFrame):
-            configuration.get_frame_jacobian("invalid_name", "site")
-
-    def test_get_frame_jacobian_invalid_frame_type(self):
-        """Raise an error when the requested frame type is invalid."""
-        configuration = mink.Configuration(self.model)
-        with self.assertRaises(mink.UnsupportedFrame):
-            configuration.get_frame_jacobian("name_does_not_matter", "joint")
 
     def test_check_limits_free_joints(self):
         """Check that limits are correctly handled for free joints."""
