@@ -16,7 +16,7 @@ from .utils import assert_transforms_close
     ("SO3", SO3),
     ("SE3", SE3),
 )
-class TestGeneralOperations(parameterized.TestCase):
+class TestOperations(parameterized.TestCase):
     def test_inverse_bijective(self, group: Type[MatrixLieGroup]):
         """Check inverse of inverse."""
         transform = group.sample_uniform()
@@ -125,12 +125,12 @@ class TestSE3Operations(parameterized.TestCase):
     def test_invalid_matrix_conversion_se3(self):
         """Check that from_matrix raises error if invalid matrix size."""
         with self.assertRaises(ValueError):
-            SE3.from_matrix(np.random.rand(4, 4))  # Invalid matrix size
+            SE3.from_matrix(np.random.rand(3, 3))  # Invalid matrix size
 
     def test_invalid_log_exp_se3(self):
         """Check that exp raises error if invalid shape."""
         with self.assertRaises(ValueError):
-            SE3.exp(np.random.rand(6))  # Invalid tangent vector size
+            SE3.exp(np.random.rand(7))  # Invalid tangent vector size
 
 
 class TestSO3Operations(parameterized.TestCase):
@@ -144,12 +144,23 @@ class TestSO3Operations(parameterized.TestCase):
     def test_invalid_matrix_conversion_so3(self):
         """Check that from_matrix raises error if invalid matrix size."""
         with self.assertRaises(ValueError):
-            SO3.from_matrix(np.random.rand(3, 3))  # Invalid matrix size
+            SO3.from_matrix(np.random.rand(4, 4))  # Invalid matrix size
 
     def test_invalid_log_exp_so3(self):
         """Check that exp raises error if invalid shape."""
         with self.assertRaises(ValueError):
-            SO3.exp(np.random.rand(4))  # Invalid tangent vector size
+            SO3.exp(np.random.rand(5))  # Invalid tangent vector size
+
+    def test_copy(self):
+        """Check that copying a SO3 object works correctly."""
+        T = SO3.sample_uniform()
+        T_copy = T.copy()
+        assert_transforms_close(T, T_copy)
+
+    def test_invalid_from_rpy_radians(self):
+        """Check that from_rpy_radians raises error if invalid input."""
+        with self.assertRaises(ValueError):
+            SO3.from_rpy_radians(10, 10, 10)  # Invalid RPY angles
 
 
 if __name__ == "__main__":
