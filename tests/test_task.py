@@ -11,11 +11,11 @@ class TestTask(absltest.TestCase):
         """Prepare test fixture."""
         Task.__abstractmethods__ = set()
 
-    def test_task_raises_invalid_gain_error(self):
+    def test_task_raises_error_for_negative_gain(self):
         with self.assertRaises(InvalidGain):
             Task(cost=0.0, gain=-0.5)
 
-    def test_task_raises_invalid_damping_error(self):
+    def test_task_raises_error_for_negative_damping(self):
         with self.assertRaises(InvalidDamping):
             Task(cost=0.0, gain=1.0, lm_damping=-1.0)
 
