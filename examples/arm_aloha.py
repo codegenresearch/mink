@@ -22,7 +22,7 @@ _JOINT_NAMES = [
 ]
 
 # Velocity limits for each joint.
-_JOINT_VELOCITY_LIMITS: Dict[str, float] = {joint: np.pi for joint in _JOINT_NAMES}
+_VELOCITY_LIMITS: Dict[str, float] = {joint: np.pi for joint in _JOINT_NAMES}
 
 
 def compensate_gravity(
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         for joint in _JOINT_NAMES:
             name = f"{prefix}/{joint}"
             joint_names.append(name)
-            velocity_limits[name] = _JOINT_VELOCITY_LIMITS[joint]
+            velocity_limits[name] = _VELOCITY_LIMITS[joint]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
