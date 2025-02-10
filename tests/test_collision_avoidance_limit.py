@@ -8,7 +8,7 @@ from robot_descriptions.loaders.mujoco import load_robot_description
 import mujoco
 
 from mink import Configuration
-from mink.limits import CollisionAvoidanceLimit
+from mink.limits import CollisionAvoidanceLimit, Contact, compute_contact_normal_jacobian
 from mink.utils import get_body_geom_ids
 
 
@@ -41,7 +41,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
 
         # Calculate expected maximum number of contacts
         expected_max_num_contacts = len(list(itertools.product(g1_coll, g2_coll)))
-        self.assertEqual(limit.max_num_contacts, expected_max_num_contacts)
+        self.assertEqual(limit.max_num_contacts, expected_max_num_contacts, "Max number of contacts mismatch")
 
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
 
@@ -67,8 +67,15 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         # Configure model options for contact dimensionality and disable unnecessary constraints
         self.model.opt.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
         self.model.opt.disableflags |= mujoco.mjtDisableBit.mjDSBL_CONSTRAINT
+        self.model.opt.contact = mujoco.mjtContact.mjCNONE
+        self.model.opt.impratio = 0.1
+        self.model.opt.timestep = 1e-3
 
         data = mujoco.MjData(self.model)
+
+        # Set a specific qpos for collision testing
+        qpos_coll = np.array([0.0, -1.57, 1.57, -1.57, 1.57, 0.0])
+        data.qpos[:] = qpos_coll
         mujoco.mj_forward(self.model, data)
 
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
