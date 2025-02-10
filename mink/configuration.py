@@ -46,7 +46,9 @@ class Configuration:
         model: mujoco.MjModel,
         q: Optional[np.ndarray] = None,
     ):
-        """Initialize the Configuration with a model and an optional configuration vector.
+        """Constructor.
+
+        Initializes the Configuration with a model and an optional configuration vector.
 
         Args:
             model: Mujoco model.
@@ -58,29 +60,36 @@ class Configuration:
         self.update(q=q)
 
     def update(self, q: Optional[np.ndarray] = None) -> None:
-        """Run forward kinematics to update the state.
+        """Run forward kinematics.
+
+        Updates the state by running forward kinematics. If a configuration vector `q`
+        is provided, it overrides the internal data.qpos before performing kinematics.
 
         Args:
             q: Optional configuration vector to override the internal data.qpos with.
         """
         if q is not None:
             self.data.qpos = q
-        # Perform forward kinematics and update Jacobians.
+        # Perform forward kinematics to update frame transforms.
         mujoco.mj_kinematics(self.model, self.data)
+        # Update Jacobians.
         mujoco.mj_comPos(self.model, self.data)
 
     def update_from_keyframe(self, key_name: str) -> None:
-        """Update the configuration from a specified keyframe.
+        """Update the configuration from a keyframe.
+
+        Updates the configuration using the configuration vector associated with the
+        specified keyframe.
 
         Args:
             key_name: The name of the keyframe.
 
         Raises:
-            InvalidKeyframe: If no keyframe with the specified name is found in the model.
+            ValueError: If no keyframe with the specified name is found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise exceptions.InvalidKeyframe(key_name, self.model)
+            raise ValueError(f"No keyframe named '{key_name}' found in the model.")
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
@@ -123,12 +132,20 @@ class Configuration:
     def get_frame_jacobian(self, frame_name: str, frame_type: str) -> np.ndarray:
         """Compute the Jacobian matrix of a frame velocity relative to the world frame.
 
+        Denoting our frame by :math:`B` and the world frame by :math:`W`, the
+        Jacobian matrix :math:`{}_B J_{WB}` is related to the body velocity
+        :math:`{}_B v_{WB}` by:
+
+        .. math::
+
+            {}_B v_{WB} = {}_B J_{WB} \dot{q}
+
         Args:
             frame_name: Name of the frame in the MJCF.
             frame_type: Type of frame. Can be 'geom', 'body', or 'site'.
 
         Returns:
-            Jacobian matrix of the frame velocity relative to the world frame.
+            Jacobian matrix :math:`{}_B J_{WB}` of the frame velocity relative to the world frame.
 
         Raises:
             UnsupportedFrame: If the frame type is not supported.
