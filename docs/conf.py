@@ -1,16 +1,16 @@
 # Configuration file for the Sphinx documentation builder.
 #
-# For the full list of built-in configuration values, refer to the official documentation:
+# For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Project Information -----------------------------------------------------
+# -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "mink"
 copyright = "2024, Kevin Zakka"
 author = "Kevin Zakka"
 
-# -- General Configuration ---------------------------------------------------
+# -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
@@ -32,8 +32,6 @@ napoleon_numpy_docstring = False
 napoleon_use_rtype = False
 
 # Autodoc configuration
-autodoc_typehints = "both"
-autodoc_class_signature = "separated"
 autodoc_default_options = {
     "members": True,
     "undoc-members": True,
@@ -45,10 +43,10 @@ autodoc_default_options = {
 
 # Type aliases (if applicable)
 autodoc_type_aliases = {
-    "ArrayLike": "npt.ArrayLike",
+    "npt.ArrayLike": "ArrayLike",
 }
 
-# -- Options for HTML Output -------------------------------------------------
+# -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"
