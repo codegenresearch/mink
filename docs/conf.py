@@ -28,22 +28,25 @@ source_suffix = {".rst": "restructuredtext"}
 
 pygments_style = "sphinx"
 
-napoleon_numpy_docstring = False
-napoleon_use_rtype = False
-
 # Autodoc configuration
 autodoc_default_options = {
     "members": True,
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": None,
+    "inherited-members": True,
     "exclude-members": "__weakref__",
 }
 
+autodoc_typehints = "description"
+autodoc_class_signature = "separated"
+
+napoleon_numpy_docstring = False
+napoleon_use_rtype = False
+
 # Type aliases (if applicable)
 autodoc_type_aliases = {
-    "npt.ArrayLike": "ArrayLike",
+    "ArrayLike": "npt.ArrayLike",
 }
 
 # -- Options for HTML output -------------------------------------------------
