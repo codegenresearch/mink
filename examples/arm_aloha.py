@@ -113,12 +113,12 @@ if __name__ == "__main__":
         # Set posture task target
         posture_task.set_target_from_configuration(configuration)
 
+        # Update task targets.
+        l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+        r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
-            # Update task targets.
-            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
-
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
                 vel = mink.solve_ik(
