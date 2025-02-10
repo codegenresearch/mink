@@ -74,10 +74,13 @@ class KeyCallback:
 
 
 if __name__ == "__main__":
-    # Construct the model and initialize data and configuration
+    # Construct the model
     model = construct_model()
-    data = model.data
+
+    # Initialize configuration, model, and data
     configuration = mink.Configuration(model)
+    model = configuration.model
+    data = configuration.data
 
     # Initialize end-effector task
     end_effector_task = mink.FrameTask(
@@ -184,20 +187,14 @@ if __name__ == "__main__":
                 data.mocap_quat[model.body(f"{finger}_target").mocapid[0]] = T_w_mocap_new.rotation().wxyz
 
             # Solve IK and integrate configuration
+            tasks_to_solve = tasks if not key_callback.fix_base else [*tasks, damping_task]
             for _ in range(max_iters):
-                if key_callback.fix_base:
-                    tasks_to_solve = [*tasks, damping_task]
-                else:
-                    tasks_to_solve = tasks
-
                 vel = mink.solve_ik(configuration, tasks_to_solve, dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, dt)
 
                 # Check if the end-effector has reached the target
                 err = end_effector_task.compute_error(configuration)
-                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
-                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
-                if pos_achieved and ori_achieved:
+                if np.linalg.norm(err[:3]) <= pos_threshold and np.linalg.norm(err[3:]) <= ori_threshold:
                     break
 
             # Step the simulation if not paused
