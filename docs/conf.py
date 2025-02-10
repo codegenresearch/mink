@@ -5,13 +5,13 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-from pathlib import Path
 import toml
+from pathlib import Path
 
 # Read project version from pyproject.toml
-pyproject_path = Path(__file__).absolute().parent.parent / "pyproject.toml"
+pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
 pyproject = toml.load(pyproject_path)
-version = pyproject["tool"]["poetry"]["version"]
+version: str = pyproject["tool"]["poetry"]["version"]
 
 # Prepend 'v' to the version if it is not purely alphabetical
 if not version.isalpha():
