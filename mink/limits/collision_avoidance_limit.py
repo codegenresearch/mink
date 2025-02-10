@@ -38,7 +38,7 @@ class Contact:
         return self.dist == self.distmax and not self.fromto.any()
 
 
-def _compute_contact_normal_jacobian(
+def compute_contact_normal_jacobian(
     model: mujoco.MjModel, data: mujoco.MjData, contact: Contact
 ) -> np.ndarray:
     """Computes the Jacobian mapping joint velocities to the normal component of
@@ -204,14 +204,14 @@ class CollisionAvoidanceLimit(Limit):
             )
             if contact.inactive:
                 continue
-            hi_bound_dist = contact.dist
-            if hi_bound_dist > self.minimum_distance_from_collisions:
+            dist = contact.dist
+            if dist > self.minimum_distance_from_collisions:
                 upper_bound[idx] = (
-                    self.gain * (hi_bound_dist - self.minimum_distance_from_collisions) / dt
+                    self.gain * (dist - self.minimum_distance_from_collisions) / dt
                 ) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
-            jac = _compute_contact_normal_jacobian(self.model, configuration.data, contact)
+            jac = compute_contact_normal_jacobian(self.model, configuration.data, contact)
             coefficient_matrix[idx] = -jac
         return Constraint(G=coefficient_matrix, h=upper_bound)
 
