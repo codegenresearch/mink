@@ -11,7 +11,11 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 
 if __name__ == "__main__":
+    # Load the model from XML
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+    mid = model.body("target").mocapid[0]  # Initialize mid variable
+
+    # Create the configuration and data
     configuration = mink.Configuration(model)
     data = configuration.data
 
@@ -56,11 +60,11 @@ if __name__ == "__main__":
     # Initialize the mocap target at the end-effector site
     mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
-    # Set up the rate limiter
-    rate = RateLimiter(frequency=500.0, warn=False)
-
     # Define the solver
     solver = "quadprog"
+
+    # Set up the rate limiter
+    rate = RateLimiter(frequency=500.0, warn=False)
 
     # Initialize the viewer
     with mujoco.viewer.launch_passive(
@@ -82,6 +86,7 @@ if __name__ == "__main__":
             mujoco.mj_camlight(model, data)
 
             # Update positions and sensor data for collision avoidance visualization
+            # Note: The following lines are optional and used for visualizing the output of the fromto sensor
             mujoco.mj_fwdPosition(model, data)
             mujoco.mj_sensorPos(model, data)
 
