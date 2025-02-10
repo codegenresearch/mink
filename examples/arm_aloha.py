@@ -42,22 +42,23 @@ if __name__ == "__main__":
 
     configuration = mink.Configuration(model)
 
-    tasks = [
-        l_ee_task := mink.FrameTask(
-            frame_name="left/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-        r_ee_task := mink.FrameTask(
-            frame_name="right/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-    ]
+    # Define tasks for left and right end-effectors.
+    l_ee_task = mink.FrameTask(
+        frame_name="left/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    r_ee_task = mink.FrameTask(
+        frame_name="right/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+
+    tasks = [l_ee_task, r_ee_task]
 
     # Enable collision avoidance between the following geoms:
     # geoms starting at subtree "right wrist" - "table",
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=collision_pairs,  # type: ignore
+        geom_pairs=collision_pairs,
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
@@ -122,12 +123,15 @@ if __name__ == "__main__":
                 )
                 configuration.integrate_inplace(vel, rate.dt)
 
+                # Check if both end-effectors have reached their targets.
                 l_err = l_ee_task.compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
+
                 r_err = r_ee_task.compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
+
                 if (
                     l_pos_achieved
                     and l_ori_achieved
