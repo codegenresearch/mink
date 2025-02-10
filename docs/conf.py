@@ -1,6 +1,6 @@
 # Configuration file for the Sphinx documentation builder.
 #
-# For a comprehensive list of built-in configuration values, refer to the official documentation:
+# For the full list of built-in configuration values, refer to the official documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # -- Project Information -----------------------------------------------------
@@ -39,7 +39,7 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": True,
+    "inherited-members": None,
     "exclude-members": "__weakref__",
 }
 
