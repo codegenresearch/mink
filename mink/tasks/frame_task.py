@@ -17,11 +17,11 @@ class FrameTask(Task):
     Attributes:
         frame_name (str): Name of the frame to regulate.
         frame_type (str): The frame type: `body`, `geom`, or `site`.
-        transform_target_to_world (Optional[SE3]): Target pose of the frame.
+        transform_frame_to_world (Optional[SE3]): Target pose of the frame.
     """
 
     k: int = 6
-    transform_target_to_world: Optional[SE3]
+    transform_frame_to_world: Optional[SE3]
 
     def __init__(
         self,
@@ -47,7 +47,7 @@ class FrameTask(Task):
         self.frame_type = frame_type
         self.position_cost = position_cost
         self.orientation_cost = orientation_cost
-        self.transform_target_to_world = None
+        self.transform_frame_to_world = None
 
         self.set_position_cost(position_cost)
         self.set_orientation_cost(orientation_cost)
@@ -66,7 +66,7 @@ class FrameTask(Task):
         if position_cost.ndim != 1 or position_cost.shape[0] not in (1, 3):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} position cost should be a vector of shape "
-                "1 (identical cost for all coordinates) or (3,) but got "
+                "1 (aka identical cost for all coordinates) or (3,) but got "
                 f"{position_cost.shape}"
             )
         if not np.all(position_cost >= 0.0):
@@ -89,7 +89,7 @@ class FrameTask(Task):
         if orientation_cost.ndim != 1 or orientation_cost.shape[0] not in (1, 3):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} orientation cost should be a vector of "
-                "shape 1 (identical cost for all coordinates) or (3,) but got "
+                "shape 1 (aka identical cost for all coordinates) or (3,) but got "
                 f"{orientation_cost.shape}"
             )
         if not np.all(orientation_cost >= 0.0):
@@ -98,13 +98,13 @@ class FrameTask(Task):
             )
         self.cost[3:] = orientation_cost
 
-    def set_target(self, transform_target_to_world: SE3) -> None:
+    def set_target(self, transform_frame_to_world: SE3) -> None:
         """Set the target pose in the world frame.
 
         Args:
-            transform_target_to_world (SE3): Transform from the task target frame to the world frame.
+            transform_frame_to_world (SE3): Transform from the frame to the world frame.
         """
-        self.transform_target_to_world = transform_target_to_world.copy()
+        self.transform_frame_to_world = transform_frame_to_world.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
         """Set the target pose from a given robot configuration.
@@ -140,13 +140,13 @@ class FrameTask(Task):
         Raises:
             TargetNotSet: If the target pose has not been set.
         """
-        if self.transform_target_to_world is None:
+        if self.transform_frame_to_world is None:
             raise TargetNotSet(self.__class__.__name__)
 
         transform_frame_to_world = configuration.get_transform_frame_to_world(
             self.frame_name, self.frame_type
         )
-        return self.transform_target_to_world.minus(transform_frame_to_world)
+        return self.transform_frame_to_world.minus(transform_frame_to_world)
 
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the frame task Jacobian.
@@ -160,7 +160,7 @@ class FrameTask(Task):
         Raises:
             TargetNotSet: If the target pose has not been set.
         """
-        if self.transform_target_to_world is None:
+        if self.transform_frame_to_world is None:
             raise TargetNotSet(self.__class__.__name__)
 
         jac = configuration.get_frame_jacobian(self.frame_name, self.frame_type)
@@ -169,5 +169,5 @@ class FrameTask(Task):
             self.frame_name, self.frame_type
         )
 
-        T_tb = self.transform_target_to_world.inverse() @ transform_frame_to_world
+        T_tb = self.transform_frame_to_world.inverse() @ transform_frame_to_world
         return -T_tb.jlog() @ jac
