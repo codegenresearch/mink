@@ -94,9 +94,9 @@ class ComTask(Task):
 
         .. math::
 
-            e(q) = c - c^*
+            e(q) = c^* - c
 
-        where :math:`c` is the current CoM position and :math:`c^*` is the target CoM
+        where :math:`c^*` is the target CoM position and :math:`c` is the current CoM
         position.
 
         Args:
@@ -110,7 +110,7 @@ class ComTask(Task):
         """
         if self.target_com is None:
             raise TargetNotSet(self.__class__.__name__)
-        return configuration.data.subtree_com[1] - self.target_com
+        return self.target_com - configuration.data.subtree_com[1]
 
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the CoM task Jacobian.
