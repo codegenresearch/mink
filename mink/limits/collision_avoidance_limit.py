@@ -27,6 +27,9 @@ class Contact:
         geom1: The ID of the first geom.
         geom2: The ID of the second geom.
         distmax: The maximum distance at which the contact is considered active.
+
+    References:
+        This class is used to represent contacts in the `CollisionAvoidanceLimit` class.
     """
 
     dist: float
@@ -103,11 +106,11 @@ def _are_geom_bodies_parent_child(
     """
     body_id1 = model.geom_bodyid[geom_id1]
     body_id2 = model.geom_bodyid[geom_id2]
-    weld_id1 = model.body_weldid[body_id1]
-    weld_id2 = model.body_weldid[body_id2]
-    parent_weld_id1 = model.body_parentid[weld_id1]
-    parent_weld_id2 = model.body_parentid[weld_id2]
-    return weld_id1 == parent_weld_id2 or weld_id2 == parent_weld_id1
+    body_weld_id1 = model.body_weldid[body_id1]
+    body_weld_id2 = model.body_weldid[body_id2]
+    parent_weld_id1 = model.body_parentid[body_weld_id1]
+    parent_weld_id2 = model.body_parentid[body_weld_id2]
+    return body_weld_id1 == parent_weld_id2 or body_weld_id2 == parent_weld_id1
 
 
 def _is_pass_contype_conaffinity_check(
@@ -321,10 +324,11 @@ class CollisionAvoidanceLimit(Limit):
         geom_id_pairs = []
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
-                if (
-                    not _is_welded_together(self.model, geom_a, geom_b)
-                    and not _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
-                    and _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
-                ):
+                is_same_or_welded = _is_welded_together(self.model, geom_a, geom_b)
+                is_parent_child = _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
+                passes_contype_conaffinity = _is_pass_contype_conaffinity_check(
+                    self.model, geom_a, geom_b
+                )
+                if not is_same_or_welded and not is_parent_child and passes_contype_conaffinity:
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
