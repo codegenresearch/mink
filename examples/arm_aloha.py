@@ -1,11 +1,8 @@
 from pathlib import Path
-from typing import Optional, Sequence
-
 import mujoco
 import mujoco.viewer
 import numpy as np
 from loop_rate_limiters import RateLimiter
-
 import mink
 
 _HERE = Path(__file__).parent
@@ -25,40 +22,42 @@ _JOINT_NAMES = [
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
 _VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
 
+def get_subtree_body_ids(model, body_name):
+    """Retrieve all body IDs in the subtree starting from the given body name."""
+    body_id = model.body(body_name).id
+    subtree_ids = [body_id]
+    for i in range(body_id + 1, model.nbody):
+        if model.body(i).parentid == body_id:
+            subtree_ids.extend(get_subtree_body_ids(model, model.body(i).name))
+    return subtree_ids
 
-def compensate_gravity(
-    model: mujoco.MjModel,
-    data: mujoco.MjData,
-    subtree_ids: Sequence[int],
-    qfrc_applied: Optional[np.ndarray] = None,
-) -> None:
-    """Compute forces to counteract gravity for the given subtrees.
+def get_subtree_geom_ids(model, body_name):
+    """Retrieve all geom IDs in the subtree starting from the given body name."""
+    body_ids = get_subtree_body_ids(model, body_name)
+    geom_ids = []
+    for body_id in body_ids:
+        geom_ids.extend(model.body_geomadr[body_id] + np.arange(model.body_geomnum[body_id]))
+    return geom_ids
 
-    Args:
-        model: Mujoco model.
-        data: Mujoco data.
-        subtree_ids: List of subtree ids. A subtree is defined as the kinematic tree
-            starting at the body and including all its descendants. Gravity
-            compensation forces will be applied to all bodies in the subtree.
-        qfrc_applied: Optional array to store the computed forces. If not provided,
-            the applied forces in `data` are used.
-    """
-    qfrc_applied = data.qfrc_applied if qfrc_applied is None else qfrc_applied
-    qfrc_applied[:] = 0.0  # Don't accumulate from previous calls.
-    jac = np.empty((3, model.nv))
-    for subtree_id in subtree_ids:
-        total_mass = model.body_subtreemass[subtree_id]
-        mujoco.mj_jacSubtreeCom(model, data, jac, subtree_id)
-        qfrc_applied[:] -= model.opt.gravity * total_mass @ jac
+def test_get_subtree_body_ids():
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+    left_wrist_body_ids = get_subtree_body_ids(model, "left/wrist_link")
+    right_wrist_body_ids = get_subtree_body_ids(model, "right/wrist_link")
+    assert len(left_wrist_body_ids) > 0
+    assert len(right_wrist_body_ids) > 0
+    assert model.body("left/wrist_link").id in left_wrist_body_ids
+    assert model.body("right/wrist_link").id in right_wrist_body_ids
 
+def test_get_subtree_geom_ids():
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+    left_wrist_geom_ids = get_subtree_geom_ids(model, "left/wrist_link")
+    right_wrist_geom_ids = get_subtree_geom_ids(model, "right/wrist_link")
+    assert len(left_wrist_geom_ids) > 0
+    assert len(right_wrist_geom_ids) > 0
 
 if __name__ == "__main__":
-    model = mujoco.MjModel.from_xml_path(str(_XML))
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
-
-    # Bodies for which to apply gravity compensation.
-    left_subtree_id = model.body("left/base_link").id
-    right_subtree_id = model.body("right/base_link").id
 
     # Get the dof and actuator ids for the joints we wish to control.
     joint_names: list[str] = []
@@ -91,11 +90,14 @@ if __name__ == "__main__":
         posture_task := mink.PostureTask(model, cost=1e-4),
     ]
 
-    # Enable collision avoidance between the following geoms.
-    l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
-    r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
-    l_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
-    r_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
+    # Enable collision avoidance between the following geoms:
+    # geoms starting at subtree "right wrist" - "table",
+    # geoms starting at subtree "left wrist"  - "table",
+    # geoms starting at subtree "right wrist" - geoms starting at subtree "left wrist".
+    l_wrist_geoms = get_subtree_geom_ids(model, model.body("left/wrist_link").id)
+    r_wrist_geoms = get_subtree_geom_ids(model, model.body("right/wrist_link").id)
+    l_geoms = get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
+    r_geoms = get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),
@@ -117,9 +119,9 @@ if __name__ == "__main__":
     l_mid = model.body("left/target").mocapid[0]
     r_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
-    pos_threshold = 5e-3
-    ori_threshold = 5e-3
-    max_iters = 5
+    pos_threshold = 1e-2
+    ori_threshold = 1e-2
+    max_iters = 2
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -157,7 +159,7 @@ if __name__ == "__main__":
                 l_err = l_ee_task.compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = l_ee_task.compute_error(configuration)
+                r_err = r_ee_task.compute_error(configuration)  # Corrected from l_ee_task to r_ee_task
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
                 if (
@@ -169,7 +171,6 @@ if __name__ == "__main__":
                     break
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
-            compensate_gravity(model, data, [left_subtree_id, right_subtree_id])
             mujoco.mj_step(model, data)
 
             # Visualize at fixed FPS.
