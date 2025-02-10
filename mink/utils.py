@@ -34,12 +34,12 @@ def move_mocap_to_frame(
     if frame_type not in consts.SUPPORTED_FRAMES:
         raise ValueError(f"Unsupported frame type: {frame_type}. Supported types: {consts.SUPPORTED_FRAMES}")
 
-    frame_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
-    if frame_id == -1:
+    obj_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
+    if obj_id == -1:
         raise ValueError(f"Frame '{frame_name}' of type '{frame_type}' not found in the model.")
 
-    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[frame_id]
-    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
+    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
+    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
 
     data.mocap_pos[mocap_id] = xpos.copy()
     mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
@@ -126,8 +126,9 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
         geom_start = model.body_geomadr[current_body_id]
         geom_end = geom_start + model.body_geomnum[current_body_id]
         geom_ids.extend(range(geom_start, geom_end))
-        children = [i for i in range(model.nbody) if model.body_parentid[i] == current_body_id]
-        stack.extend(children)
+        stack.extend(
+            i for i in range(model.nbody) if model.body_parentid[i] == current_body_id
+        )
     return geom_ids
 
 
@@ -161,8 +162,9 @@ def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     while stack:
         current_body_id = stack.pop()
         body_ids.append(current_body_id)
-        children = [i for i in range(model.nbody) if model.body_parentid[i] == current_body_id]
-        stack.extend(children)
+        stack.extend(
+            i for i in range(model.nbody) if model.body_parentid[i] == current_body_id
+        )
     return body_ids
 
 
