@@ -60,7 +60,7 @@ if __name__ == "__main__":
         # Reset the robot to the home position
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
-        posture_task.set_target_from_configuration()  # Set posture target
+        posture_task.set_target_from_configuration(configuration)  # Set posture target
         mujoco.mj_forward(model, data)
 
         # Initialize the mocap target at the end-effector site
