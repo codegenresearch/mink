@@ -117,6 +117,18 @@ class TestSpecificOperations(absltest.TestCase):
         matrix = T.as_matrix()
         assert_transforms_close(T, SO3.from_matrix(matrix))
 
+    def test_se3_from_translation_invalid_shape(self):
+        with self.assertRaises(ValueError):
+            SE3.from_translation(np.array([1, 2]))  # Invalid translation vector
+
+    def test_se3_from_rotation_invalid_shape(self):
+        with self.assertRaises(ValueError):
+            SE3.from_rotation(SO3.from_matrix(np.eye(2)))  # Invalid rotation matrix
+
+    def test_so3_from_rpy_invalid_angles(self):
+        with self.assertRaises(ValueError):
+            SO3.from_rpy_radians(10, 10, 10)  # Invalid RPY angles
+
 
 if __name__ == "__main__":
     absltest.main()
