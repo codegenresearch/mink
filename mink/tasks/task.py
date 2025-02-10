@@ -41,7 +41,7 @@ class Task(abc.ABC):
     The Jacobian matrix :math:`J(q) \in \mathbb{R}^{k \times n_v}`, with :math:`n_v`
     the dimension of the robot's tangent space, is the derivative of the task error
     :math:`e(q)` with respect to the configuration :math:`q \in \mathbb{R}^{n_q}`.
-    This Jacobian is implemented in :func:`Task.compute_jacobian`. Finally, the
+    This Jacobian is implemented in :py:meth:`Task.compute_jacobian`. Finally, the
     configuration displacement :math:`\Delta q` is the output of inverse kinematics.
     """
 
@@ -55,8 +55,9 @@ class Task(abc.ABC):
 
         Args:
             cost: Cost vector with the same dimension as the error of the task.
-            gain: Task gain alpha in [0, 1] for additional low-pass filtering. Defaults
-                to 1.0 (no filtering) for dead-beat control.
+            gain: Task gain :math:`\\alpha` in [0, 1] for additional low-pass filtering.
+                Defaults to 1.0 (no filtering) for dead-beat control. Lower values cause
+                the task to converge more slowly, similar to low-pass filtering.
             lm_damping: Unitless scale of the Levenberg-Marquardt (only when the error
                 is large) regularization term, which helps when targets are infeasible.
                 Increase this value if the task is too jerky under unfeasible targets, but
