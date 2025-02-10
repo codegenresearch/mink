@@ -30,40 +30,47 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = [f"{prefix}/{n}" for prefix in ["left", "right"] for n in _JOINT_NAMES]
-    velocity_limits = {name: _VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
-    dof_ids = np.array([model.joint(name).id for name in joint_names])
-    actuator_ids = np.array([model.actuator(name).id for name in joint_names])
+    joint_names: list[str] = [f"{prefix}/{n}" for prefix in ["left", "right"] for n in _JOINT_NAMES]
+    velocity_limits: dict[str, float] = {name: _VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
+    dof_ids: np.ndarray = np.array([model.joint(name).id for name in joint_names])
+    actuator_ids: np.ndarray = np.array([model.actuator(name).id for name in joint_names])
 
     configuration = mink.Configuration(model)
 
-    tasks = [
-        mink.FrameTask(
-            frame_name="left/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-        mink.FrameTask(
-            frame_name="right/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-    ]
+    # Initialize tasks
+    l_ee_task = mink.FrameTask(
+        frame_name="left/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    r_ee_task = mink.FrameTask(
+        frame_name="right/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    posture_task = mink.PostureTask(
+        joint_names=joint_names,
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+
+    tasks = [l_ee_task, r_ee_task, posture_task]
 
     # Enable collision avoidance between the following geoms:
-    # geoms starting at subtree "right wrist" - "table",
-    # geoms starting at subtree "left wrist"  - "table",
-    # geoms starting at subtree "right wrist" - geoms starting at subtree "left wrist".
-    l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
-    r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
+    # geoms starting at subtree "right upper_arm" - "table",
+    # geoms starting at subtree "left upper_arm"  - "table",
+    # geoms starting at subtree "right upper_arm" - geoms starting at subtree "left upper_arm".
+    l_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
+    r_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
-        (l_wrist_geoms, r_wrist_geoms),
-        (l_wrist_geoms + r_wrist_geoms, frame_geoms + ["table"]),
+        (l_upper_arm_geoms, r_upper_arm_geoms),
+        (l_upper_arm_geoms + r_upper_arm_geoms, frame_geoms + ["table"]),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
@@ -81,9 +88,9 @@ if __name__ == "__main__":
     l_mid = model.body("left/target").mocapid[0]
     r_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
-    pos_threshold = 1e-4
-    ori_threshold = 1e-4
-    max_iters = 20
+    pos_threshold = 1e-2
+    ori_threshold = 1e-2
+    max_iters = 2
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -99,6 +106,9 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "left/target", "left/gripper", "site")
         mink.move_mocap_to_frame(model, data, "right/target", "right/gripper", "site")
 
+        # Set posture task target
+        posture_task.set_target(configuration.q)
+
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
@@ -113,14 +123,14 @@ if __name__ == "__main__":
                     rate.dt,
                     solver,
                     limits=limits,
-                    damping=1e-3,
+                    damping=1e-5,
                 )
                 configuration.integrate_inplace(vel, rate.dt)
 
                 l_err = l_ee_task.compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = r_ee_task.compute_error(configuration)  # Corrected from l_ee_task to r_ee_task
+                r_err = r_ee_task.compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
                 if (
