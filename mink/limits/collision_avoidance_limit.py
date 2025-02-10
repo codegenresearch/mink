@@ -258,7 +258,7 @@ class CollisionAvoidanceLimit(Limit):
             elif isinstance(g, str):
                 list_of_int.append(self.model.geom(g).id)
             else:
-                assert False, f"Geom must be int or str, got {type(g)}"
+                raise ValueError(f"Geom must be int or str, got {type(g)}")
         return list_of_int
 
     def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
