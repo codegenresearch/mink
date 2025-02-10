@@ -8,28 +8,28 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "universal_robots_ur5e" / "scene.xml"
+_XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 
 def main():
-    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
     configuration = mink.Configuration(model)
 
     # Define the end-effector task
-    end_effector_task = mink.FrameTask(
-        frame_name="attachment_site",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    tasks = [end_effector_task]
+    tasks = [
+        end_effector_task := mink.FrameTask(
+            frame_name="attachment_site",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+    ]
 
     # Define collision avoidance pairs
-    wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
-        (wrist_3_geoms, ["floor", "wall"]),
+        ("wrist_3_link", ["floor", "wall"]),
     ]
 
     # Define limits
@@ -65,7 +65,7 @@ def main():
         mujoco.mj_forward(model, data)
 
         # Set up the rate limiter
-        rate = RateLimiter(frequency=500.0, warn=True)
+        rate = RateLimiter(frequency=500.0, warn=False)
 
         # Main loop
         while viewer.is_running():
