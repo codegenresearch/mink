@@ -32,13 +32,13 @@ class Configuration:
     different elements of the robot model. Currently supported frames include
     `body`, `geom` and `site`.
 
-    Key functionalities include:
+    Key functionalities:
 
-        - Running forward kinematics to update the state.
-        - Checking configuration limits.
-        - Computing Jacobians for different frames.
-        - Retrieving frame transforms relative to the world frame.
-        - Integrating velocities to update configurations.
+    - Running forward kinematics to update the state.
+    - Checking configuration limits.
+    - Computing Jacobians for different frames.
+    - Retrieving frame transforms relative to the world frame.
+    - Integrating velocities to update configurations.
     """
 
     def __init__(
@@ -65,8 +65,7 @@ class Configuration:
         """
         if q is not None:
             self.data.qpos = q
-        # The minimal function call required to get updated frame transforms is
-        # mj_kinematics. An extra call to mj_comPos is required for updated Jacobians.
+        # Compute updated frame transforms and Jacobians.
         mujoco.mj_kinematics(self.model, self.data)
         mujoco.mj_comPos(self.model, self.data)
 
@@ -75,9 +74,6 @@ class Configuration:
 
         Args:
             key_name: The name of the keyframe.
-
-        Raises:
-            ValueError: if no key named `key` was found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
