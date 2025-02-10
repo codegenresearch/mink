@@ -21,7 +21,7 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
 
     tasks = [
-        end_effector_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="attachment_site",
             frame_type="site",
             position_cost=1.0,
@@ -38,7 +38,10 @@ if __name__ == "__main__":
 
     limits = [
         mink.ConfigurationLimit(model=configuration.model),
-        mink.CollisionAvoidanceLimit(model=configuration.model, geom_pairs=collision_pairs),
+        mink.CollisionAvoidanceLimit(
+            model=configuration.model,
+            geom_pairs=collision_pairs,
+        ),
     ]
 
     max_velocities = {
@@ -75,7 +78,7 @@ if __name__ == "__main__":
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
-        rate = RateLimiter(frequency=frequency, warn=False)
+        rate = RateLimiter(frequency, warn=False)
         while viewer.is_running():
             # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
@@ -84,7 +87,7 @@ if __name__ == "__main__":
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
                 vel = mink.solve_ik(
-                    configuration, tasks, dt=rate.dt, solver=solver, damping=1e-3, limits=limits
+                    configuration, tasks, rate.dt, solver, 1e-3, limits
                 )
                 configuration.integrate_inplace(vel, rate.dt)
                 err = end_effector_task.compute_error(configuration)
