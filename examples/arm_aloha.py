@@ -22,10 +22,10 @@ _JOINT_NAMES = [
 
 # Velocity limits for each joint, sourced from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {joint: np.pi for joint in _JOINT_NAMES}
+_VELOCITY_LIMITS = {n: np.pi for n in _JOINT_NAMES}
 
 
-def construct_model(xml_path):
+def construct_model(xml_path: str) -> mujoco.MjModel:
     """
     Constructs the Mujoco model from the provided XML file.
 
@@ -38,7 +38,7 @@ def construct_model(xml_path):
     return mujoco.MjModel.from_xml_path(xml_path)
 
 
-def get_dof_and_actuator_ids(model, joint_names):
+def get_dof_and_actuator_ids(model: mujoco.MjModel, joint_names: list[str]) -> tuple[np.ndarray, np.ndarray]:
     """
     Retrieves the degree of freedom (DOF) and actuator IDs for the specified joint names.
 
@@ -54,7 +54,7 @@ def get_dof_and_actuator_ids(model, joint_names):
     return dof_ids, actuator_ids
 
 
-def initialize_mocap_targets(model, data):
+def initialize_mocap_targets(model: mujoco.MjModel, data: mujoco.MjData) -> None:
     """
     Initializes the mocap targets at the end-effector sites.
 
@@ -66,7 +66,7 @@ def initialize_mocap_targets(model, data):
     mink.move_mocap_to_frame(model, data, "right/target", "right/gripper", "site")
 
 
-def setup_collision_avoidance(model):
+def setup_collision_avoidance(model: mujoco.MjModel) -> mink.CollisionAvoidanceLimit:
     """
     Sets up collision avoidance between specified geoms.
 
@@ -93,18 +93,18 @@ def setup_collision_avoidance(model):
     )
 
 
-def main():
+def main() -> None:
     model = construct_model(_XML.as_posix())
     data = mujoco.MjData(model)
 
     # Generate joint names and velocity limits for both arms.
-    joint_names = []
-    velocity_limits = {}
+    joint_names: list[str] = []
+    velocity_limits: dict[str, float] = {}
     for prefix in ["left", "right"]:
-        for joint in _JOINT_NAMES:
-            name = f"{prefix}/{joint}"
+        for n in _JOINT_NAMES:
+            name = f"{prefix}/{n}"
             joint_names.append(name)
-            velocity_limits[name] = _VELOCITY_LIMITS[joint]
+            velocity_limits[name] = _VELOCITY_LIMITS[n]
 
     dof_ids, actuator_ids = get_dof_and_actuator_ids(model, joint_names)
 
@@ -112,22 +112,22 @@ def main():
 
     # Define tasks for the end-effectors and posture.
     tasks = [
-        mink.FrameTask(
+        l_ee_task := mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        mink.FrameTask(
+        r_ee_task := mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        mink.PostureTask(
-            posture_cost=0.01,  # Adjusted to match the gold code
+        posture_task := mink.PostureTask(
+            posture_cost=0.01,
             lm_damping=1.0,
         ),
     ]
@@ -148,10 +148,10 @@ def main():
 
     # Solver and error thresholds.
     solver = "quadprog"
-    pos_threshold = 1e-3  # Adjusted to match the gold code
-    ori_threshold = 1e-3  # Adjusted to match the gold code
-    max_iters = 10  # Adjusted to match the gold code
-    damping = 1e-2  # Adjusted to match the gold code
+    pos_threshold = 1e-3
+    ori_threshold = 1e-3
+    max_iters = 2
+    damping = 1e-2
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -169,10 +169,6 @@ def main():
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
-            l_ee_task = tasks[0]
-            r_ee_task = tasks[1]
-            posture_task = tasks[2]
-
             l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
             r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
             posture_task.set_target_from_configuration(configuration)
