@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Optional
 
 import mujoco
 import numpy as np
@@ -23,7 +23,7 @@ class PostureTask(Task):
     """
 
     target_q: Optional[np.ndarray]
-    _free_joint_indices: Optional[np.ndarray]
+    _free_joint_ids: Optional[np.ndarray]
 
     def __init__(
         self,
@@ -54,8 +54,8 @@ class PostureTask(Task):
         self.target_q = None
 
         # Identify the indices of free joint dimensions
-        _, free_joint_indices = get_freejoint_dims(model)
-        self._free_joint_indices = np.asarray(free_joint_indices) if free_joint_indices else None
+        _, free_joint_ids = get_freejoint_dims(model)
+        self._free_joint_ids = np.array(free_joint_ids) if free_joint_ids else None
 
         self.k = model.nv
         self.nq = model.nq
@@ -115,8 +115,8 @@ class PostureTask(Task):
             qpos2=self.target_q,
         )
         # Set the error for free joint dimensions to zero
-        if self._free_joint_indices is not None:
-            qvel[self._free_joint_indices] = 0.0
+        if self._free_joint_ids is not None:
+            qvel[self._free_joint_ids] = 0.0
 
         return qvel
 
@@ -141,7 +141,7 @@ class PostureTask(Task):
         jac = -np.eye(configuration.nv)
 
         # Set the Jacobian entries for free joint dimensions to zero
-        if self._free_joint_indices is not None:
-            jac[:, self._free_joint_indices] = 0.0
+        if self._free_joint_ids is not None:
+            jac[:, self._free_joint_ids] = 0.0
 
         return jac
