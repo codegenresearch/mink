@@ -139,6 +139,36 @@ class TestUtils(absltest.TestCase):
         expected_geom_ids = [model.geom(g).id for g in geom_names]
         self.assertListEqual(actual_geom_ids, expected_geom_ids)
 
+    def test_get_subtree_body_ids(self):
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body name="b1" pos=".1 -.1 0">
+              <joint type="free"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body name="b2">
+                <joint type="hinge" range="0 1.57" limited="true"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+            <body name="b3" pos="1 1 1">
+              <joint type="free"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body name="b4">
+                <joint type="hinge" range="0 1.57" limited="true"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        b1_id = model.body("b1").id
+        actual_body_ids = utils.get_subtree_body_ids(model, b1_id)
+        body_names = ["b1", "b2"]
+        expected_body_ids = [model.body(g).id for g in body_names]
+        self.assertListEqual(actual_body_ids, expected_body_ids)
+
     def test_gravity_compensation(self):
         # Implementing a mock gravity compensation function for testing purposes
         def apply_gravity_compensation(model, data):
@@ -146,9 +176,9 @@ class TestUtils(absltest.TestCase):
             gravity = np.array([0, 0, -9.81])
             for i in range(model.nbody):
                 body = model.body(i)
-                if body.m > 0:
+                if body.mass > 0:
                     com = data.xipos[i]
-                    force = body.m * gravity
+                    force = body.mass * gravity
                     data.xfrc_applied[i, :3] += force
 
         # Apply gravity compensation
