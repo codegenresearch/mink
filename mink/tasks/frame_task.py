@@ -45,8 +45,6 @@ class FrameTask(Task):
         super().__init__(cost=np.zeros((self.k,)), gain=gain, lm_damping=lm_damping)
         self.frame_name = frame_name
         self.frame_type = frame_type
-        self.position_cost = position_cost
-        self.orientation_cost = orientation_cost
         self.transform_target_to_world = None
 
         self.set_position_cost(position_cost)
@@ -70,7 +68,7 @@ class FrameTask(Task):
             )
         if not np.all(position_cost >= 0.0):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} position cost must be >= 0"
+                f"{self.__class__.__name__} position cost must be non-negative"
             )
         self.cost[:3] = position_cost
 
@@ -92,7 +90,7 @@ class FrameTask(Task):
             )
         if not np.all(orientation_cost >= 0.0):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} orientation cost must be >= 0"
+                f"{self.__class__.__name__} orientation cost must be non-negative"
             )
         self.cost[3:] = orientation_cost
 
