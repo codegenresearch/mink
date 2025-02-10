@@ -12,7 +12,7 @@ from mink.utils import get_freejoint_dims
 
 
 class TestConfigurationLimit(absltest.TestCase):
-    """Test configuration limit functionality."""
+    """Test configuration limit."""
 
     @classmethod
     def setUpClass(cls):
@@ -21,7 +21,7 @@ class TestConfigurationLimit(absltest.TestCase):
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        # NOTE: These velocities are arbitrary and do not match real hardware.
+        # NOTE(kevin): These velocities are arbitrary and do not match real hardware.
         self.velocities = {
             self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
         }
@@ -42,18 +42,22 @@ class TestConfigurationLimit(absltest.TestCase):
 
     def test_indices(self):
         limit = ConfigurationLimit(self.model)
-        expected_indices = np.arange(6, self.model.nv)
-        self.assertTrue(np.allclose(limit.indices, expected_indices))
+        expected = np.arange(6, self.model.nv)
+        self.assertTrue(np.allclose(limit.indices, expected))
 
     def test_model_with_no_limit(self):
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
         empty_bounded = ConfigurationLimit(empty_model)
         self.assertEqual(len(empty_bounded.indices), 0)
         self.assertIsNone(empty_bounded.projection_matrix)
+        G, h = empty_bounded.compute_qp_inequalities(self.configuration, 1e-3)
+        self.assertIsNone(G)
+        self.assertIsNone(h)
 
     def test_model_with_subset_of_velocities_limited(self):
         xml_str = """
         <mujoco>
+          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="hinge" name="hinge_unlimited"/>
@@ -68,7 +72,7 @@ class TestConfigurationLimit(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         limit = ConfigurationLimit(model)
-        nb = 1  # Only one limited joint.
+        nb = 1  # 1 limited joint.
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
@@ -76,6 +80,7 @@ class TestConfigurationLimit(absltest.TestCase):
     def test_freejoint_ignored(self):
         xml_str = """
         <mujoco>
+          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="free" name="floating"/>
@@ -90,7 +95,7 @@ class TestConfigurationLimit(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         limit = ConfigurationLimit(model)
-        nb = 1  # Only one limited joint.
+        nb = 1  # 1 limited joint.
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
