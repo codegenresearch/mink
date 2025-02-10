@@ -5,22 +5,19 @@
 from pathlib import Path
 import toml
 
-# Read version from pyproject.toml
-pyproject_path: Path = Path(__file__).absolute().parent.parent / "pyproject.toml"
-pyproject = toml.load(pyproject_path)
-version: str = pyproject["tool"]["poetry"]["version"]
-if not version.startswith("v"):
-    version = f"v{version}"
-release: str = version
-
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "mink"
 copyright = "2024, Kevin Zakka"
 author = "Kevin Zakka"
-version = version
-release = release
+
+# Read version from pyproject.toml
+pyproject_path = Path(__file__).absolute().parent.parent / "pyproject.toml"
+pyproject = toml.load(pyproject_path)
+version = pyproject["tool"]["poetry"]["version"]
+if version[0].isalpha():
+    version = f"v{version}"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
