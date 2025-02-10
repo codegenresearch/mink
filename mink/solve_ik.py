@@ -102,5 +102,6 @@ def solve_ik(
     if result is None:
         raise RuntimeError("QP solver failed to find a solution.")
     dq = result.x
+    assert dq is not None, "The solution vector dq should not be None."
     v: np.ndarray = dq / dt
     return v
