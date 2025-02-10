@@ -10,7 +10,6 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 
-
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
 
@@ -27,8 +26,9 @@ if __name__ == "__main__":
     ]
 
     # Enable collision avoidance between the following geoms:
+    wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
-        (["wrist_3_link"], ["floor", "wall"]),
+        (wrist_3_geoms, ["floor", "wall"]),
     ]
 
     limits = [
@@ -71,7 +71,12 @@ if __name__ == "__main__":
 
             # Compute velocity and integrate into the next configuration.
             vel = mink.solve_ik(
-                configuration, tasks, rate.dt, solver, 1e-3, limits=limits
+                configuration=configuration,
+                tasks=tasks,
+                dt=rate.dt,
+                solver=solver,
+                damping=1e-3,
+                limits=limits
             )
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
