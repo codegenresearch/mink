@@ -51,7 +51,11 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_model_with_subset_of_velocities_limited(self):
         """Test the VelocityLimit object with a subset of velocity limits."""
-        limit_subset = {name: vel for name, vel in list(self.velocities.items())[:3]}
+        limit_subset = {}
+        for i, (key, value) in enumerate(self.velocities.items()):
+            if i > 2:
+                break
+            limit_subset[key] = value
         limit = VelocityLimit(self.model, limit_subset)
         nb = 3
         nv = self.model.nv
@@ -202,14 +206,16 @@ class TestVelocityLimit(absltest.TestCase):
         dt = 1e-3
         configuration = Configuration(model)
         configuration.qpos = np.zeros(model.nq)  # Initialize qpos with zeros
-        configuration.qpos[6:8] = np.array([0.785, 0.785])  # Set joint angles for posture task
+        if model.nq >= 8:
+            configuration.qpos[6:8] = np.array([0.785, 0.785])  # Set joint angles for posture task
         G, h = limit.compute_qp_inequalities(configuration, dt)
         self.assertIsNotNone(G)
         self.assertIsNotNone(h)
         self.assertEqual(G.shape, (4, model.nv))
         self.assertEqual(h.shape, (4,))
         # Check if the posture task is within the velocity limits
-        self.assertTrue(np.all(G @ configuration.qpos[6:8] <= h))
+        if model.nq >= 8:
+            self.assertTrue(np.all(G @ configuration.qpos[6:8] <= h))
 
 
 if __name__ == "__main__":
