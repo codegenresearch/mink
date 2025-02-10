@@ -26,7 +26,7 @@ class ConfigurationLimit(Limit):
         Args:
             model: MuJoCo model.
             gain: Gain factor in (0, 1] that determines how fast each joint is
-                allowed to move towards the joint limits at each timestep. Values lower
+                allowed to move towards the joint limits at each timestep. Values less
                 than 1 are safer but may make the joints move slowly.
             min_distance_from_limits: Offset in meters (slide joints) or radians
                 (hinge joints) to be added to the limits. Positive values decrease the
@@ -45,12 +45,12 @@ class ConfigurationLimit(Limit):
             jnt_type = model.jnt_type[jnt]
             padr = model.jnt_qposadr[jnt]
             jnt_id = model.jnt_dofadr[jnt]
-            if jnt_type == mujoco.mjtJoint.mjJNT_FREE or not model.jnt_limited[jnt]:
-                # Skip free joints and joints without limits.
-                continue
             jnt_dim = dof_width(jnt_type)
             qpos_dim = qpos_width(jnt_type)
             jnt_range = model.jnt_range[jnt]
+            if jnt_type == mujoco.mjtJoint.mjJNT_FREE or not model.jnt_limited[jnt]:
+                # Skip free joints and joints without limits.
+                continue
             lower[padr : padr + qpos_dim] = jnt_range[0] + min_distance_from_limits
             upper[padr : padr + qpos_dim] = jnt_range[1] - min_distance_from_limits
             index_list.extend(range(jnt_id, jnt_id + jnt_dim))
