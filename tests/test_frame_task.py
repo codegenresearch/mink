@@ -53,20 +53,32 @@ class TestFrameTask(absltest.TestCase):
             )
 
     def test_task_raises_error_if_cost_negative(self):
-        with self.assertRaises(TaskDefinitionError):
+        with self.assertRaises(TaskDefinitionError) as cm:
+            FrameTask(
+                frame_name="pelvis",
+                frame_type="body",
+                position_cost=-1.0,
+                orientation_cost=1.0,
+            )
+        self.assertEqual(str(cm.exception), "FrameTask position_cost must be >= 0")
+
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=1.0,
                 orientation_cost=-1.0,
             )
-        with self.assertRaises(TaskDefinitionError):
+        self.assertEqual(str(cm.exception), "FrameTask orientation_cost must be >= 0")
+
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=[-1.0, 1.5],
                 orientation_cost=[1, 2, 3],
             )
+        self.assertEqual(str(cm.exception), "FrameTask position_cost must be >= 0")
 
     def test_error_without_target(self):
         task = FrameTask(
@@ -132,7 +144,7 @@ class TestFrameTask(absltest.TestCase):
         error = task.compute_error(self.configuration)
         np.testing.assert_allclose(error, np.zeros(6))
 
-    def test_unit_cost_qp_objective():
+    def test_unit_cost_qp_objective(self):
         """Unit cost means the QP objective is exactly (J^T J, -e^T J)."""
         task = FrameTask(
             frame_name="pelvis",
@@ -179,8 +191,9 @@ class TestFrameTask(absltest.TestCase):
             position_cost=1.0,
             orientation_cost=1.0,
         )
-        with self.assertRaises(InvalidTarget):
+        with self.assertRaises(InvalidTarget) as cm:
             task.set_target(SE3.from_rotation_and_translation(SO3.identity(), np.array([1, 2])))
+        self.assertEqual(str(cm.exception), "Expected target SE3 to have translation shape (3,) but got (2,)")
 
     def test_zero_cost_same_as_disabling_task(self):
         task = FrameTask(
