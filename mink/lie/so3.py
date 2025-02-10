@@ -9,7 +9,7 @@ import numpy as np
 from .base import MatrixLieGroup
 from .utils import get_epsilon, skew
 
-_IDENTITY_WXYZ = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)
+_IDENTITY_WXYZ_XYZ = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)
 _INVERT_QUAT_SIGN = np.array([1.0, -1.0, -1.0, -1.0], dtype=np.float64)
 
 
@@ -85,17 +85,17 @@ class SO3(MatrixLieGroup):
 
         Equation 138.
         """
-        assert matrix.shape == (SO3.matrix_dim, SO3.matrix_dim), (
+        assert matrix.shape == (cls.matrix_dim, cls.matrix_dim), (
             f"Expected a 3x3 matrix but got a matrix of shape {matrix.shape}."
         )
-        wxyz = np.zeros(SO3.parameters_dim, dtype=np.float64)
+        wxyz = np.zeros(cls.parameters_dim, dtype=np.float64)
         mujoco.mju_mat2Quat(wxyz, matrix.ravel())
         return SO3(wxyz=wxyz)
 
     @classmethod
     def identity(cls) -> SO3:
         """Return the identity rotation (no rotation)."""
-        return SO3(wxyz=_IDENTITY_WXYZ)
+        return SO3(wxyz=_IDENTITY_WXYZ_XYZ)
 
     @classmethod
     def sample_uniform(cls) -> SO3:
