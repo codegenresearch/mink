@@ -23,7 +23,27 @@ class Objective(NamedTuple):
 
 
 class Task(abc.ABC):
-    """Abstract base class for kinematic tasks."""
+    """Abstract base class for kinematic tasks.
+
+    This class defines the interface for kinematic tasks, which are used to specify
+    desired behaviors for a robot's configuration. Each task defines an error function
+    and a Jacobian that are used to compute the contribution of the task to the
+    inverse kinematics problem.
+
+    The error function :math:`e(q) \in \mathbb{R}^{k}` is the quantity that the task
+    aims to drive to zero (:math:`k` is the dimension of the task). It appears in the
+    first-order task dynamics:
+
+    .. math::
+
+        J(q) \Delta q = -\alpha e(q)
+
+    The Jacobian matrix :math:`J(q) \in \mathbb{R}^{k \times n_v}`, with :math:`n_v`
+    the dimension of the robot's tangent space, is the derivative of the task error
+    :math:`e(q)` with respect to the configuration :math:`q \in \mathbb{R}^{n_q}`.
+    This Jacobian is implemented in :func:`Task.compute_jacobian`. Finally, the
+    configuration displacement :math:`\Delta q` is the output of inverse kinematics.
+    """
 
     def __init__(
         self,
@@ -56,22 +76,6 @@ class Task(abc.ABC):
     def compute_error(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the task error function at the current configuration.
 
-        The error function :math:`e(q) \in \mathbb{R}^{k}` is the quantity that
-        the task aims to drive to zero (:math:`k` is the dimension of the
-        task). It appears in the first-order task dynamics:
-
-        .. math::
-
-            J(q) \Delta q = -\alpha e(q)
-
-        The Jacobian matrix :math:`J(q) \in \mathbb{R}^{k \times n_v}`, with
-        :math:`n_v` the dimension of the robot's tangent space, is the
-        derivative of the task error :math:`e(q)` with respect to the
-        configuration :math:`q \in \mathbb{R}^{n_q}`. This Jacobian is
-        implemented in :func:`Task.compute_jacobian`. Finally, the
-        configuration displacement :math:`\Delta q` is the output of inverse
-        kinematics.
-
         Args:
             configuration: Robot configuration :math:`q`.
 
@@ -84,16 +88,11 @@ class Task(abc.ABC):
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the task Jacobian at the current configuration.
 
-        The task Jacobian :math:`J(q) \in \mathbb{R}^{k \times n_v}` is the first order
-        derivative of the error :math:`e(q) \in \mathbb{R}^{k}` that defines the task,
-        with :math:`k` the dimension of the task and :math:`(n_v,)` the dimension of the
-        robot's tangent space.
-
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Task jacobian :math:`J(q)`.
+            Task Jacobian :math:`J(q)`.
         """
         raise NotImplementedError
 
