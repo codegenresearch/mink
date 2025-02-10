@@ -12,6 +12,7 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "stanford_tidybot" / "scene_mobile_kinova.xml"
 
+
 @dataclass
 class KeyCallback:
     fix_base: bool = False
@@ -106,11 +107,19 @@ if __name__ == "__main__":
             for i in range(max_iters):
                 if key_callback.fix_base:
                     vel = mink.solve_ik(
-                        configuration, tasks=[*tasks, damping_task], dt=rate.dt, solver=solver, damping=1e-3
+                        configuration,
+                        tasks=[*tasks, damping_task],
+                        dt=rate.dt,
+                        solver=solver,
+                        damping=1e-3,
                     )
                 else:
                     vel = mink.solve_ik(
-                        configuration, tasks=tasks, dt=rate.dt, solver=solver, damping=1e-3
+                        configuration,
+                        tasks=tasks,
+                        dt=rate.dt,
+                        solver=solver,
+                        damping=1e-3,
                     )
                 configuration.integrate_inplace(vel, rate.dt)
 
