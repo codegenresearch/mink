@@ -34,12 +34,12 @@ def move_mocap_to_frame(
     if frame_type not in consts.SUPPORTED_FRAMES:
         raise ValueError(f"Unsupported frame type: {frame_type}. Supported types: {consts.SUPPORTED_FRAMES}")
 
-    obj_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
-    if obj_id == -1:
+    frame_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
+    if frame_id == -1:
         raise ValueError(f"Frame '{frame_name}' of type '{frame_type}' not found in the model.")
 
-    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
-    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
+    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[frame_id]
+    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
 
     data.mocap_pos[mocap_id] = xpos.copy()
     mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
@@ -55,8 +55,8 @@ def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
         A tuple (q_ids, v_ids) where q_ids are the configuration space indices and
         v_ids are the tangent space indices of all floating joints.
     """
-    q_ids: List[int] = []
-    v_ids: List[int] = []
+    q_ids = []
+    v_ids = []
     for j in range(model.njnt):
         if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE:
             qadr = model.jnt_qposadr[j]
@@ -119,7 +119,7 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     Returns:
         A list of geom IDs in the subtree.
     """
-    geom_ids: List[int] = []
+    geom_ids = []
     stack = [body_id]
     while stack:
         current_body_id = stack.pop()
@@ -156,7 +156,7 @@ def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     Returns:
         A list of body IDs in the subtree.
     """
-    body_ids: List[int] = []
+    body_ids = []
     stack = [body_id]
     while stack:
         current_body_id = stack.pop()
