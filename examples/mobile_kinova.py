@@ -12,6 +12,8 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "stanford_tidybot" / "scene_mobile_kinova.xml"
 
+# Consistent frequency setting
+FREQUENCY = 200.0
 
 @dataclass
 class KeyCallback:
@@ -30,14 +32,12 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Joints we wish to control.
-    # fmt: off
     joint_names = [
         # Base joints.
         "joint_x", "joint_y", "joint_th",
         # Arm joints.
         "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7",
     ]
-    # fmt: on
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         lm_damping=1.0,
     )
 
-    # When move the base, mainly focus on the motion on xy plane, minimize the rotation.
+    # When moving the base, mainly focus on the motion on xy plane, minimize the rotation.
     posture_cost = np.zeros((model.nv,))
     posture_cost[2] = 1e-3
     posture_task = mink.PostureTask(model, cost=posture_cost)
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "pinch_site_target", "pinch_site", "site")
 
-        rate = RateLimiter(frequency=200.0, warn=False)
+        rate = RateLimiter(frequency=FREQUENCY, warn=True)
         dt = rate.period
         t = 0.0
         while viewer.is_running():
@@ -107,18 +107,18 @@ if __name__ == "__main__":
             for i in range(max_iters):
                 if key_callback.fix_base:
                     vel = mink.solve_ik(
-                        configuration, [*tasks, damping_task], rate.dt, solver, 1e-3
+                        configuration, tasks=[*tasks, damping_task], dt=rate.dt, solver=solver, damping=1e-3
                     )
                 else:
-                    vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
+                    vel = mink.solve_ik(
+                        configuration, tasks=tasks, dt=rate.dt, solver=solver, damping=1e-3
+                    )
                 configuration.integrate_inplace(vel, rate.dt)
 
                 # Exit condition.
-                pos_achieved = True
-                ori_achieved = True
                 err = end_effector_task.compute_error(configuration)
-                pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
-                ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
+                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
+                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
                     break
 
