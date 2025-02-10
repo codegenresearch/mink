@@ -42,7 +42,7 @@ def move_mocap_to_frame(
     mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
 
 
-def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
+def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
     """Get all floating joint configuration and tangent indices.
 
     Args:
@@ -51,8 +51,8 @@ def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
     Returns:
         A (q_ids, v_ids) pair containing all floating joint indices in the configuration and tangent spaces respectively.
     """
-    q_ids: list[int] = []
-    v_ids: list[int] = []
+    q_ids: List[int] = []
+    v_ids: List[int] = []
     for j in range(model.njnt):
         if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE:
             qadr = model.jnt_qposadr[j]
@@ -104,7 +104,7 @@ def custom_configuration_vector(
     return q
 
 
-def get_body_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     """Collect all body IDs in the subtree starting from a given body.
 
     Args:
@@ -150,7 +150,7 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
         List of geom IDs in the subtree.
     """
     subtree_geoms = []
-    for body in get_body_body_ids(model, body_id):
+    for body in get_subtree_body_ids(model, body_id):
         geom_start = model.body_geomadr[body]
         geom_end = geom_start + model.body_geomnum[body]
         subtree_geoms.extend(range(geom_start, geom_end))
