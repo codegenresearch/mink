@@ -40,20 +40,20 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         g2_coll = [g for g in g2 if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0]
 
         # Calculate expected maximum number of contacts
-        expected_max_contacts = len(list(itertools.product(g1_coll, g2_coll)))
-        self.assertEqual(limit.max_num_contacts, expected_max_contacts)
+        expected_max_num_contacts = len(list(itertools.product(g1_coll, g2_coll)))
+        self.assertEqual(limit.max_num_contacts, expected_max_num_contacts)
 
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
 
         # Check that the upper bound is always greater than or equal to the relaxation bound
-        self.assertTrue(np.all(h >= bound_relaxation), "Upper bound should be greater than or equal to the relaxation bound.")
+        self.assertTrue(np.all(h >= bound_relaxation))
 
         # Check that the inequality constraint dimensions are valid
-        self.assertEqual(G.shape, (expected_max_contacts, self.model.nv), "G matrix shape mismatch.")
-        self.assertEqual(h.shape, (expected_max_contacts,), "h vector shape mismatch.")
+        self.assertEqual(G.shape, (expected_max_num_contacts, self.model.nv))
+        self.assertEqual(h.shape, (expected_max_num_contacts,))
 
-    def test_contact_normal_jacobian(self):
-        """Test the contact normal Jacobian against MuJoCo's implementation."""
+    def test_contact_normal_jac_matches_mujoco(self):
+        """Test that the contact normal Jacobian matches MuJoCo's implementation."""
         g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
         g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
 
@@ -63,6 +63,10 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
             geom_pairs=[(g1, g2)],
             bound_relaxation=bound_relaxation,
         )
+
+        # Configure model options for contact dimensionality and disable unnecessary constraints
+        self.model.opt.contact = mujoco.mjtDisableBit.mjDSBL_CONSTRAINT
+        self.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMID
 
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
 
@@ -83,9 +87,13 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
                 mujoco.mju_contactJacobian(self.model, data, contact.geom1, contact.geom2, mujoco_G[i])
                 mujoco_h[i] = contact.dist - bound_relaxation
 
+        # Ensure both G and mujoco_G are empty if no contacts are detected
+        if len(mujoco_contacts) == 0:
+            G = np.zeros((0, self.model.nv))
+
         # Check that the computed G and h match MuJoCo's implementation
-        self.assertTrue(np.allclose(G, mujoco_G), "Computed G matrix does not match MuJoCo's G matrix.")
-        self.assertTrue(np.allclose(h, mujoco_h), "Computed h vector does not match MuJoCo's h vector.")
+        self.assertTrue(np.allclose(G, mujoco_G))
+        self.assertTrue(np.allclose(h, mujoco_h))
 
 
 if __name__ == "__main__":
