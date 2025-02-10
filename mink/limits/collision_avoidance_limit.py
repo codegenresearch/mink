@@ -55,13 +55,11 @@ def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> 
         geom_id2: ID of the second geom.
 
     Returns:
-        True if the geoms are part of the same body or are welded together, False otherwise.
+        True if the geoms are part of the same body or are welded together.
     """
     body1 = model.geom_bodyid[geom_id1]
     body2 = model.geom_bodyid[geom_id2]
-    weld1 = model.body_weldid[body1]
-    weld2 = model.body_weldid[body2]
-    return weld1 == weld2
+    return model.body_weldid[body1] == model.body_weldid[body2]
 
 
 def _are_geom_bodies_parent_child(
@@ -75,15 +73,12 @@ def _are_geom_bodies_parent_child(
         geom_id2: ID of the second geom.
 
     Returns:
-        True if the bodies of the geoms have a parent-child relationship, False otherwise.
+        True if the bodies of the geoms have a parent-child relationship.
     """
     body_id1 = model.geom_bodyid[geom_id1]
     body_id2 = model.geom_bodyid[geom_id2]
-
-    weld_parent_id1 = model.body_parentid[model.body_weldid[body_id1]]
-    weld_parent_id2 = model.body_parentid[model.body_weldid[body_id2]]
-
-    return weld_parent_id1 == model.body_weldid[body_id2] or weld_parent_id2 == model.body_weldid[body_id1]
+    return model.body_parentid[model.body_weldid[body_id1]] == model.body_weldid[body_id2] or \
+           model.body_parentid[model.body_weldid[body_id2]] == model.body_weldid[body_id1]
 
 
 def _is_pass_contype_conaffinity_check(
@@ -97,11 +92,10 @@ def _is_pass_contype_conaffinity_check(
         geom_id2: ID of the second geom.
 
     Returns:
-        True if the geoms pass the contype/conaffinity check, False otherwise.
+        True if the geoms pass the contype/conaffinity check.
     """
-    return bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or bool(
-        model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1]
-    )
+    return bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or \
+           bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
 
 
 class CollisionAvoidanceLimit(Limit):
