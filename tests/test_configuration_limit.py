@@ -77,8 +77,8 @@ class TestConfigurationLimit(absltest.TestCase):
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
         # Check expected lower and upper limits
-        expected_lower = np.asarray([-mujoco.mjMAXVAL])
-        expected_upper = np.asarray([mujoco.mjMAXVAL])
+        expected_lower = np.array([-1.57])
+        expected_upper = np.array([1.57])
         np.testing.assert_allclose(limit.lower, expected_lower)
         np.testing.assert_allclose(limit.upper, expected_upper)
 
@@ -105,8 +105,8 @@ class TestConfigurationLimit(absltest.TestCase):
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
         # Check expected lower and upper limits
-        expected_lower = np.asarray([-mujoco.mjMAXVAL])
-        expected_upper = np.asarray([mujoco.mjMAXVAL])
+        expected_lower = np.array([-1.57])
+        expected_upper = np.array([1.57])
         np.testing.assert_allclose(limit.lower, expected_lower)
         np.testing.assert_allclose(limit.upper, expected_upper)
 
