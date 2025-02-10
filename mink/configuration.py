@@ -2,7 +2,7 @@
 
 The :class:`Configuration` class bundles a MuJoCo `model <https://mujoco.readthedocs.io/en/latest/APIreference/APItypes.html#mjmodel>`__
 and `data <https://mujoco.readthedocs.io/en/latest/APIreference/APItypes.html#mjdata>`__,
-and enables easy access to kinematic quantities such as frame transforms and frame
+and provides convenient access to kinematic quantities such as frame transforms and frame
 Jacobians.
 
 Frames are coordinate systems that can be attached to different elements of
@@ -29,17 +29,13 @@ class Configuration:
     kinematics is computed at each time step, allowing the user to query up-to-date
     information about the robot's state.
 
-    In this context, a frame refers to a coordinate system that can be attached to
-    different elements of the robot model. Currently supported frames include
-    `body`, `geom` and `site`.
-
     Key functionalities:
 
-    - Running forward kinematics to update the state.
-    - Checking configuration limits.
-    - Computing Jacobians for different frames.
-    - Retrieving frame transforms relative to the world frame.
-    - Integrating velocities to update configurations.
+    * Running forward kinematics to update the state.
+    * Checking configuration limits.
+    * Computing Jacobians for different frames.
+    * Retrieving frame transforms relative to the world frame.
+    * Integrating velocities to update configurations.
     """
 
     def __init__(
@@ -66,8 +62,6 @@ class Configuration:
         """
         if q is not None:
             self.data.qpos = q
-        # The minimal function call required to get updated frame transforms is
-        # mj_kinematics. An extra call to mj_comPos is required for updated Jacobians.
         mujoco.mj_kinematics(self.model, self.data)
         mujoco.mj_comPos(self.model, self.data)
 
@@ -155,9 +149,6 @@ class Configuration:
         jac_func = consts.FRAME_TO_JAC_FUNC[frame_type]
         jac_func(self.model, self.data, jac[:3], jac[3:], frame_id)
 
-        # MuJoCo jacobians have a frame of reference centered at the local frame but
-        # aligned with the world frame. To obtain a jacobian expressed in the local
-        # frame, aka body jacobian, we need to left-multiply by A[T_fw].
         xmat = getattr(self.data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
         R_wf = SO3.from_matrix(xmat.reshape(3, 3))
         A_fw = SE3.from_rotation(R_wf.inverse()).adjoint()
