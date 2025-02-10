@@ -131,10 +131,7 @@ if __name__ == "__main__":
 
     key_callback = KeyCallback()
 
-    rate_frequency = 50.0
-    rate = RateLimiter(frequency=rate_frequency, warn=False)
-    dt = rate.period
-    t = 0.0
+    rate = RateLimiter(frequency=50.0, warn=False)
 
     with mujoco.viewer.launch_passive(
         model=model,
@@ -187,11 +184,11 @@ if __name__ == "__main__":
             for i in range(max_iters):
                 if key_callback.fix_base:
                     vel = mink.solve_ik(
-                        configuration, [*tasks, damping_task], dt, solver, 1e-3
+                        configuration, [*tasks, damping_task], rate.dt, solver, 1e-3
                     )
                 else:
-                    vel = mink.solve_ik(configuration, tasks, dt, solver, 1e-3)
-                configuration.integrate_inplace(vel, dt)
+                    vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
+                configuration.integrate_inplace(vel, rate.dt)
 
                 # Exit condition.
                 pos_achieved = True
@@ -213,4 +210,3 @@ if __name__ == "__main__":
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
-            t += dt
