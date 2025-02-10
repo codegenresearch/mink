@@ -49,9 +49,14 @@ class VelocityLimit(Limit):
             vdim = dof_width(jnt_type)
             vadr = model.jnt_dofadr[jid]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
-                raise LimitDefinitionError(f"Free joint '{joint_name}' is not supported.")
+                raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
             max_vel = np.atleast_1d(max_vel)
-            if max_vel.shape != (vdim,):
+            if jnt_type == mujoco.mjtJoint.mjJNT_BALL and max_vel.shape != (3,):
+                raise LimitDefinitionError(
+                    f"Ball joint '{joint_name}' must have a limit of shape (3,). "
+                    f"Got: {max_vel.shape}"
+                )
+            elif max_vel.shape != (vdim,):
                 raise LimitDefinitionError(
                     f"Joint '{joint_name}' must have a limit of shape ({vdim},). "
                     f"Got: {max_vel.shape}"
@@ -91,6 +96,7 @@ class VelocityLimit(Limit):
             Pair :math:`(G, h)` representing the inequality constraint as
             :math:`G \Delta q \leq h`. Here, :math:`G` is a 2D numpy array of shape
             (2 * nb, nv) and :math:`h` is a 1D numpy array of shape (2 * nb,).
+            If there is no limit, returns an empty constraint.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
