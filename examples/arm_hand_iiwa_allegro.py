@@ -56,36 +56,6 @@ def construct_model():
         arm_mjcf.to_xml_string(), arm_mjcf.get_assets()
     )
 
-def create_tasks(model):
-    """Creates and returns the list of tasks for the IK solver."""
-    tasks = []
-
-    end_effector_task = mink.FrameTask(
-        frame_name="attachment_site",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    tasks.append(end_effector_task)
-
-    posture_task = mink.PostureTask(model=model, cost=5e-2)
-    tasks.append(posture_task)
-
-    for finger in fingers:
-        task = mink.RelativeFrameTask(
-            frame_name=f"allegro_left/{finger}",
-            frame_type="site",
-            root_name="allegro_left/palm",
-            root_type="body",
-            position_cost=1.0,
-            orientation_cost=0.0,
-            lm_damping=1.0,
-        )
-        tasks.append(task)
-
-    return tasks
-
 def initialize_mocap_targets(model, data):
     """Initializes the mocap targets at their respective sites."""
     mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
@@ -97,11 +67,37 @@ def initialize_mocap_targets(model, data):
 if __name__ == "__main__":
     model = construct_model()
     configuration = mink.Configuration(model)
-    tasks = create_tasks(model)
-    limits = [mink.ConfigurationLimit(model=model)]
-    solver = "quadprog"
+
+    # Create tasks
+    end_effector_task = mink.FrameTask(
+        frame_name="attachment_site",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+
+    posture_task = mink.PostureTask(model=model, cost=5e-2)
+
+    finger_tasks = []
+    for finger in fingers:
+        task = mink.RelativeFrameTask(
+            frame_name=f"allegro_left/{finger}",
+            frame_type="site",
+            root_name="allegro_left/palm",
+            root_type="body",
+            position_cost=1.0,
+            orientation_cost=0.0,
+            lm_damping=1.0,
+        )
+        finger_tasks.append(task)
+
+    tasks = [end_effector_task, posture_task, *finger_tasks]
 
     # IK settings
+    solver = "quadprog"
+    limits = [mink.ConfigurationLimit(model=model)]
+
     model = configuration.model
     data = configuration.data
 
@@ -124,10 +120,10 @@ if __name__ == "__main__":
         while viewer.is_running():
             # Update kuka end-effector task
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
-            tasks[0].set_target(T_wt)
+            end_effector_task.set_target(T_wt)
 
             # Update finger tasks
-            for finger, task in zip(fingers, tasks[2:]):
+            for finger, task in zip(fingers, finger_tasks):
                 T_pm = configuration.get_transform(f"{finger}_target", "body", "allegro_left/palm", "body")
                 task.set_target(T_pm)
 
