@@ -75,7 +75,7 @@ class FrameTask(Task):
             )
         if not np.all(position_cost >= 0.0):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} position cost must be >= 0"
+                f"{self.__class__.__name__} position cost must be non-negative"
             )
         self.cost[:3] = position_cost
 
@@ -99,7 +99,7 @@ class FrameTask(Task):
             )
         if not np.all(orientation_cost >= 0.0):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} orientation cost must be >= 0"
+                f"{self.__class__.__name__} orientation cost must be non-negative"
             )
         self.cost[3:] = orientation_cost
 
