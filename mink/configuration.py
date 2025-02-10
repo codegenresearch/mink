@@ -6,9 +6,14 @@ and provides convenient access to kinematic quantities such as frame transforms 
 Jacobians.
 
 Frames are coordinate systems that can be attached to different elements of
-the robot model. mink supports frames of type `body`, `geom` and `site`.
+the robot model. mink supports frames of type `body`, `geom`, and `site`.
 
-Version: {version}
+Key functionalities:
+- Run forward kinematics to update the state.
+- Check configuration limits.
+- Compute Jacobians for different frames.
+- Retrieve frame transforms relative to the world frame.
+- Integrate velocities to update configurations.
 """
 
 from typing import Optional
@@ -28,13 +33,6 @@ class Configuration:
     of a robot model, such as frame transforms and Jacobians. It ensures that forward
     kinematics is computed at each time step, allowing the user to query up-to-date
     information about the robot's state.
-
-    Key functionalities:
-    - Running forward kinematics to update the state.
-    - Checking configuration limits.
-    - Computing Jacobians for different frames.
-    - Retrieving frame transforms relative to the world frame.
-    - Integrating velocities to update configurations.
     """
 
     def __init__(
@@ -71,7 +69,7 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            InvalidKeyframe: if no key named `key` was found in the model.
+            InvalidKeyframe: If no key named `key` was found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
