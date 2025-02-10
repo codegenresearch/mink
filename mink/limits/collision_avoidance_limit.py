@@ -78,6 +78,38 @@ def is_pass_contype_conaffinity_check(
     return cond1 or cond2
 
 
+def compute_contact_normal_jacobian(
+    model: mujoco.MjModel, data: mujoco.MjData, contact: Contact
+) -> np.ndarray:
+    """Computes the Jacobian mapping joint velocities to the normal component of
+    the relative Cartesian linear velocity between the geom pair.
+
+    The Jacobian-velocity relationship is given as:
+
+        J dq = n^T (v_2 - v_1)
+
+    where:
+    * J is the computed Jacobian.
+    * dq is the joint velocity vector.
+    * n^T is the transpose of the normal pointing from contact.geom1 to
+        contact.geom2.
+    *  v_1, v_2 are the linear components of the Cartesian velocity of the two
+        closest points in contact.geom1 and contact.geom2.
+
+    Note: n^T (v_2 - v_1) is a scalar that is positive if the geoms are moving away
+    from each other, and negative if they are moving towards each other.
+    """
+    geom1_body = model.geom_bodyid[contact.geom1]
+    geom2_body = model.geom_bodyid[contact.geom2]
+    geom1_contact_pos = contact.fromto[:3]
+    geom2_contact_pos = contact.fromto[3:]
+    jac2 = np.empty((3, model.nv))
+    mujoco.mj_jac(model, data, jac2, None, geom2_contact_pos, geom2_body)
+    jac1 = np.empty((3, model.nv))
+    mujoco.mj_jac(model, data, jac1, None, geom1_contact_pos, geom1_body)
+    return contact.normal @ (jac2 - jac1)
+
+
 class CollisionAvoidanceLimit(Limit):
     """Normal velocity limit between geom pairs.
 
@@ -166,7 +198,7 @@ class CollisionAvoidanceLimit(Limit):
                 upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
-            jac = self.compute_contact_normal_jacobian(configuration.data, contact)
+            jac = compute_contact_normal_jacobian(self.model, configuration.data, contact)
             coefficient_matrix[idx] = -jac
         return Constraint(G=coefficient_matrix, h=upper_bound)
 
@@ -188,37 +220,6 @@ class CollisionAvoidanceLimit(Limit):
         return Contact(
             dist, fromto, geom1_id, geom2_id, self.collision_detection_distance
         )
-
-    def compute_contact_normal_jacobian(
-        self, data: mujoco.MjData, contact: Contact
-    ) -> np.ndarray:
-        """Computes the Jacobian mapping joint velocities to the normal component of
-        the relative Cartesian linear velocity between the geom pair.
-
-        The Jacobian-velocity relationship is given as:
-
-            J dq = n^T (v_2 - v_1)
-
-        where:
-        * J is the computed Jacobian.
-        * dq is the joint velocity vector.
-        * n^T is the transpose of the normal pointing from contact.geom1 to
-            contact.geom2.
-        *  v_1, v_2 are the linear components of the Cartesian velocity of the two
-            closest points in contact.geom1 and contact.geom2.
-
-        Note: n^T (v_2 - v_1) is a scalar that is positive if the geoms are moving away
-        from each other, and negative if they are moving towards each other.
-        """
-        geom1_body = self.model.geom_bodyid[contact.geom1]
-        geom2_body = self.model.geom_bodyid[contact.geom2]
-        geom1_contact_pos = contact.fromto[:3]
-        geom2_contact_pos = contact.fromto[3:]
-        jac2 = np.empty((3, self.model.nv))
-        mujoco.mj_jac(self.model, data, jac2, None, geom2_contact_pos, geom2_body)
-        jac1 = np.empty((3, self.model.nv))
-        mujoco.mj_jac(self.model, data, jac1, None, geom1_contact_pos, geom1_body)
-        return contact.normal @ (jac2 - jac1)
 
     def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
         """Take a heterogeneous list of geoms (specified via ID or name) and return
