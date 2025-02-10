@@ -32,17 +32,11 @@ napoleon_use_rtype = False
 # autodoc configuration
 autodoc_default_options = {
     "members": True,
-    "undoc-members": True,
-    "show-inheritance": True,
     "member-order": "bysource",
     "inherited-members": False,
     "exclude-members": "__init__, __post_init__, __new__",
-    "autodoc_typehints": "description",
+    "autodoc_typehints": "both",
     "autodoc_class_signature": "separated",
-}
-
-autodoc_type_aliases = {
-    "npt.ArrayLike": "ArrayLike",
 }
 
 # -- Options for HTML output -------------------------------------------------
