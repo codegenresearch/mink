@@ -52,6 +52,7 @@ if __name__ == "__main__":
         lm_damping=1.0,
     )
 
+    # When moving the base, mainly focus on the motion on xy plane, minimize the rotation.
     posture_cost = np.zeros((model.nv,))
     posture_cost[2] = 1e-3
     posture_task = mink.PostureTask(model, cost=posture_cost)
@@ -104,8 +105,8 @@ if __name__ == "__main__":
             end_effector_task.set_target(T_wt)
 
             # Compute velocity and integrate into the next configuration.
+            tasks_to_use = tasks + [damping_task] if key_callback.fix_base else tasks
             for i in range(max_iters):
-                tasks_to_use = [*tasks, damping_task] if key_callback.fix_base else tasks
                 vel = mink.solve_ik(
                     configuration, tasks_to_use, rate.dt, solver, damping=1e-3
                 )
@@ -113,9 +114,7 @@ if __name__ == "__main__":
 
                 # Exit condition.
                 err = end_effector_task.compute_error(configuration)
-                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
-                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
-                if pos_achieved and ori_achieved:
+                if np.linalg.norm(err[:3]) <= pos_threshold and np.linalg.norm(err[3:]) <= ori_threshold:
                     break
 
             if not key_callback.pause:
