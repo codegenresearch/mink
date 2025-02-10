@@ -10,7 +10,8 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "stanford_tidybot" / "scene_mobile_kinova.xml"
+_XML = _HERE / "stanford_tidybot" / "scene_mobile_kinova.xml"
+
 
 @dataclass
 class KeyCallback:
@@ -23,15 +24,20 @@ class KeyCallback:
         elif key == user_input.KEY_SPACE:
             self.pause = not self.pause
 
-def main():
-    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
+
+if __name__ == "__main__":
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Define the joints to control.
+    # Joints we wish to control.
+    # fmt: off
     joint_names = [
-        "joint_x", "joint_y", "joint_th",  # Base joints
-        "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7",  # Arm joints
+        # Base joints.
+        "joint_x", "joint_y", "joint_th",
+        # Arm joints.
+        "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7",
     ]
+    # fmt: on
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -55,10 +61,16 @@ def main():
     immobile_base_cost[2] = 1e-3
     damping_task = mink.DampingTask(model, immobile_base_cost)
 
-    tasks = [end_effector_task, posture_task]
-    limits = [mink.ConfigurationLimit(model)]
+    tasks = [
+        end_effector_task,
+        posture_task,
+    ]
 
-    # Inverse Kinematics settings.
+    limits = [
+        mink.ConfigurationLimit(model),
+    ]
+
+    # IK settings.
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
@@ -74,6 +86,7 @@ def main():
         key_callback=key_callback,
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
+
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
         posture_task.set_target_from_configuration(configuration)
@@ -82,9 +95,11 @@ def main():
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "pinch_site_target", "pinch_site", "site")
 
-        rate = RateLimiter(frequency=200.0)
+        rate = RateLimiter(frequency=200.0, warn=False)
+        dt = rate.period
+        t = 0.0
         while viewer.is_running():
-            # Update the task target.
+            # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
             end_effector_task.set_target(T_wt)
 
@@ -96,14 +111,13 @@ def main():
                 )
                 configuration.integrate_inplace(vel, rate.dt)
 
-                # Check if the target is achieved.
+                # Exit condition.
                 err = end_effector_task.compute_error(configuration)
                 pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
                 ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
                     break
 
-            # Update the control signals.
             if not key_callback.pause:
                 data.ctrl[actuator_ids] = configuration.q[dof_ids]
                 mujoco.mj_step(model, data)
@@ -113,6 +127,4 @@ def main():
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
-
-if __name__ == "__main__":
-    main()
+            t += dt
