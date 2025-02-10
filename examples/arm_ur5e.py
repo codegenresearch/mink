@@ -13,11 +13,13 @@ _XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 if __name__ == "__main__":
     # Load the model from XML
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
-    mid = model.body("target").mocapid[0]  # Initialize mid variable
 
-    # Create the configuration and data
+    # Create the configuration
     configuration = mink.Configuration(model)
     data = configuration.data
+
+    # Initialize mid variable
+    mid = model.body("target").mocapid[0]
 
     # Define the end-effector task and tasks list
     tasks = [
