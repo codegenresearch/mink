@@ -23,7 +23,7 @@ class PostureTask(Task):
     """
 
     target_q: Optional[np.ndarray]
-    _v_ids: Optional[np.ndarray]
+    _free_joint_indices: Optional[np.ndarray]
 
     def __init__(
         self,
@@ -55,7 +55,7 @@ class PostureTask(Task):
 
         # Identify the indices of free joint dimensions
         _, free_joint_indices = get_freejoint_dims(model)
-        self._v_ids = np.asarray(free_joint_indices) if free_joint_indices else None
+        self._free_joint_indices = np.asarray(free_joint_indices) if free_joint_indices else None
 
         self.k = model.nv
         self.nq = model.nq
@@ -115,8 +115,8 @@ class PostureTask(Task):
             qpos2=self.target_q,
         )
         # Set the error for free joint dimensions to zero
-        if self._v_ids is not None:
-            qvel[self._v_ids] = 0.0
+        if self._free_joint_indices is not None:
+            qvel[self._free_joint_indices] = 0.0
 
         return qvel
 
@@ -141,7 +141,7 @@ class PostureTask(Task):
         jac = -np.eye(configuration.nv)
 
         # Set the Jacobian entries for free joint dimensions to zero
-        if self._v_ids is not None:
-            jac[:, self._v_ids] = 0.0
+        if self._free_joint_indices is not None:
+            jac[:, self._free_joint_indices] = 0.0
 
         return jac
