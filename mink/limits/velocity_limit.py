@@ -46,10 +46,10 @@ class VelocityLimit(Limit):
         for joint_name, max_vel in velocities.items():
             jid = model.joint(joint_name).id
             jnt_type = model.jnt_type[jid]
+            vadr = model.jnt_dofadr[jid]
+            vdim = dof_width(jnt_type)
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
                 raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
-            vdim = dof_width(jnt_type)
-            vadr = model.jnt_dofadr[jid]
             max_vel = np.atleast_1d(max_vel)
             if max_vel.shape != (vdim,):
                 raise LimitDefinitionError(
@@ -64,8 +64,8 @@ class VelocityLimit(Limit):
         self.limit = np.array(limit_list)
         self.limit.setflags(write=False)
 
-        dim = len(self.indices)
-        self.projection_matrix = np.eye(model.nv)[self.indices] if dim > 0 else None
+        nb = len(self.indices)
+        self.projection_matrix = np.eye(model.nv)[self.indices] if nb > 0 else None
 
     def compute_qp_inequalities(
         self,
