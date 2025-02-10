@@ -19,6 +19,7 @@ class TestConfiguration(absltest.TestCase):
         self.q_ref = self.model.key("home").qpos
 
     def test_nq_nv(self):
+        """Test that nq and nv are correctly initialized."""
         configuration = mink.Configuration(self.model)
         self.assertEqual(configuration.nq, self.model.nq)
         self.assertEqual(configuration.nv, self.model.nv)
@@ -106,11 +107,20 @@ class TestConfiguration(absltest.TestCase):
     def test_check_limits(self):
         """Check that an error is raised iff a joint limit is exceeded."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
-        configuration.check_limits()
+        configuration.check_limits(safety_break=False)
         self.q_ref[0] += 1e4  # Move configuration out of bounds.
         configuration.update(q=self.q_ref)
         with self.assertRaises(mink.NotWithinConfigurationLimits):
-            configuration.check_limits()
+            configuration.check_limits(safety_break=False)
+
+    def test_check_limits_with_safety_break(self):
+        """Check that limits are correctly handled with safety break."""
+        configuration = mink.Configuration(self.model, q=self.q_ref)
+        configuration.check_limits(safety_break=True)
+        self.q_ref[0] += 1e4  # Move configuration out of bounds.
+        configuration.update(q=self.q_ref)
+        with self.assertRaises(mink.NotWithinConfigurationLimits):
+            configuration.check_limits(safety_break=True)
 
     def test_check_limits_with_free_joints(self):
         """Check that limits are correctly handled with free joints."""
@@ -130,19 +140,10 @@ class TestConfiguration(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         configuration = mink.Configuration(model)
-        configuration.check_limits()
+        configuration.check_limits(safety_break=False)
         configuration.q[7] += 1e4  # Move hinge joint out of bounds.
         with self.assertRaises(mink.NotWithinConfigurationLimits):
-            configuration.check_limits()
-
-    def test_check_limits_with_safety_break(self):
-        """Check that limits are correctly handled with safety break."""
-        configuration = mink.Configuration(self.model, q=self.q_ref)
-        configuration.check_limits(safety_break=True)
-        self.q_ref[0] += 1e4  # Move configuration out of bounds.
-        configuration.update(q=self.q_ref)
-        with self.assertRaises(mink.NotWithinConfigurationLimits):
-            configuration.check_limits(safety_break=True)
+            configuration.check_limits(safety_break=False)
 
 
 if __name__ == "__main__":
