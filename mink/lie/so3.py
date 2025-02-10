@@ -38,7 +38,9 @@ class SO3(MatrixLieGroup):
     def __post_init__(self) -> None:
         """Validate the shape of the quaternion."""
         if self.wxyz.shape != (self.parameters_dim,):
-            raise ValueError("Expected wxyz to be a length 4 vector.")
+            raise ValueError(
+                f"Expected wxyz to be a length {self.parameters_dim} vector, but got length {self.wxyz.shape[0]}."
+            )
 
     def __repr__(self) -> str:
         """Return a string representation of the quaternion."""
