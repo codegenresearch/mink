@@ -77,11 +77,6 @@ if __name__ == "__main__":
     # Construct the model
     model = construct_model()
 
-    # Initialize configuration, model, and data
-    configuration = mink.Configuration(model)
-    model = configuration.model
-    data = configuration.data
-
     # Initialize end-effector task
     end_effector_task = mink.FrameTask(
         frame_name="pinch_site",
@@ -134,6 +129,11 @@ if __name__ == "__main__":
     pos_threshold = 1e-4
     ori_threshold = 1e-4
     max_iters = 20
+
+    # Initialize configuration, model, and data
+    configuration = mink.Configuration(model)
+    model = configuration.model
+    data = configuration.data
 
     # Initialize key callback for user input
     key_callback = KeyCallback()
