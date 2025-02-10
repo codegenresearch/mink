@@ -137,6 +137,9 @@ class TestUtils(absltest.TestCase):
               <joint type="free"/>
               <geom name="b6/g1" type="sphere" size=".1" mass=".1"/>
             </body>
+            <body name="b7" pos="4 4 4">
+              <joint type="free"/>
+            </body>
           </worldbody>
         </mujoco>
         """
@@ -151,15 +154,13 @@ class TestUtils(absltest.TestCase):
         self.assertSetEqual(actual_geom_ids, expected_geom_ids)
 
         # Test for a body with no children
-        b6_id = model.body("b6").id
-        actual_geom_ids = set(utils.get_subtree_geom_ids(model, b6_id))
-        geom_names = ["b6/g1"]
-        expected_geom_ids = {model.geom(g).id for g in geom_names}
-        self.assertSetEqual(actual_geom_ids, expected_geom_ids)
+        b7_id = model.body("b7").id
+        actual_geom_ids = set(utils.get_subtree_geom_ids(model, b7_id))
+        self.assertSetEqual(actual_geom_ids, set())
 
-        # Test for the world body
-        world_id = model.worldbody.id
-        actual_geom_ids = set(utils.get_subtree_geom_ids(model, world_id))
+        # Test for the root body
+        root_id = model.body(0).id
+        actual_geom_ids = set(utils.get_subtree_geom_ids(model, root_id))
         geom_names = ["b1/g1", "b1/g2", "b2/g1", "b3/g1", "b4/g1", "b5/g1", "b6/g1"]
         expected_geom_ids = {model.geom(g).id for g in geom_names}
         self.assertSetEqual(actual_geom_ids, expected_geom_ids)
@@ -192,6 +193,9 @@ class TestUtils(absltest.TestCase):
               <joint type="free"/>
               <geom type="sphere" size=".1" mass=".1"/>
             </body>
+            <body name="b7" pos="4 4 4">
+              <joint type="free"/>
+            </body>
           </worldbody>
         </mujoco>
         """
@@ -206,16 +210,16 @@ class TestUtils(absltest.TestCase):
         self.assertSetEqual(actual_body_ids, expected_body_ids)
 
         # Test for a body with no children
-        b6_id = model.body("b6").id
-        actual_body_ids = set(utils.get_subtree_body_ids(model, b6_id))
-        body_names = ["b6"]
+        b7_id = model.body("b7").id
+        actual_body_ids = set(utils.get_subtree_body_ids(model, b7_id))
+        body_names = ["b7"]
         expected_body_ids = {model.body(g).id for g in body_names}
         self.assertSetEqual(actual_body_ids, expected_body_ids)
 
-        # Test for the world body
-        world_id = model.worldbody.id
-        actual_body_ids = set(utils.get_subtree_body_ids(model, world_id))
-        body_names = ["b1", "b2", "b3", "b4", "b5", "b6"]
+        # Test for the root body
+        root_id = model.body(0).id
+        actual_body_ids = set(utils.get_subtree_body_ids(model, root_id))
+        body_names = ["b1", "b2", "b3", "b4", "b5", "b6", "b7"]
         expected_body_ids = {model.body(g).id for g in body_names}
         self.assertSetEqual(actual_body_ids, expected_body_ids)
 
