@@ -61,7 +61,8 @@ class ComTask(Task):
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"or ({self.k},). Got {cost.shape}"
+                f"(aka identical cost for all coordinates) or ({self.k},). "
+                f"Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
             raise TaskDefinitionError(f"{self.__class__.__name__} cost must be >= 0")
@@ -132,7 +133,7 @@ class ComTask(Task):
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Center-of-mass task jacobian :math:`J(q)`.
+            Center-of-mass task Jacobian :math:`J(q)`.
 
         Raises:
             TargetNotSet: If the target CoM position has not been set.
