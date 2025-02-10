@@ -74,6 +74,7 @@ class KeyCallback:
 
 
 if __name__ == "__main__":
+    # Construct the model and initialize data and configuration
     model = construct_model()
     data = model.data
     configuration = mink.Configuration(model)
