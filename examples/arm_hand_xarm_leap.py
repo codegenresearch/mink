@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     configuration = mink.Configuration(model)
 
-    # Define tasks for end-effector and fingers
+    # Define tasks for kuka end-effector and fingers
     end_effector_task = mink.FrameTask(
         frame_name="attachment_site",
         frame_type="site",
@@ -121,7 +121,7 @@ if __name__ == "__main__":
         )
 
         while viewer.is_running():
-            # Update the end-effector task target
+            # Update kuka end-effector task
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
@@ -133,11 +133,11 @@ if __name__ == "__main__":
                 task.set_target(T_pm)
 
             # Update mocap positions for fingers
+            T_eef = configuration.get_transform_frame_to_world(
+                "attachment_site", "site"
+            )
+            T = T_eef @ T_eef_prev.inverse()
             for finger in fingers:
-                T_eef = configuration.get_transform_frame_to_world(
-                    "attachment_site", "site"
-                )
-                T = T_eef @ T_eef_prev.inverse()
                 T_w_mocap = mink.SE3.from_mocap_name(model, data, f"{finger}_target")
                 T_w_mocap_new = T @ T_w_mocap
                 data.mocap_pos[model.body(f"{finger}_target").mocapid[0]] = (
