@@ -63,7 +63,7 @@ if __name__ == "__main__":
         posture_task.set_target_from_configuration(configuration)  # Set posture target
         mujoco.mj_forward(model, data)
 
-        # Initialize the mocap target at the end-effector site
+        # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
         # Set up the rate limiter for controlling the loop frequency
