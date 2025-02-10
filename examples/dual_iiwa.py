@@ -11,7 +11,7 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "kuka_iiwa_14" / "iiwa14.xml"
+_XML = _HERE / "kuka_iiwa_14" / "iiwa14.xml"
 
 
 def construct_model():
@@ -31,14 +31,14 @@ def construct_model():
         "site", name="r_attachment_site", pos=[0, -0.2, 0], group=5
     )
 
-    left_iiwa = mjcf.from_path(_XML_PATH.as_posix())
+    left_iiwa = mjcf.from_path(_XML.as_posix())
     left_iiwa.model = "l_iiwa"
     left_iiwa.find("key", "home").remove()
     left_site.attach(left_iiwa)
     for i, g in enumerate(left_iiwa.worldbody.find_all("geom")):
         g.name = f"geom_{i}"
 
-    right_iiwa = mjcf.from_path(_XML_PATH.as_posix())
+    right_iiwa = mjcf.from_path(_XML.as_posix())
     right_iiwa.model = "r_iiwa"
     right_iiwa.find("key", "home").remove()
     right_site.attach(right_iiwa)
@@ -74,20 +74,20 @@ if __name__ == "__main__":
     model = configuration.model
     data = configuration.data
 
-    left_ee_task = mink.FrameTask(
-        frame_name="l_iiwa/attachment_site",
-        frame_type="site",
-        position_cost=2.0,
-        orientation_cost=1.0,
-    )
-    right_ee_task = mink.FrameTask(
-        frame_name="r_iiwa/attachment_site",
-        frame_type="site",
-        position_cost=2.0,
-        orientation_cost=1.0,
-    )
-
-    tasks = [left_ee_task, right_ee_task]
+    tasks = [
+        mink.FrameTask(
+            frame_name="l_iiwa/attachment_site",
+            frame_type="site",
+            position_cost=2.0,
+            orientation_cost=1.0,
+        ),
+        mink.FrameTask(
+            frame_name="r_iiwa/attachment_site",
+            frame_type="site",
+            position_cost=2.0,
+            orientation_cost=1.0,
+        ),
+    ]
 
     collision_pairs = [
         (
@@ -139,9 +139,9 @@ if __name__ == "__main__":
 
             # Update task targets.
             T_wt_left = mink.SE3.from_mocap_name(model, data, "l_target")
-            left_ee_task.set_target(T_wt_left)
+            tasks[0].set_target(T_wt_left)
             T_wt_right = mink.SE3.from_mocap_name(model, data, "r_target")
-            right_ee_task.set_target(T_wt_right)
+            tasks[1].set_target(T_wt_right)
 
             vel = mink.solve_ik(
                 configuration, tasks, rate.dt, solver, 1e-2, False, limits=limits
