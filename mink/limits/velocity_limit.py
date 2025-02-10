@@ -68,9 +68,7 @@ class VelocityLimit(Limit):
         self.projection_matrix = np.eye(model.nv)[self.indices] if nb > 0 else None
 
     def compute_qp_inequalities(
-        self,
-        configuration: Configuration,
-        dt: float,
+        self, configuration: Configuration, dt: float
     ) -> Constraint:
         r"""Compute the configuration-dependent joint velocity limits.
 
