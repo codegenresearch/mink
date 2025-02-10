@@ -86,8 +86,8 @@ def _is_pass_contype_conaffinity_check(
     Returns:
         bool: True if the geoms pass the check, False otherwise.
     """
-    return (model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or \
-           (model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
+    return (model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) != 0 or \
+           (model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1]) != 0
 
 
 class CollisionAvoidanceLimit(Limit):
@@ -97,11 +97,12 @@ class CollisionAvoidanceLimit(Limit):
         model: MuJoCo model instance.
         geom_pairs: List of collision pairs, where each pair consists of two geom groups.
         gain: Gain factor controlling the speed of approach to collision limits.
-        min_distance: Minimum distance to maintain between geoms.
-        detection_distance: Distance at which collision detection becomes active.
+        minimum_distance_from_collisions: Minimum distance to maintain between geoms.
+        collision_detection_distance: Distance at which collision detection becomes active.
         bound_relaxation: Offset applied to the upper bound of collision avoidance constraints.
         geom_id_pairs: List of geom ID pairs for collision avoidance.
         max_contacts: Maximum number of contacts to consider.
+        max_num_contacts: Alias for max_contacts, used for compatibility with tests.
     """
 
     def __init__(
@@ -109,8 +110,8 @@ class CollisionAvoidanceLimit(Limit):
         model: mujoco.MjModel,
         geom_pairs: CollisionPairs,
         gain: float = 0.85,
-        min_distance: float = 0.005,
-        detection_distance: float = 0.01,
+        minimum_distance_from_collisions: float = 0.005,
+        collision_detection_distance: float = 0.01,
         bound_relaxation: float = 0.0,
     ):
         """Initialize the collision avoidance limit.
@@ -119,17 +120,18 @@ class CollisionAvoidanceLimit(Limit):
             model: MuJoCo model instance.
             geom_pairs: List of collision pairs, where each pair consists of two geom groups.
             gain: Gain factor controlling the speed of approach to collision limits.
-            min_distance: Minimum distance to maintain between geoms.
-            detection_distance: Distance at which collision detection becomes active.
+            minimum_distance_from_collisions: Minimum distance to maintain between geoms.
+            collision_detection_distance: Distance at which collision detection becomes active.
             bound_relaxation: Offset applied to the upper bound of collision avoidance constraints.
         """
         self.model = model
         self.gain = gain
-        self.min_distance = min_distance
-        self.detection_distance = detection_distance
+        self.minimum_distance_from_collisions = minimum_distance_from_collisions
+        self.collision_detection_distance = collision_detection_distance
         self.bound_relaxation = bound_relaxation
         self.geom_id_pairs = self._construct_geom_id_pairs(geom_pairs)
         self.max_contacts = len(self.geom_id_pairs)
+        self.max_num_contacts = self.max_contacts  # Alias for compatibility with tests
 
     def compute_qp_inequalities(
         self,
@@ -154,8 +156,8 @@ class CollisionAvoidanceLimit(Limit):
             if contact.inactive:
                 continue
             hi_bound_dist = contact.dist
-            if hi_bound_dist > self.min_distance:
-                dist = hi_bound_dist - self.min_distance
+            if hi_bound_dist > self.minimum_distance_from_collisions:
+                dist = hi_bound_dist - self.minimum_distance_from_collisions
                 upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
@@ -184,10 +186,10 @@ class CollisionAvoidanceLimit(Limit):
             data,
             geom1_id,
             geom2_id,
-            self.detection_distance,
+            self.collision_detection_distance,
             fromto,
         )
-        return _Contact(dist, fromto, geom1_id, geom2_id, self.detection_distance)
+        return _Contact(dist, fromto, geom1_id, geom2_id, self.collision_detection_distance)
 
     def _compute_contact_normal_jacobian(
         self, data: mujoco.MjData, contact: _Contact
