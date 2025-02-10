@@ -13,17 +13,19 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "boston_dynamics_spot" / "scene.xml"
 
 if __name__ == "__main__":
-    # Load the MuJoCo model and data from the XML file
+    ## =================== ##
+    ## Load Model and Data ##
+    ## =================== ##
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Setup IK configuration
+    ## =================== ##
+    ## Setup IK Configuration ##
+    ## =================== ##
     configuration = mink.Configuration(model)
 
-    # Define foot names
     feet = ["FL", "FR", "HR", "HL"]
 
-    # Define tasks for IK
     base_task = mink.FrameTask(
         frame_name="body",
         frame_type="body",
@@ -52,12 +54,16 @@ if __name__ == "__main__":
 
     tasks = [base_task, posture_task, *feet_tasks, eef_task]
 
-    # Define mocap IDs for targets
+    ## =================== ##
+    ## Define Mocap IDs for Targets ##
+    ## =================== ##
     base_mid = model.body("body_target").mocapid[0]
     feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
     eef_mid = model.body("EE_target").mocapid[0]
 
-    # IK settings with validation
+    ## =================== ##
+    ## IK Settings with Validation ##
+    ## =================== ##
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
@@ -68,7 +74,9 @@ if __name__ == "__main__":
     if max_iters <= 0:
         raise ValueError("Maximum iterations must be greater than zero.")
 
-    # Launch the MuJoCo viewer
+    ## =================== ##
+    ## Launch MuJoCo Viewer ##
+    ## =================== ##
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
@@ -103,7 +111,7 @@ if __name__ == "__main__":
                 # Check if position and orientation goals are achieved
                 pos_achieved = True
                 ori_achieved = True
-                for task in [eef_task, base_task, *feet_tasks]:
+                for task in tasks:
                     err = task.compute_error(configuration)
                     pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
                     ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
