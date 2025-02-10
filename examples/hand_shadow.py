@@ -19,22 +19,19 @@ if __name__ == "__main__":
 
     # Initialize finger tasks
     fingers = ["thumb", "first", "middle", "ring", "little"]
-    finger_tasks = []
-    for finger in fingers:
-        task = mink.FrameTask(
+    finger_tasks = [
+        mink.FrameTask(
             frame_name=finger,
             frame_type="site",
             position_cost=1.0,
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        finger_tasks.append(task)
+        for finger in fingers
+    ]
 
     # Combine all tasks
-    tasks = [
-        posture_task,
-        *finger_tasks,
-    ]
+    tasks = [posture_task, *finger_tasks]
 
     model = configuration.model
     data = configuration.data
@@ -54,16 +51,19 @@ if __name__ == "__main__":
             mink.move_mocap_to_frame(model, data, f"{finger}_target", finger, "site")
 
         rate = RateLimiter(frequency=500.0, warn=False)  # Adjusted frequency for better performance
+        dt = rate.dt
+        t = 0
         while viewer.is_running():
             # Update task targets.
             for finger, task in zip(fingers, finger_tasks):
                 task.set_target(mink.SE3.from_mocap_name(model, data, f"{finger}_target"))
 
             # Solve inverse kinematics and integrate velocity.
-            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-5)
-            configuration.integrate_inplace(vel, rate.dt)
+            vel = mink.solve_ik(configuration, tasks, dt, solver, 1e-5)
+            configuration.integrate_inplace(vel, dt)
             mujoco.mj_camlight(model, data)
 
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
+            t += dt
