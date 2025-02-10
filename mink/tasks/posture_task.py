@@ -90,17 +90,17 @@ class PostureTask(Task):
         self.target_q = target_q.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
-        r"""Set the target posture from the current configuration of the robot.
+        """Set the target posture from the current configuration of the robot.
 
         Args:
-            configuration: Current robot configuration :math:`q`.
+            configuration: Current robot configuration.
         """
         self.set_target(configuration.q)
 
     def compute_error(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the error for the posture task.
 
-        The error is defined as the difference between the target posture and the current posture:
+        The error is defined as:
 
         .. math::
 
@@ -109,7 +109,7 @@ class PostureTask(Task):
         where :math:`q^*` is the target posture and :math:`q` is the current posture.
 
         Args:
-            configuration: Current robot configuration :math:`q`.
+            configuration: Current robot configuration.
 
         Returns:
             Posture task error vector :math:`e(q)`.
@@ -142,7 +142,7 @@ class PostureTask(Task):
         The task Jacobian is the negative identity matrix :math:`-I_{n_v}`.
 
         Args:
-            configuration: Current robot configuration :math:`q`.
+            configuration: Current robot configuration.
 
         Returns:
             Posture task Jacobian :math:`J(q)`.
