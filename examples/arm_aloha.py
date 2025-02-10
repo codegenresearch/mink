@@ -1,17 +1,15 @@
 from pathlib import Path
-
 import mujoco
 import mujoco.viewer
 import numpy as np
 from loop_rate_limiters import RateLimiter
-
 import mink
 
 _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
 # Single arm joint names.
-_JOINT_NAMES = [
+_JOINT_NAMES: list[str] = [
     "waist",
     "shoulder",
     "elbow",
@@ -22,7 +20,7 @@ _JOINT_NAMES = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
+_VELOCITY_LIMITS: dict[str, float] = {k: np.pi for k in _JOINT_NAMES}
 
 
 if __name__ == "__main__":
@@ -30,8 +28,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = []
-    velocity_limits = {}
+    joint_names: list[str] = []
+    velocity_limits: dict[str, float] = {}
     for prefix in ["left", "right"]:
         for n in _JOINT_NAMES:
             name = f"{prefix}/{n}"
@@ -73,7 +71,7 @@ if __name__ == "__main__":
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=collision_pairs,
+        geom_pairs=collision_pairs,  # type: ignore
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
