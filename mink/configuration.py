@@ -131,20 +131,12 @@ class Configuration:
     def get_frame_jacobian(self, frame_name: str, frame_type: str) -> np.ndarray:
         """Compute the Jacobian matrix of a frame velocity relative to the world frame.
 
-        Denoting our frame by :math:`B` and the world frame by :math:`W`, the
-        Jacobian matrix :math:`{}_B J_{WB}` is related to the body velocity
-        :math:`{}_B v_{WB}` by:
-
-        .. math::
-
-            {}_B v_{WB} = {}_B J_{WB} \dot{q}
-
         Args:
             frame_name: Name of the frame in the MJCF.
             frame_type: Type of frame. Can be 'geom', 'body', or 'site'.
 
         Returns:
-            Jacobian matrix :math:`{}_B J_{WB}` of the frame velocity relative to the world frame.
+            Jacobian matrix of the frame velocity relative to the world frame.
 
         Raises:
             UnsupportedFrame: If the frame type is not supported.
