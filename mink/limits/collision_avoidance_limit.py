@@ -27,9 +27,6 @@ class Contact:
         geom1: The ID of the first geom.
         geom2: The ID of the second geom.
         distmax: The maximum distance at which the contact is considered active.
-
-    References:
-        This class is used to represent contacts in the collision avoidance limit.
     """
 
     dist: float
@@ -88,11 +85,7 @@ def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> 
     Returns:
         True if the geoms are part of the same body or are welded together, False otherwise.
     """
-    body1 = model.geom_bodyid[geom_id1]
-    body2 = model.geom_bodyid[geom_id2]
-    weld1 = model.body_weldid[body1]
-    weld2 = model.body_weldid[body2]
-    return weld1 == weld2
+    return model.body_weldid[model.geom_bodyid[geom_id1]] == model.body_weldid[model.geom_bodyid[geom_id2]]
 
 
 def _are_geom_bodies_parent_child(
@@ -110,13 +103,10 @@ def _are_geom_bodies_parent_child(
     """
     body_id1 = model.geom_bodyid[geom_id1]
     body_id2 = model.geom_bodyid[geom_id2]
-
     weld_id1 = model.body_weldid[body_id1]
     weld_id2 = model.body_weldid[body_id2]
-
     parent_weld_id1 = model.body_parentid[weld_id1]
     parent_weld_id2 = model.body_parentid[weld_id2]
-
     return weld_id1 == parent_weld_id2 or weld_id2 == parent_weld_id1
 
 
@@ -133,9 +123,8 @@ def _is_pass_contype_conaffinity_check(
     Returns:
         True if the geoms pass the contype/conaffinity check, False otherwise.
     """
-    return (
-        bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or
-        bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
+    return (model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or (
+        model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1]
     )
 
 
@@ -247,7 +236,7 @@ class CollisionAvoidanceLimit(Limit):
     def _compute_contact_with_minimum_distance(
         self, data: mujoco.MjData, geom1_id: int, geom2_id: int
     ) -> Contact:
-        """Computes the contact with the minimum distance between two geoms.
+        """Computes the smallest signed distance between a geom pair.
 
         Args:
             data: The MuJoCo data.
@@ -332,11 +321,10 @@ class CollisionAvoidanceLimit(Limit):
         geom_id_pairs = []
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
-                are_welded = _is_welded_together(self.model, geom_a, geom_b)
-                are_parent_child = _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
-                pass_contype_conaffinity = _is_pass_contype_conaffinity_check(
-                    self.model, geom_a, geom_b
-                )
-                if not are_welded and not are_parent_child and pass_contype_conaffinity:
+                if (
+                    not _is_welded_together(self.model, geom_a, geom_b)
+                    and not _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
+                    and _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
+                ):
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
