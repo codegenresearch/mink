@@ -11,11 +11,15 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 
 if __name__ == "__main__":
-    # Load the model and data
+    ## =================== ##
+    ## Load Model and Data ##
+    ## =================== ##
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Setup IK.
+    ## =================== ##
+    ## Setup IK            ##
+    ## =================== ##
     configuration = mink.Configuration(model)
 
     # Define tasks
@@ -29,7 +33,7 @@ if __name__ == "__main__":
         ),
     ]
 
-    # Define collision pairs for collision avoidance
+    # Enable collision avoidance between (wrist3, floor) and (wrist3, wall)
     wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
         (wrist_3_geoms, ["floor", "wall"]),
@@ -53,13 +57,18 @@ if __name__ == "__main__":
     velocity_limit = mink.VelocityLimit(model, max_velocities)
     limits.append(velocity_limit)
 
+    # Initialize mid variable
+    mid = model.body("target").mocapid[0]
+
     # IK settings
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
     max_iters = 20
 
-    # Initialize the viewer
+    ## =================== ##
+    ## Initialize Viewer   ##
+    ## =================== ##
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
@@ -76,7 +85,9 @@ if __name__ == "__main__":
         # Initialize rate limiter
         rate = RateLimiter(frequency=500.0, warn=False)
 
-        # Main loop
+        ## =================== ##
+        ## Main Loop           ##
+        ## =================== ##
         while viewer.is_running():
             # Update task target
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
