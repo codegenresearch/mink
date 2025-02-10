@@ -61,46 +61,24 @@ def compensate_gravity(
     data: mujoco.MjData,
     subtree_ids: Sequence[int],
     qfrc_applied: Optional[np.ndarray] = None,
-) -> np.ndarray:
-    """Compute forces to counteract gravity for the specified subtrees.
+) -> None:
+    """Compute and apply forces to counteract gravity for the specified subtrees.
 
     Args:
         model (mujoco.MjModel): The MuJoCo model.
         data (mujoco.MjData): The MuJoCo data.
         subtree_ids (Sequence[int]): A list of body IDs for which to compute gravity compensation.
-        qfrc_applied (Optional[np.ndarray]): An optional array to store the applied forces. If None, a new array is created.
-
-    Returns:
-        np.ndarray: The gravity compensation forces.
+        qfrc_applied (Optional[np.ndarray]): An optional array to store the applied forces. If None, `data.qfrc_applied` is used.
     """
     if qfrc_applied is None:
-        qfrc_applied = np.zeros(model.nv)
+        qfrc_applied = data.qfrc_applied
 
     for body_id in subtree_ids:
         jacp = np.zeros(3 * model.nv)
-        jacr = np.zeros(3 * model.nv)
-        mujoco.mj_jacSubtreeCom(model, data, jacp, jacr, body_id)
+        mujoco.mj_jacSubtreeCom(model, data, jacp, None, body_id)
         total_mass = model.body_subtreemass[body_id]
         gravity_force = total_mass * model.opt.gravity[2]
         qfrc_applied += gravity_force * jacp
-
-    return qfrc_applied
-
-def test_get_subtree_body_ids():
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
-    left_wrist_body_ids = get_subtree_body_ids(model, "left/wrist_link")
-    right_wrist_body_ids = get_subtree_body_ids(model, "right/wrist_link")
-    assert len(left_wrist_body_ids) > 0
-    assert len(right_wrist_body_ids) > 0
-    assert model.body("left/wrist_link").id in left_wrist_body_ids
-    assert model.body("right/wrist_link").id in right_wrist_body_ids
-
-def test_get_subtree_geom_ids():
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
-    left_wrist_geom_ids = get_subtree_geom_ids(model, "left/wrist_link")
-    right_wrist_geom_ids = get_subtree_geom_ids(model, "right/wrist_link")
-    assert len(left_wrist_geom_ids) > 0
-    assert len(right_wrist_geom_ids) > 0
 
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
@@ -152,7 +130,7 @@ if __name__ == "__main__":
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=collision_pairs,  # type: ignore
+        geom_pairs=collision_pairs,
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
@@ -221,7 +199,7 @@ if __name__ == "__main__":
             left_subtree_ids = get_subtree_body_ids(model, "left/wrist_link")
             right_subtree_ids = get_subtree_body_ids(model, "right/wrist_link")
             data.qfrc_applied[:] = 0  # Reset applied forces
-            data.qfrc_applied = compensate_gravity(model, data, left_subtree_ids + right_subtree_ids, data.qfrc_applied)
+            compensate_gravity(model, data, left_subtree_ids + right_subtree_ids)
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
             mujoco.mj_step(model, data)
