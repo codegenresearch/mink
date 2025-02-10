@@ -38,8 +38,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Collect joint and actuator IDs for both arms.
-    joint_names: list[str] = []
-    velocity_limits: dict[str, float] = {}
+    joint_names = []
+    velocity_limits = {}
     for prefix in ["left", "right"]:
         for n in _JOINT_NAMES:
             name = f"{prefix}/{n}"
@@ -53,14 +53,14 @@ if __name__ == "__main__":
 
     # Define IK tasks for both arms' end effectors.
     tasks = [
-        l_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        r_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
@@ -116,8 +116,8 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update the targets for both end effectors.
-            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Solve IK and integrate the solution.
             for i in range(max_iters):
@@ -132,10 +132,10 @@ if __name__ == "__main__":
                 configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if both end effectors have reached their targets.
-                l_err = l_ee_task.compute_error(configuration)
+                l_err = tasks[0].compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = r_ee_task.compute_error(configuration)
+                r_err = tasks[1].compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
                 if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
