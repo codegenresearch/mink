@@ -97,8 +97,7 @@ if __name__ == "__main__":
     data = configuration.data
 
     # Initialize the rate limiter with a consistent frequency
-    frequency = 200.0
-    rate = RateLimiter(frequency=frequency, warn=False)
+    rate = RateLimiter(frequency=200.0, warn=False)
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
