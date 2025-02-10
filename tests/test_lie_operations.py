@@ -139,6 +139,20 @@ class TestGroupSpecificOperations(absltest.TestCase):
         T_copy = T.copy()
         assert_transforms_close(T, T_copy)
 
+    def test_se3_from_rotation_and_translation(self):
+        rotation = SO3.sample_uniform()
+        translation = np.random.rand(3)
+        T = SE3.from_rotation_and_translation(rotation, translation)
+        assert_transforms_close(T, SE3.from_matrix(T.as_matrix()))
+
+    def test_se3_from_matrix_invalid_shape(self):
+        with self.assertRaises(ValueError):
+            SE3.from_matrix(np.eye(2))  # Invalid matrix shape
+
+    def test_so3_from_matrix_invalid_shape(self):
+        with self.assertRaises(ValueError):
+            SO3.from_matrix(np.eye(2))  # Invalid matrix shape
+
 
 if __name__ == "__main__":
     absltest.main()
