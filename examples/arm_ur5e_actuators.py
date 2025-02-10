@@ -16,7 +16,7 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     ## =================== ##
-    ## Setup IK.
+    ## Setup Inverse Kinematics.
     ## =================== ##
 
     configuration = mink.Configuration(model)
