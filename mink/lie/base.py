@@ -27,24 +27,24 @@ class MatrixLieGroup(abc.ABC):
     def __matmul__(self, other: np.ndarray) -> np.ndarray: ...
 
     def __matmul__(self, other: Union[Self, np.ndarray]) -> Union[Self, np.ndarray]:
-        """Overload of the @ operator to support both group composition and matrix application."""
+        """Overload of the @ operator for group composition and matrix application."""
         if isinstance(other, np.ndarray):
             return self.apply(target=other)
         assert isinstance(other, MatrixLieGroup)
         return self.multiply(other=other)
 
-    # Factory.
+    # Factory methods.
 
     @classmethod
     @abc.abstractmethod
     def identity(cls) -> Self:
-        """Returns identity element."""
+        """Returns the identity element."""
         raise NotImplementedError
 
     @classmethod
     @abc.abstractmethod
     def from_matrix(cls, matrix: np.ndarray) -> Self:
-        """Creates a group member from its matrix representation."""
+        """Creates a group member from a matrix."""
         raise NotImplementedError
 
     @classmethod
@@ -62,7 +62,7 @@ class MatrixLieGroup(abc.ABC):
 
     @abc.abstractmethod
     def parameters(self) -> np.ndarray:
-        """Returns the underlying parameter representation."""
+        """Returns the underlying parameters."""
         raise NotImplementedError
 
     # Operations.
@@ -145,7 +145,6 @@ class MatrixLieGroup(abc.ABC):
     @abc.abstractmethod
     def ljacinv(cls, other: np.ndarray) -> np.ndarray:
         """Computes the inverse of the left Jacobian."""
-        # NOTE: This can be computed as the inverse of the left Jacobian.
         raise NotImplementedError
 
     # Eqn. 67.
