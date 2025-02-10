@@ -33,18 +33,18 @@ class MatrixLieGroup(abc.ABC):
         assert isinstance(other, MatrixLieGroup)
         return self.multiply(other=other)
 
-    # Factory
+    # Factory.
 
     @classmethod
     @abc.abstractmethod
     def identity(cls) -> Self:
-        """Returns the identity element."""
+        """Returns identity element."""
         raise NotImplementedError
 
     @classmethod
     @abc.abstractmethod
     def from_matrix(cls, matrix: np.ndarray) -> Self:
-        """Creates a group member from a matrix."""
+        """Get group member from matrix representation."""
         raise NotImplementedError
 
     @classmethod
@@ -53,23 +53,23 @@ class MatrixLieGroup(abc.ABC):
         """Draws a uniform sample from the group."""
         raise NotImplementedError
 
-    # Accessors
+    # Accessors.
 
     @abc.abstractmethod
     def as_matrix(self) -> np.ndarray:
-        """Returns the transformation as a matrix."""
+        """Returns transformation as a matrix."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def parameters(self) -> np.ndarray:
-        """Returns the underlying parameters."""
+        """Returns underlying parameters."""
         raise NotImplementedError
 
-    # Operations
+    # Operations.
 
     @abc.abstractmethod
     def apply(self, target: np.ndarray) -> np.ndarray:
-        """Applies the group action to a point."""
+        """Applies group action to a point."""
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -103,7 +103,7 @@ class MatrixLieGroup(abc.ABC):
         """Normalizes the transformation."""
         raise NotImplementedError
 
-    # Right and left plus and minus operators
+    # Right and left plus and minus operators.
 
     # Eqn. 25.
     def rplus(self, other: np.ndarray) -> Self:
@@ -133,7 +133,7 @@ class MatrixLieGroup(abc.ABC):
         """Alias for rminus."""
         return self.rminus(other)
 
-    # Jacobians
+    # Jacobians.
 
     @classmethod
     @abc.abstractmethod
@@ -144,7 +144,7 @@ class MatrixLieGroup(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def ljacinv(cls, other: np.ndarray) -> np.ndarray:
-        """Computes the inverse of the left Jacobian. Can just be `np.linalg.inv(cls.ljac(other))`."""
+        """Computes the inverse of the left Jacobian."""
         raise NotImplementedError
 
     # Eqn. 67.
