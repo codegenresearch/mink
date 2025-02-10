@@ -307,8 +307,9 @@ class CollisionAvoidanceLimit(Limit):
         geom_id_pairs = []
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
-                if not _is_welded_together(self.model, geom_a, geom_b) and \
-                   not _are_geom_bodies_parent_child(self.model, geom_a, geom_b) and \
-                   _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b):
+                is_welded = _is_welded_together(self.model, geom_a, geom_b)
+                is_parent_child = _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
+                is_contype_conaffinity_pass = _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
+                if not is_welded and not is_parent_child and is_contype_conaffinity_pass:
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
