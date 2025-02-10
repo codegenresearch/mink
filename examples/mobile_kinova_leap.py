@@ -136,6 +136,10 @@ if __name__ == "__main__":
     # Initialize key callback for user input
     key_callback = KeyCallback()
 
+    # Initialize model and data
+    model = configuration.model
+    data = configuration.data
+
     # Launch the viewer
     with mujoco.viewer.launch_passive(
         model=model,
