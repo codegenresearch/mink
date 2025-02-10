@@ -125,19 +125,16 @@ if __name__ == "__main__":
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
-            # Update finger tasks
+            # Update finger tasks and mocap positions
+            T_eef = configuration.get_transform_frame_to_world(
+                "attachment_site", "site"
+            )
+            T = T_eef @ T_eef_prev.inverse()
             for finger, task in zip(fingers, finger_tasks):
                 T_pm = configuration.get_transform(
                     f"{finger}_target", "body", "leap_right/palm_lower", "body"
                 )
                 task.set_target(T_pm)
-
-            # Update mocap positions for fingers
-            T_eef = configuration.get_transform_frame_to_world(
-                "attachment_site", "site"
-            )
-            T = T_eef @ T_eef_prev.inverse()
-            for finger in fingers:
                 T_w_mocap = mink.SE3.from_mocap_name(model, data, f"{finger}_target")
                 T_w_mocap_new = T @ T_w_mocap
                 data.mocap_pos[model.body(f"{finger}_target").mocapid[0]] = (
