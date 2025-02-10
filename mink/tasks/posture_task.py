@@ -20,10 +20,11 @@ class PostureTask(Task):
 
     Attributes:
         target_q: Target joint configuration.
+        _v_ids: Indices of free joint dimensions.
     """
 
     target_q: Optional[np.ndarray]
-    _v_ids: Optional[np.ndarray]
+    _v_ids: Optional[np.ndarray] = None
 
     def __init__(
         self,
