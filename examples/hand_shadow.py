@@ -9,23 +9,31 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "shadow_hand" / "scene_left.xml"
 
-def main():
+if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+
     configuration = mink.Configuration(model)
 
+    # Initialize posture task
+    posture_task = mink.PostureTask(model, cost=1e-2)
+
+    # Initialize finger tasks
     fingers = ["thumb", "first", "middle", "ring", "little"]
+    finger_tasks = []
+    for finger in fingers:
+        task = mink.FrameTask(
+            frame_name=finger,
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=0.0,
+            lm_damping=1.0,
+        )
+        finger_tasks.append(task)
+
+    # Combine all tasks
     tasks = [
-        mink.PostureTask(model, cost=1e-2),
-        *[
-            mink.FrameTask(
-                frame_name=finger,
-                frame_type="site",
-                position_cost=1.0,
-                orientation_cost=0.0,
-                lm_damping=1.0,
-            )
-            for finger in fingers
-        ],
+        posture_task,
+        *finger_tasks,
     ]
 
     model = configuration.model
@@ -39,7 +47,6 @@ def main():
 
         # Initialize to the home keyframe.
         configuration.update_from_keyframe("grasp hard")
-        posture_task = tasks[0]
         posture_task.set_target_from_configuration(configuration)
 
         # Initialize mocap bodies at their respective sites.
@@ -52,7 +59,7 @@ def main():
 
         while viewer.is_running():
             # Update task targets.
-            for finger, task in zip(fingers, tasks[1:]):
+            for finger, task in zip(fingers, finger_tasks):
                 task.set_target(mink.SE3.from_mocap_name(model, data, f"{finger}_target"))
 
             # Solve inverse kinematics and integrate velocity.
@@ -64,6 +71,3 @@ def main():
             viewer.sync()
             rate.sleep()
             t += dt
-
-if __name__ == "__main__":
-    main()
