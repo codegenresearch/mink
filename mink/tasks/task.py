@@ -1,4 +1,4 @@
-"""All kinematic tasks derive from the :class:`Task` base class."""
+"""Kinematic tasks."""
 
 import abc
 from typing import NamedTuple
@@ -13,43 +13,17 @@ class Objective(NamedTuple):
     r"""Quadratic objective of the form :math:`\frac{1}{2} x^T H x + c^T x`."""
 
     H: np.ndarray
-    """Hessian matrix, of shape (n_v, n_v)"""
+    """Hessian matrix, shape (n_v, n_v)"""
     c: np.ndarray
-    """Linear vector, of shape (n_v,)."""
+    """Linear vector, shape (n_v,)"""
 
     def value(self, x: np.ndarray) -> float:
-        """Returns the value of the objective at the input vector."""
-        return x.T @ self.H @ x + self.c @ x
+        """Returns the value of the objective at the input vector x."""
+        return 0.5 * x.T @ self.H @ x + self.c @ x
 
 
 class Task(abc.ABC):
-    r"""Abstract base class for kinematic tasks.
-
-    Subclasses must implement the configuration-dependent task error
-    :py:meth:`~Task.compute_error` and Jacobian :py:meth:`~Task.compute_jacobian`
-    functions.
-
-    The error function :math:`e(q) \in \mathbb{R}^{k}` is the quantity that
-    the task aims to drive to zero (:math:`k` is the dimension of the
-    task). It appears in the first-order task dynamics:
-
-    .. math::
-
-        J(q) \Delta q = -\alpha e(q)
-
-    The Jacobian matrix :math:`J(q) \in \mathbb{R}^{k \times n_v}`, with
-    :math:`n_v` the dimension of the robot's tangent space, is the
-    derivative of the task error :math:`e(q)` with respect to the
-    configuration :math:`q \in \mathbb{R}^{n_q}`. The configuration displacement
-    :math:`\Delta q` is the output of inverse kinematics; we divide it by dt to get a
-    commanded velocity.
-
-    In the first-order task dynamics, the error :math:`e(q)` is multiplied
-    by the task gain :math:`\alpha \in [0, 1]`. This gain can be 1.0 for
-    dead-beat control (*i.e.* converge as fast as possible), but might be
-    unstable as it neglects our first-order approximation. Lower values
-    cause slow down the task, similar to low-pass filtering.
-    """
+    """Abstract base class for kinematic tasks."""
 
     def __init__(
         self,
@@ -60,13 +34,13 @@ class Task(abc.ABC):
         """Constructor.
 
         Args:
-            cost: Cost vector with the same dimension as the error of the task.
-            gain: Task gain alpha in [0, 1] for additional low-pass filtering. Defaults
-                to 1.0 (no filtering) for dead-beat control.
-            lm_damping: Unitless scale of the Levenberg-Marquardt (only when the error
-            is large) regularization term, which helps when targets are infeasible.
-            Increase this value if the task is too jerky under unfeasible targets, but
-            beware that a larger damping slows down the task.
+            cost: Cost vector with the same dimension as the task error.
+            gain: Task gain alpha in [0, 1] for low-pass filtering. Defaults to 1.0
+                for dead-beat control (no filtering).
+            lm_damping: Scale of the Levenberg-Marquardt regularization term, which
+                helps when targets are infeasible. Increase this value if the task is
+                too jerky under unfeasible targets, but be cautious as larger damping
+                slows down the task.
         """
         if not 0.0 <= gain <= 1.0:
             raise InvalidGain("`gain` must be in the range [0, 1]")
@@ -80,7 +54,28 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def compute_error(self, configuration: Configuration) -> np.ndarray:
-        """Compute the task error at the current configuration.
+        r"""Compute the task error at the current configuration.
+
+        The error function :math:`e(q) \in \mathbb{R}^{k}` is the quantity that
+        the task aims to drive to zero (:math:`k` is the dimension of the task).
+        It appears in the first-order task dynamics:
+
+        .. math::
+
+            J(q) \Delta q = -\alpha e(q)
+
+        The Jacobian matrix :math:`J(q) \in \mathbb{R}^{k \times n_v}`, with
+        :math:`n_v` the dimension of the robot's tangent space, is the
+        derivative of the task error :math:`e(q)` with respect to the
+        configuration :math:`q \in \mathbb{R}^{n_q}`. This Jacobian is
+        implemented in :func:`Task.compute_jacobian`. The configuration
+        displacement :math:`\Delta q` is the output of inverse kinematics.
+
+        In the first-order task dynamics, the error :math:`e(q)` is multiplied
+        by the task gain :math:`\alpha \in [0, 1]`. This gain can be 1.0 for
+        dead-beat control (*i.e.* converge as fast as possible), but might be
+        unstable as it neglects our first-order approximation. Lower values
+        cause the task to slow down, similar to low-pass filtering.
 
         Args:
             configuration: Robot configuration :math:`q`.
@@ -92,13 +87,18 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
-        """Compute the task Jacobian at the current configuration.
+        r"""Compute the task Jacobian at the current configuration.
+
+        The task Jacobian :math:`J(q) \in \mathbb{R}^{k \times n_v}` is the first order
+        derivative of the error :math:`e(q) \in \mathbb{R}^{k}` that defines the task,
+        with :math:`k` the dimension of the task and :math:`n_v` the dimension of the
+        robot's tangent space.
 
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Task jacobian :math:`J(q)`.
+            Task Jacobian :math:`J(q)`.
         """
         raise NotImplementedError
 
@@ -114,7 +114,9 @@ class Task(abc.ABC):
 
         The weight matrix :math:`W \in \mathbb{R}^{k \times k}` weights and
         normalizes task coordinates to the same unit. The unit of the overall
-        contribution is [cost]^2.
+        contribution is [cost]^2. The configuration displacement :math:`\Delta
+        q` is the output of inverse kinematics (we divide it by dt to get a
+        commanded velocity).
 
         Args:
             configuration: Robot configuration :math:`q`.
