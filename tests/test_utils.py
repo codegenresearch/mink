@@ -139,6 +139,7 @@ class TestUtils(absltest.TestCase):
             </body>
             <body name="b7" pos="4 4 4">
               <joint type="free"/>
+              <geom name="b7/g1" type="sphere" size=".1" mass=".1"/>
             </body>
           </worldbody>
         </mujoco>
@@ -156,12 +157,14 @@ class TestUtils(absltest.TestCase):
         # Test for a body with no children
         b7_id = model.body("b7").id
         actual_geom_ids = set(utils.get_subtree_geom_ids(model, b7_id))
-        self.assertSetEqual(actual_geom_ids, set())
+        geom_names = ["b7/g1"]
+        expected_geom_ids = {model.geom(g).id for g in geom_names}
+        self.assertSetEqual(actual_geom_ids, expected_geom_ids)
 
         # Test for the root body
         root_id = model.body(0).id
         actual_geom_ids = set(utils.get_subtree_geom_ids(model, root_id))
-        geom_names = ["b1/g1", "b1/g2", "b2/g1", "b3/g1", "b4/g1", "b5/g1", "b6/g1"]
+        geom_names = ["b1/g1", "b1/g2", "b2/g1", "b3/g1", "b4/g1", "b5/g1", "b6/g1", "b7/g1"]
         expected_geom_ids = {model.geom(g).id for g in geom_names}
         self.assertSetEqual(actual_geom_ids, expected_geom_ids)
 
@@ -195,6 +198,7 @@ class TestUtils(absltest.TestCase):
             </body>
             <body name="b7" pos="4 4 4">
               <joint type="free"/>
+              <geom name="b7/g1" type="sphere" size=".1" mass=".1"/>
             </body>
           </worldbody>
         </mujoco>
