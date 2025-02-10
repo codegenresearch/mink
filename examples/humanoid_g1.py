@@ -20,20 +20,19 @@ if __name__ == "__main__":
     feet = ["right_foot", "left_foot"]
     hands = ["right_palm", "left_palm"]
 
-    # Define the tasks.
+    # Initialize tasks.
     tasks = [
-        pelvis_orientation_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="pelvis",
             frame_type="body",
             position_cost=0.0,
             orientation_cost=10.0,
         ),
-        posture_task := mink.PostureTask(model, cost=1.0),
-        com_task := mink.ComTask(cost=200.0),
+        mink.PostureTask(model, cost=1.0),
+        mink.ComTask(cost=200.0),
     ]
 
-    # Initialize tasks for each foot.
-    feet_tasks = []
+    # Add tasks for each foot.
     for foot in feet:
         task = mink.FrameTask(
             frame_name=foot,
@@ -42,11 +41,9 @@ if __name__ == "__main__":
             orientation_cost=10.0,
             lm_damping=1.0,
         )
-        feet_tasks.append(task)
-    tasks.extend(feet_tasks)
+        tasks.append(task)
 
-    # Initialize tasks for each hand.
-    hand_tasks = []
+    # Add tasks for each hand.
     for hand in hands:
         task = mink.FrameTask(
             frame_name=hand,
@@ -55,8 +52,7 @@ if __name__ == "__main__":
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        hand_tasks.append(task)
-    tasks.extend(hand_tasks)
+        tasks.append(task)
 
     # Get the mocap IDs for the center of mass and feet/hands.
     com_mid = model.body("com_target").mocapid[0]
@@ -76,8 +72,8 @@ if __name__ == "__main__":
 
         # Initialize to the home keyframe.
         configuration.update_from_keyframe("stand")
-        posture_task.set_target_from_configuration(configuration)
-        pelvis_orientation_task.set_target_from_configuration(configuration)
+        tasks[1].set_target_from_configuration(configuration)  # Posture task
+        tasks[0].set_target_from_configuration(configuration)  # Pelvis orientation task
 
         # Initialize mocap bodies at their respective sites.
         for hand, foot in zip(hands, feet):
@@ -91,8 +87,8 @@ if __name__ == "__main__":
         # Main loop.
         while viewer.is_running():
             # Update task targets.
-            com_task.set_target(data.mocap_pos[com_mid])
-            for i, (hand_task, foot_task) in enumerate(zip(hand_tasks, feet_tasks)):
+            tasks[2].set_target(data.mocap_pos[com_mid])  # COM task
+            for i, (hand_task, foot_task) in enumerate(zip(tasks[4:], tasks[3:3+len(feet)])):
                 foot_task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
                 hand_task.set_target(mink.SE3.from_mocap_id(data, hands_mid[i]))
 
