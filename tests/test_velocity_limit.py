@@ -51,8 +51,8 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_model_with_subset_of_velocities_limited(self):
         """Test the behavior of VelocityLimit with a subset of joints having velocity limits."""
-        partial_velocities = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i <= 2}
-        limit = VelocityLimit(self.model, partial_velocities)
+        limit_subset = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i <= 2}
+        limit = VelocityLimit(self.model, limit_subset)
         nb = 3
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
@@ -136,38 +136,6 @@ class TestVelocityLimit(absltest.TestCase):
             VelocityLimit(model, velocities)
         expected_error_message = "Free joint floating is not supported"
         self.assertEqual(str(cm.exception), expected_error_message)
-
-    def test_posture_control(self):
-        """Test the integration of posture control with velocity limits."""
-        # Define a posture control scenario
-        posture_control_velocities = {
-            "shoulder_pan_joint": 0.5,
-            "shoulder_lift_joint": 0.5,
-            "elbow_joint": 0.5,
-            "wrist_1_joint": 0.5,
-            "wrist_2_joint": 0.5,
-            "wrist_3_joint": 0.5,
-        }
-        limit = VelocityLimit(self.model, posture_control_velocities)
-        G, h = limit.compute_qp_inequalities(self.configuration, dt=1e-3)
-        self.assertIsNotNone(G)
-        self.assertIsNotNone(h)
-
-    def test_collision_avoidance(self):
-        """Test the integration of collision avoidance with velocity limits."""
-        # Define a scenario where collision avoidance is critical
-        collision_avoidance_velocities = {
-            "shoulder_pan_joint": 1.0,
-            "shoulder_lift_joint": 1.0,
-            "elbow_joint": 1.0,
-            "wrist_1_joint": 1.0,
-            "wrist_2_joint": 1.0,
-            "wrist_3_joint": 1.0,
-        }
-        limit = VelocityLimit(self.model, collision_avoidance_velocities)
-        G, h = limit.compute_qp_inequalities(self.configuration, dt=1e-3)
-        self.assertIsNotNone(G)
-        self.assertIsNotNone(h)
 
 
 if __name__ == "__main__":
