@@ -11,7 +11,7 @@ from mink.lie.se3 import SE3
 
 
 class TestUtils(absltest.TestCase):
-    """Test utility functions with gravity compensation and subtree handling."""
+    """Test utility functions."""
 
     @classmethod
     def setUpClass(cls):
@@ -21,7 +21,7 @@ class TestUtils(absltest.TestCase):
         self.data = mujoco.MjData(self.model)
         self.q0 = self.data.qpos.copy()
 
-    def test_custom_configuration_vector_throws_error_if_keyframe_invalid(self):
+    def test_custom_configuration_vector_invalid_keyframe(self):
         with self.assertRaises(InvalidKeyframe):
             utils.custom_configuration_vector(self.model, "stand123")
 
@@ -29,7 +29,7 @@ class TestUtils(absltest.TestCase):
         q = utils.custom_configuration_vector(self.model, "stand")
         np.testing.assert_allclose(q, self.model.key("stand").qpos)
 
-    def test_custom_configuration_vector_raises_error_if_jnt_shape_invalid(self):
+    def test_custom_configuration_vector_invalid_joint_shape(self):
         with self.assertRaises(ValueError):
             utils.custom_configuration_vector(
                 self.model,
@@ -49,7 +49,7 @@ class TestUtils(absltest.TestCase):
             q_expected[qid] = value
         np.testing.assert_array_almost_equal(q, q_expected)
 
-    def test_move_mocap_to_frame_throws_error_if_body_not_mocap(self):
+    def test_move_mocap_to_frame_invalid_body(self):
         with self.assertRaises(InvalidMocapBody):
             utils.move_mocap_to_frame(
                 self.model,
@@ -65,14 +65,14 @@ class TestUtils(absltest.TestCase):
           <worldbody>
             <body pos=".1 -.1 0">
               <joint type="free" name="floating"/>
-              <geom type="sphere" size=".1" mass=".1"/>
+              <geom type="sphere" size=".1" mass="0.1"/>
               <body name="test">
                 <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>
-                <geom type="sphere" size=".1" mass=".1"/>
+                <geom type="sphere" size=".1" mass="0.1"/>
               </body>
             </body>
             <body name="mocap" mocap="true" pos=".5 1 5" quat="1 1 0 0">
-              <geom type="sphere" size=".1" mass=".1"/>
+              <geom type="sphere" size=".1" mass="0.1"/>
             </body>
           </worldbody>
         </mujoco>
@@ -86,10 +86,8 @@ class TestUtils(absltest.TestCase):
         mujoco.mju_mat2Quat(body_quat, data.body("test").xmat)
 
         # Initially not the same.
-        with self.assertRaises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
-        with self.assertRaises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
+        np.testing.assert_raises(AssertionError, np.testing.assert_allclose, data.body("mocap").xpos, body_pos)
+        np.testing.assert_raises(AssertionError, np.testing.assert_allclose, data.body("mocap").xquat, body_quat)
 
         utils.move_mocap_to_frame(model, data, "mocap", "test", "body")
         mujoco.mj_forward(model, data)
@@ -109,19 +107,19 @@ class TestUtils(absltest.TestCase):
           <worldbody>
             <body name="b1" pos=".1 -.1 0">
               <joint type="free"/>
-              <geom name="b1/g1" type="sphere" size=".1" mass=".1"/>
-              <geom name="b1/g2" type="sphere" size=".1" mass=".1" pos="0 0 .5"/>
+              <geom name="b1/g1" type="sphere" size=".1" mass="0.1"/>
+              <geom name="b1/g2" type="sphere" size=".1" mass="0.1" pos="0 0 .5"/>
               <body name="b2">
                 <joint type="hinge" range="0 1.57" limited="true"/>
-                <geom name="b2/g1" type="sphere" size=".1" mass=".1"/>
+                <geom name="b2/g1" type="sphere" size=".1" mass="0.1"/>
               </body>
             </body>
             <body name="b3" pos="1 1 1">
               <joint type="free"/>
-              <geom name="b3/g1" type="sphere" size=".1" mass=".1"/>
+              <geom name="b3/g1" type="sphere" size=".1" mass="0.1"/>
               <body name="b4">
                 <joint type="hinge" range="0 1.57" limited="true"/>
-                <geom name="b4/g1" type="sphere" size=".1" mass=".1"/>
+                <geom name="b4/g1" type="sphere" size=".1" mass="0.1"/>
               </body>
             </body>
           </worldbody>
@@ -140,10 +138,10 @@ class TestUtils(absltest.TestCase):
           <worldbody>
             <body name="b1" pos=".1 -.1 0">
               <joint type="free"/>
-              <geom type="sphere" size=".1" mass=".1"/>
+              <geom type="sphere" size=".1" mass="0.1"/>
               <body name="b2">
                 <joint type="hinge" range="0 1.57" limited="true"/>
-                <geom type="sphere" size=".1" mass=".1"/>
+                <geom type="sphere" size=".1" mass="0.1"/>
               </body>
             </body>
           </worldbody>
@@ -171,10 +169,10 @@ class TestUtils(absltest.TestCase):
           <worldbody>
             <body name="b1" pos=".1 -.1 0">
               <joint type="free"/>
-              <geom type="sphere" size=".1" mass=".1"/>
+              <geom type="sphere" size=".1" mass="0.1"/>
               <body name="b2">
                 <joint type="hinge" range="0 1.57" limited="true"/>
-                <geom type="sphere" size=".1" mass=".1"/>
+                <geom type="sphere" size=".1" mass="0.1"/>
               </body>
             </body>
           </worldbody>
@@ -197,6 +195,7 @@ class TestUtils(absltest.TestCase):
           <worldbody>
             <body name="b1" pos=".1 -.1 0">
               <joint type="free"/>
+              <geom type="sphere" size=".1" mass="0.1"/>
               <body name="b2">
                 <joint type="hinge" range="0 1.57" limited="true"/>
               </body>
