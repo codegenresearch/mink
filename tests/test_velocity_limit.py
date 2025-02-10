@@ -49,8 +49,12 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_model_with_subset_of_velocities_limited(self):
         """Test the behavior of VelocityLimit with a subset of joints having velocity limits."""
-        subset_velocities = {name: vel for name, vel in list(self.velocities.items())[:3]}
-        limit = VelocityLimit(self.model, subset_velocities)
+        limit_subset = {}
+        for i, (name, vel) in enumerate(self.velocities.items()):
+            if i >= 3:
+                break
+            limit_subset[name] = vel
+        limit = VelocityLimit(self.model, limit_subset)
         nb = 3
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
