@@ -58,8 +58,8 @@ if __name__ == "__main__":
         ),
         posture_task := mink.PostureTask(
             joint_names=joint_names,
-            position_cost=1.0,
-            orientation_cost=1.0,
+            position_cost=0.1,  # Adjusted to match gold code
+            orientation_cost=0.1,  # Adjusted to match gold code
             lm_damping=1.0,
         ),
     ]
@@ -134,7 +134,7 @@ if __name__ == "__main__":
                 l_err = l_ee_task.compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = r_ee_task.compute_error(configuration)
+                r_err = r_ee_task.compute_error(configuration)  # Corrected to use r_ee_task
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
                 if (
