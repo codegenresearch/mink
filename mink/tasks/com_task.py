@@ -14,10 +14,15 @@ from .task import Task
 
 
 class ComTask(Task):
-    """Regulate the center-of-mass (CoM) of a robot.
+    """Regulate the center-of-mass (CoM) position of a robot towards a desired target.
+
+    This task ensures that the robot's center of mass aligns with a specified target
+    position in the world frame. The task is defined by a cost vector that can be
+    uniform across all CoM coordinates or specific to each coordinate.
 
     Attributes:
-        target_com: Target position of the CoM.
+        k: Dimensionality of the CoM position (always 3 for 3D space).
+        target_com: Target position of the CoM in the world frame.
     """
 
     k: int = 3
@@ -29,18 +34,36 @@ class ComTask(Task):
         gain: float = 1.0,
         lm_damping: float = 0.0,
     ):
+        """Initialize the CoM task.
+
+        Args:
+            cost: Cost vector for the CoM task. Can be a scalar (identical cost for all
+                coordinates) or a vector of shape (3,) for individual costs per coordinate.
+            gain: Proportional gain for the task.
+            lm_damping: Damping term for the Levenberg-Marquardt algorithm.
+        """
         super().__init__(cost=np.zeros((self.k,)), gain=gain, lm_damping=lm_damping)
         self.target_com = None
 
         self.set_cost(cost)
 
     def set_cost(self, cost: npt.ArrayLike) -> None:
+        """Set a new cost for all CoM coordinates.
+
+        Args:
+            cost: Cost vector for the CoM task. Can be a scalar (identical cost for all
+                coordinates) or a vector of shape (3,) for individual costs per coordinate.
+
+        Raises:
+            TaskDefinitionError: If the cost vector does not have the correct shape or
+                contains negative values.
+        """
         cost = np.atleast_1d(cost)
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"(aka identical cost for all coordinates) or ({self.k},). "
-                f"Got {cost.shape}"
+                f"(identical cost for all coordinates) or ({self.k},) for individual "
+                f"costs per coordinate. Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
             raise TaskDefinitionError(f"{self.__class__.__name__} cost must be >= 0")
@@ -51,9 +74,12 @@ class ComTask(Task):
 
         Args:
             target_com: Desired center-of-mass position in the world frame.
+
+        Raises:
+            InvalidTarget: If the target CoM position does not have the correct shape.
         """
         target_com = np.atleast_1d(target_com)
-        if target_com.ndim != 1 or target_com.shape[0] != (self.k):
+        if target_com.ndim != 1 or target_com.shape[0] != self.k:
             raise InvalidTarget(
                 f"Expected target CoM to have shape ({self.k},) but got "
                 f"{target_com.shape}"
@@ -63,32 +89,55 @@ class ComTask(Task):
     def set_target_from_configuration(self, configuration: Configuration) -> None:
         """Set the target CoM from a given robot configuration.
 
+        The target CoM is set to the current CoM position of the robot as defined by the
+        provided configuration.
+
         Args:
             configuration: Robot configuration :math:`q`.
         """
         self.set_target(configuration.data.subtree_com[1])
 
     def compute_error(self, configuration: Configuration) -> np.ndarray:
-        """Compute the CoM task error.
+        r"""Compute the CoM task error.
+
+        The error is defined as the difference between the target CoM position and the
+        current CoM position:
+
+        .. math::
+
+            e(q) = c^* - c
+
+        where :math:`c^*` is the target CoM position and :math:`c` is the current CoM
+        position.
 
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
             Center-of-mass task error vector :math:`e(q)`.
+
+        Raises:
+            TargetNotSet: If the target CoM position has not been set.
         """
         if self.target_com is None:
             raise TargetNotSet(self.__class__.__name__)
         return configuration.data.subtree_com[1] - self.target_com
 
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
-        """Compute the CoM task Jacobian.
+        r"""Compute the CoM task Jacobian.
+
+        The task Jacobian :math:`J(q) \in \mathbb{R}^{3 \times n_v}` is the derivative
+        of the CoM position with respect to the current configuration :math:`q`. It
+        describes how small changes in the configuration affect the CoM position.
 
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
             Center-of-mass task jacobian :math:`J(q)`.
+
+        Raises:
+            TargetNotSet: If the target CoM position has not been set.
         """
         if self.target_com is None:
             raise TargetNotSet(self.__class__.__name__)
