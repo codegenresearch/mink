@@ -67,7 +67,7 @@ class PostureTask(Task):
 
         # Determine the indices of the free joint dimensions, if any
         _, v_ids_or_none = get_freejoint_dims(model)
-        self._v_ids = np.asarray(v_ids_or_none) if v_ids_or_none else None
+        self._v_ids = np.asarray(v_ids_or_none) if v_ids_or_none is not None else None
 
         # Set the number of degrees of freedom and total number of joint angles
         self.k = model.nv
@@ -84,9 +84,7 @@ class PostureTask(Task):
         """
         target_q = np.atleast_1d(target_q)
         if target_q.ndim != 1 or target_q.shape[0] != self.nq:
-            raise InvalidTarget(
-                f"Expected target posture to have shape ({self.nq},) but got {target_q.shape}"
-            )
+            raise InvalidTarget(f"Expected target posture shape ({self.nq},), got {target_q.shape}")
         self.target_q = target_q.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
