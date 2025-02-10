@@ -71,7 +71,7 @@ if __name__ == "__main__":
     model = construct_model()
     configuration = mink.Configuration(model)
 
-    # Create tasks
+    # Define tasks
     end_effector_task = mink.FrameTask(
         frame_name="attachment_site",
         frame_type="site",
