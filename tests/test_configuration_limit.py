@@ -16,12 +16,7 @@ from mink.utils import get_freejoint_dims
 
 
 class TestConfigurationLimit(absltest.TestCase):
-    """Test suite for the ConfigurationLimit class.
-
-    This class contains several test methods to verify the functionality of the
-    ConfigurationLimit class, including initialization, dimensionality checks,
-    and behavior with different model configurations.
-    """
+    """Test configuration limit."""
 
     @classmethod
     def setUpClass(cls):
@@ -56,8 +51,8 @@ class TestConfigurationLimit(absltest.TestCase):
     def test_indices(self):
         """Test that the indices of the velocity-limited joints are correct."""
         limit = ConfigurationLimit(self.model)
-        expected_joint_indices = np.arange(6, self.model.nv)
-        self.assertTrue(np.allclose(limit.indices, expected_joint_indices))
+        expected = np.arange(6, self.model.nv)
+        self.assertTrue(np.allclose(limit.indices, expected))
 
     def test_model_with_no_limit(self):
         """Test behavior with a model that has no velocity limits."""
@@ -107,6 +102,8 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+        self.assertTrue(np.allclose(limit.lower, np.array([0.0])))
+        self.assertTrue(np.allclose(limit.upper, np.array([1.57])))
 
     def test_freejoint_ignored(self):
         """Test that free joints are ignored in the velocity limits."""
@@ -131,6 +128,8 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+        self.assertTrue(np.allclose(limit.lower, np.array([0.0])))
+        self.assertTrue(np.allclose(limit.upper, np.array([1.57])))
 
     def test_far_from_limit(self, tol=1e-10):
         """Test that the limit has no effect when the configuration is far away."""
