@@ -31,18 +31,18 @@ def move_mocap_to_frame(
     if mocap_id == -1:
         raise InvalidMocapBody(mocap_name, model)
 
-    frame_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
-    if frame_id == -1:
+    obj_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
+    if obj_id == -1:
         raise ValueError(f"Frame '{frame_name}' of type '{frame_type}' not found in the model.")
 
-    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[frame_id]
-    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
+    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
+    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
 
     data.mocap_pos[mocap_id] = xpos.copy()
     mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
 
 
-def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
+def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
     """Retrieve indices of all floating joint configuration and tangent spaces.
 
     Args:
@@ -51,8 +51,8 @@ def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
     Returns:
         A (q_ids, v_ids) pair containing all floating joint indices in the configuration and tangent spaces respectively.
     """
-    q_ids: List[int] = []
-    v_ids: List[int] = []
+    q_ids: list[int] = []
+    v_ids: list[int] = []
     for j in range(model.njnt):
         if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE:
             qadr = model.jnt_qposadr[j]
@@ -104,20 +104,7 @@ def custom_configuration_vector(
     return q
 
 
-def _get_immediate_children(model: mujoco.MjModel, body_id: int) -> List[int]:
-    """Get immediate children of a given body.
-
-    Args:
-        model: Mujoco model.
-        body_id: ID of the body.
-
-    Returns:
-        List of immediate child body IDs.
-    """
-    return [i for i in range(model.nbody) if model.body_parentid[i] == body_id]
-
-
-def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
     """Collect all body IDs in the subtree starting from a given body.
 
     Args:
@@ -127,16 +114,14 @@ def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     Returns:
         List of body IDs in the subtree.
     """
-    stack = [body_id]
-    subtree_bodies = []
-    while stack:
-        current_body_id = stack.pop()
-        subtree_bodies.append(current_body_id)
-        stack.extend(_get_immediate_children(model, current_body_id))
+    subtree_bodies = [body_id]
+    for i in range(model.nbody):
+        if model.body_parentid[i] == body_id:
+            subtree_bodies.extend(get_subtree_body_ids(model, i))
     return subtree_bodies
 
 
-def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
     """Collect all geom IDs in the subtree starting from a given body.
 
     Args:
@@ -146,18 +131,15 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     Returns:
         List of geom IDs in the subtree.
     """
-    stack = [body_id]
     subtree_geoms = []
-    while stack:
-        current_body_id = stack.pop()
-        geom_start = model.body_geomadr[current_body_id]
-        geom_end = geom_start + model.body_geomnum[current_body_id]
+    for body in get_subtree_body_ids(model, body_id):
+        geom_start = model.body_geomadr[body]
+        geom_end = geom_start + model.body_geomnum[body]
         subtree_geoms.extend(range(geom_start, geom_end))
-        stack.extend(_get_immediate_children(model, current_body_id))
     return subtree_geoms
 
 
-def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
     """Retrieve all geom IDs associated with a specific body.
 
     Args:
@@ -197,7 +179,7 @@ def apply_gravity_compensation(
     return data.qfrc_bias.copy()
 
 
-def get_joint_limits(model: mujoco.MjModel) -> Dict[str, Tuple[Optional[float], Optional[float]]]:
+def get_joint_limits(model: mujoco.MjModel) -> dict[str, tuple[Optional[float], Optional[float]]]:
     """Retrieve the limits for each joint in the model.
 
     Args:
