@@ -122,11 +122,13 @@ class TestGroupSpecificOperations(absltest.TestCase):
         rotation_matrix = T.as_matrix()[:3, :3]
         assert_transforms_close(T, SE3.from_rotation_matrix(rotation_matrix))
 
+    @parameterized.named_parameters(
+        ("SO3", SO3),
+    )
     def test_so3_rpy_bijective(self, group: Type[MatrixLieGroup]):
         """Test SO3 RPY bijectivity."""
-        if group is SO3:
-            T = SO3.sample_uniform()
-            assert_transforms_close(T, SO3.from_rpy_radians(*T.as_rpy_radians()))
+        T = SO3.sample_uniform()
+        assert_transforms_close(T, SO3.from_rpy_radians(*T.as_rpy_radians()))
 
     def test_so3_copy(self):
         """Test SO3 copy method."""
