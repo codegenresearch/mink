@@ -46,9 +46,7 @@ class Configuration:
         model: mujoco.MjModel,
         q: Optional[np.ndarray] = None,
     ):
-        """Constructor.
-
-        Initializes the Configuration with a model and an optional configuration vector.
+        """Initialize the Configuration with a model and an optional configuration vector.
 
         Args:
             model: Mujoco model.
@@ -60,10 +58,10 @@ class Configuration:
         self.update(q=q)
 
     def update(self, q: Optional[np.ndarray] = None) -> None:
-        """Run forward kinematics.
+        """Run forward kinematics to update the state.
 
-        Updates the state by running forward kinematics. If a configuration vector `q`
-        is provided, it overrides the internal data.qpos before performing kinematics.
+        If a configuration vector `q` is provided, it overrides the internal data.qpos
+        before performing kinematics.
 
         Args:
             q: Optional configuration vector to override the internal data.qpos with.
@@ -84,11 +82,11 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            InvalidKeyframe: If no keyframe with the specified name is found in the model.
+            ValueError: If no keyframe with the specified name is found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise exceptions.InvalidKeyframe(key_name, self.model)
+            raise ValueError(f"No keyframe named '{key_name}' found in the model.")
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
