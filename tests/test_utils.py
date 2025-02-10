@@ -141,6 +141,9 @@ class TestUtils(absltest.TestCase):
               <joint type="free"/>
               <geom name="b7/g1" type="sphere" size=".1" mass=".1"/>
             </body>
+            <body name="b8" pos="5 5 5">
+              <joint type="free"/>
+            </body>
           </worldbody>
         </mujoco>
         """
@@ -159,6 +162,12 @@ class TestUtils(absltest.TestCase):
         actual_geom_ids = set(utils.get_subtree_geom_ids(model, b7_id))
         geom_names = ["b7/g1"]
         expected_geom_ids = {model.geom(g).id for g in geom_names}
+        self.assertSetEqual(actual_geom_ids, expected_geom_ids)
+
+        # Test for a body with no geometries
+        b8_id = model.body("b8").id
+        actual_geom_ids = set(utils.get_subtree_geom_ids(model, b8_id))
+        expected_geom_ids = set()
         self.assertSetEqual(actual_geom_ids, expected_geom_ids)
 
         # Test for the root body
@@ -200,6 +209,9 @@ class TestUtils(absltest.TestCase):
               <joint type="free"/>
               <geom name="b7/g1" type="sphere" size=".1" mass=".1"/>
             </body>
+            <body name="b8" pos="5 5 5">
+              <joint type="free"/>
+            </body>
           </worldbody>
         </mujoco>
         """
@@ -220,10 +232,17 @@ class TestUtils(absltest.TestCase):
         expected_body_ids = {model.body(g).id for g in body_names}
         self.assertSetEqual(actual_body_ids, expected_body_ids)
 
+        # Test for a body with no geometries
+        b8_id = model.body("b8").id
+        actual_body_ids = set(utils.get_subtree_body_ids(model, b8_id))
+        body_names = ["b8"]
+        expected_body_ids = {model.body(g).id for g in body_names}
+        self.assertSetEqual(actual_body_ids, expected_body_ids)
+
         # Test for the root body
         root_id = model.body(0).id
         actual_body_ids = set(utils.get_subtree_body_ids(model, root_id))
-        body_names = ["b1", "b2", "b3", "b4", "b5", "b6", "b7"]
+        body_names = ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"]
         expected_body_ids = {model.body(g).id for g in body_names}
         self.assertSetEqual(actual_body_ids, expected_body_ids)
 
