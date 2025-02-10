@@ -100,13 +100,13 @@ if __name__ == "__main__":
         dt = rate.period
         t = 0.0
 
-        # Determine tasks based on fix_base state.
-        tasks_to_use = tasks + [damping_task] if key_callback.fix_base else tasks
-
         while viewer.is_running():
             # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
             end_effector_task.set_target(T_wt)
+
+            # Determine tasks based on fix_base state.
+            tasks_to_use = tasks + [damping_task] if key_callback.fix_base else tasks
 
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
@@ -117,7 +117,9 @@ if __name__ == "__main__":
 
                 # Exit condition.
                 err = end_effector_task.compute_error(configuration)
-                if np.linalg.norm(err[:3]) <= pos_threshold and np.linalg.norm(err[3:]) <= ori_threshold:
+                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
+                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
+                if pos_achieved and ori_achieved:
                     break
 
             if not key_callback.pause:
