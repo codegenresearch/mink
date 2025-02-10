@@ -68,8 +68,7 @@ class Configuration:
         """
         if q is not None:
             self.data.qpos = q
-        # The minimal function call required to get updated frame transforms is
-        # mj_kinematics. An extra call to mj_comPos is required for updated Jacobians.
+        # Perform forward kinematics and update Jacobians.
         mujoco.mj_kinematics(self.model, self.data)
         mujoco.mj_comPos(self.model, self.data)
 
@@ -80,11 +79,11 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            InvalidKeyframe: if no key named `key` was found in the model.
+            ValueError: if no key named `key` was found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise exceptions.InvalidKeyframe(key_name, self.model)
+            raise ValueError(f"No keyframe named '{key_name}' found in the model.")
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
@@ -224,7 +223,7 @@ class Configuration:
         return q
 
     def integrate_inplace(self, velocity: np.ndarray, dt: float) -> None:
-        """Integrate a velocity and update the current configuration inplace.
+        """Integrate a velocity and update the current configuration in-place.
 
         Args:
             velocity: The velocity in tangent space.
