@@ -4,7 +4,7 @@ import mujoco
 import numpy as np
 
 from ..configuration import Configuration
-from ..constants import qpos_width
+from ..constants import dof_width, qpos_width
 from .exceptions import LimitDefinitionError
 from .limit import Constraint, Limit
 
@@ -25,8 +25,13 @@ class ConfigurationLimit(Limit):
 
         Args:
             model: MuJoCo model.
-            gain: Gain factor in (0, 1] that determines how fast each joint is allowed to move towards the joint limits at each timestep. Values lower than 1 are safer but may make the joints move slowly.
-            min_distance_from_limits: Offset in meters (slide joints) or radians (hinge joints) to be added to the limits. Positive values decrease the range of motion, negative values increase it (i.e., negative values allow penetration).
+            gain: Gain factor in (0, 1] that determines how fast each joint is
+                allowed to move towards the joint limits at each timestep. Values lower
+                than 1 are safer but may make the joints move slowly.
+            min_distance_from_limits: Offset in meters (slide joints) or radians
+                (hinge joints) to be added to the limits. Positive values decrease the
+                range of motion, negative values increase it (i.e., negative values
+                allow penetration).
 
         Raises:
             LimitDefinitionError: If the gain is not in the range (0, 1].
@@ -36,21 +41,22 @@ class ConfigurationLimit(Limit):
                 f"{self.__class__.__name__} gain must be in the range (0, 1]"
             )
 
-        index_list: list[int] = []  # Indices of the degrees of freedom that are limited.
-        lower = np.full(model.nq, -mujoco.mjMAXVAL)
-        upper = np.full(model.nq, mujoco.mjMAXVAL)
+        dof_indices: list[int] = []  # Indices of the degrees of freedom that are limited.
+        lower = np.full(model.nq, -np.inf)
+        upper = np.full(model.nq, np.inf)
         for jnt in range(model.njnt):
             jnt_type = model.jnt_type[jnt]
             qpos_dim = qpos_width(jnt_type)
+            jnt_dim = dof_width(jnt_type)
             jnt_range = model.jnt_range[jnt]
             padr = model.jnt_qposadr[jnt]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE or not model.jnt_limited[jnt]:
                 continue  # Skip free joints and joints without limits.
             lower[padr : padr + qpos_dim] = jnt_range[0] + min_distance_from_limits
             upper[padr : padr + qpos_dim] = jnt_range[1] - min_distance_from_limits
-            index_list.extend(range(model.jnt_dofadr[jnt], model.jnt_dofadr[jnt] + qpos_dim))
+            dof_indices.extend(range(model.jnt_dofadr[jnt], model.jnt_dofadr[jnt] + jnt_dim))
 
-        self.indices = np.array(index_list)
+        self.indices = np.array(dof_indices)
         self.indices.setflags(write=False)
 
         dim = len(self.indices)
@@ -90,9 +96,6 @@ class ConfigurationLimit(Limit):
 
         if self.projection_matrix is None:
             return Constraint()
-
-        if configuration.q.size != self.model.nq:
-            raise ValueError("Configuration size does not match the model's number of joint positions.")
 
         # Calculate the maximum allowable change in position towards the upper limit.
         delta_q_max = np.zeros(self.model.nv)
