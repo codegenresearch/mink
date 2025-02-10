@@ -58,8 +58,8 @@ if __name__ == "__main__":
         ),
         posture_task := mink.PostureTask(
             joint_names=joint_names,
-            position_cost=0.1,  # Adjusted to match gold code
-            orientation_cost=0.1,  # Adjusted to match gold code
+            position_cost=0.01,  # Adjusted to match gold code
+            orientation_cost=0.01,  # Adjusted to match gold code
             lm_damping=1.0,
         ),
     ]
