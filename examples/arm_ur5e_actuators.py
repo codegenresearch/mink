@@ -8,17 +8,14 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "universal_robots_ur5e" / "scene.xml"
+_XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 
-def main():
+if __name__ == "__main__":
     # Load the model and data
-    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    ## =================== ##
-    ## Setup IK.
-    ## =================== ##
-
+    # Setup IK.
     configuration = mink.Configuration(model)
 
     # Define tasks
@@ -38,6 +35,12 @@ def main():
         (wrist_3_geoms, ["floor", "wall"]),
     ]
 
+    # Define configuration and collision avoidance limits
+    limits = [
+        mink.ConfigurationLimit(model=configuration.model),
+        mink.CollisionAvoidanceLimit(model=configuration.model, geom_pairs=collision_pairs),
+    ]
+
     # Define velocity limits
     max_velocities = {
         "shoulder_pan": np.pi,
@@ -48,13 +51,7 @@ def main():
         "wrist_3": np.pi,
     }
     velocity_limit = mink.VelocityLimit(model, max_velocities)
-
-    # Combine all limits
-    limits = [
-        mink.ConfigurationLimit(model=configuration.model),
-        mink.CollisionAvoidanceLimit(model=configuration.model, geom_pairs=collision_pairs),
-        velocity_limit,
-    ]
+    limits.append(velocity_limit)
 
     # IK settings
     solver = "quadprog"
@@ -86,7 +83,7 @@ def main():
             end_effector_task.set_target(T_wt)
 
             # Compute velocity and integrate into the next configuration
-            for _ in range(max_iters):
+            for i in range(max_iters):
                 vel = mink.solve_ik(
                     configuration, tasks, rate.dt, solver, damping=1e-3, limits=limits
                 )
@@ -104,6 +101,3 @@ def main():
             # Visualize at fixed FPS
             viewer.sync()
             rate.sleep()
-
-if __name__ == "__main__":
-    main()
