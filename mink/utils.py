@@ -34,41 +34,41 @@ def move_mocap_to_frame(
     if frame_type not in consts.SUPPORTED_FRAMES:
         raise ValueError(f"Unsupported frame type: {frame_type}")
 
-    obj_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
-    if obj_id == -1:
+    frame_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
+    if frame_id == -1:
         raise ValueError(f"Frame '{frame_name}' of type '{frame_type}' not found.")
 
-    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
-    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
+    frame_position = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[frame_id]
+    frame_orientation = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
 
-    data.mocap_pos[mocap_id] = xpos.copy()
-    mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
+    data.mocap_pos[mocap_id] = frame_position.copy()
+    mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], frame_orientation)
 
 
-def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
+def get_freejoint_indices(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
     """Get indices of all floating joints in configuration and tangent spaces.
 
     Args:
         model: Mujoco model.
 
     Returns:
-        Tuple of lists (q_ids, v_ids) for configuration and tangent space indices.
+        Tuple of lists (config_indices, tangent_indices) for configuration and tangent space indices.
     """
-    q_ids = []
-    v_ids = []
-    for j in range(model.njnt):
-        if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE:
-            qadr = model.jnt_qposadr[j]
-            vadr = model.jnt_dofadr[j]
-            q_ids.extend(range(qadr, qadr + 7))
-            v_ids.extend(range(vadr, vadr + 6))
-    return q_ids, v_ids
+    config_indices = []
+    tangent_indices = []
+    for joint_id in range(model.njnt):
+        if model.jnt_type[joint_id] == mujoco.mjtJoint.mjJNT_FREE:
+            config_start = model.jnt_qposadr[joint_id]
+            tangent_start = model.jnt_dofadr[joint_id]
+            config_indices.extend(range(config_start, config_start + 7))
+            tangent_indices.extend(range(tangent_start, tangent_start + 6))
+    return config_indices, tangent_indices
 
 
 def custom_configuration_vector(
     model: mujoco.MjModel,
     key_name: Optional[str] = None,
-    **kwargs,
+    **joint_values,
 ) -> np.ndarray:
     """Create a configuration vector with specific joint values.
 
@@ -76,7 +76,7 @@ def custom_configuration_vector(
         model: Mujoco model.
         key_name: Optional keyframe name to initialize the configuration vector.
             If None, the default pose `qpos0` is used.
-        **kwargs: Custom values for joint coordinates.
+        **joint_values: Custom values for joint coordinates.
 
     Returns:
         Configuration vector with specified joint values.
@@ -94,16 +94,16 @@ def custom_configuration_vector(
     else:
         mujoco.mj_resetData(model, data)
 
-    q = data.qpos.copy()
-    for name, value in kwargs.items():
-        jid = model.joint(name).id
-        jnt_dim = consts.qpos_width(model.jnt_type[jid])
-        qid = model.jnt_qposadr[jid]
-        value = np.atleast_1d(value)
-        if value.shape != (jnt_dim,):
-            raise ValueError(f"Joint {name} should have a qpos value of shape {jnt_dim,}")
-        q[qid : qid + jnt_dim] = value
-    return q
+    configuration = data.qpos.copy()
+    for joint_name, value in joint_values.items():
+        joint_id = model.joint(joint_name).id
+        joint_dim = consts.qpos_width(model.jnt_type[joint_id])
+        joint_start = model.jnt_qposadr[joint_id]
+        value_array = np.atleast_1d(value)
+        if value_array.shape != (joint_dim,):
+            raise ValueError(f"Joint {joint_name} should have a qpos value of shape {joint_dim,}")
+        configuration[joint_start : joint_start + joint_dim] = value_array
+    return configuration
 
 
 def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
@@ -172,22 +172,22 @@ def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
 def apply_gravity_compensation(
     model: mujoco.MjModel,
     data: mujoco.MjData,
-    q: np.ndarray,
-    qdot: np.ndarray,
+    configuration: np.ndarray,
+    velocity: np.ndarray,
 ) -> np.ndarray:
     """Compute gravity compensation torques.
 
     Args:
         model: Mujoco model.
         data: Mujoco data.
-        q: Configuration vector.
-        qdot: Velocity vector.
+        configuration: Configuration vector.
+        velocity: Velocity vector.
 
     Returns:
         Gravity compensation torques.
     """
-    data.qpos[:] = q
-    data.qvel[:] = qdot
+    data.qpos[:] = configuration
+    data.qvel[:] = velocity
     mujoco.mj_kinematics(model, data)
     mujoco.mj_comPos(model, data)
     mujoco.mj_rneUnconstrained(model, data)
