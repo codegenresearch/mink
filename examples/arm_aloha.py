@@ -1,10 +1,8 @@
 from pathlib import Path
-
 import mujoco
 import mujoco.viewer
 import numpy as np
 from loop_rate_limiters import RateLimiter
-
 import mink
 
 _HERE = Path(__file__).parent
@@ -30,8 +28,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = []
-    velocity_limits = {}
+    joint_names: list[str] = []
+    velocity_limits: dict[str, float] = {}
     for prefix in ["left", "right"]:
         for n in _JOINT_NAMES:
             name = f"{prefix}/{n}"
@@ -63,6 +61,8 @@ if __name__ == "__main__":
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
+            velocity_cost=1.0,
+            acceleration_cost=1.0,
         ),
     ]
 
@@ -75,7 +75,8 @@ if __name__ == "__main__":
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),
-        (l_wrist_geoms + r_wrist_geoms, frame_geoms + ["table"]),
+        (l_wrist_geoms, frame_geoms + ["table"]),
+        (r_wrist_geoms, frame_geoms + ["table"]),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
