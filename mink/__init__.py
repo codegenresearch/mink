@@ -1,4 +1,9 @@
-"""mink: MuJoCo inverse kinematics."""
+"""mink: MuJoCo inverse kinematics.
+
+This module provides tools for performing inverse kinematics on MuJoCo models,
+including tasks for different frames, configuration limits, and utilities for
+manipulating the model and its components.
+"""
 
 from .configuration import Configuration
 from .constants import (
@@ -39,9 +44,10 @@ from .utils import (
     custom_configuration_vector,
     get_body_geom_ids,
     get_freejoint_dims,
-    get_subtree_body_ids,
     get_subtree_geom_ids,
     move_mocap_to_frame,
+    set_mocap_pose_from_frame,
+    pose_from_mocap,
 )
 
 __all__ = (
@@ -82,5 +88,4 @@ __all__ = (
     "move_mocap_to_frame",
     "get_subtree_geom_ids",
     "get_body_geom_ids",
-    "get_subtree_body_ids",
 )
