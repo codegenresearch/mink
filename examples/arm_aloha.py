@@ -30,26 +30,35 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = [f"{prefix}/{n}" for prefix in ["left", "right"] for n in _JOINT_NAMES]
-    velocity_limits = {name: _VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
+    joint_names: list[str] = []
+    velocity_limits: dict[str, float] = {}
+    for prefix in ["left", "right"]:
+        for n in _JOINT_NAMES:
+            name = f"{prefix}/{n}"
+            joint_names.append(name)
+            velocity_limits[name] = _VELOCITY_LIMITS[n]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
     configuration = mink.Configuration(model)
 
     # Define tasks for left and right end-effectors.
-    l_ee_task, r_ee_task = [
-        mink.FrameTask(
-            frame_name=f"{prefix}/gripper",
+    tasks = [
+        l_ee_task := mink.FrameTask(
+            frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
-        )
-        for prefix in ["left", "right"]
+        ),
+        r_ee_task := mink.FrameTask(
+            frame_name="right/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
     ]
-
-    tasks = [l_ee_task, r_ee_task]
 
     # Enable collision avoidance between the following geoms:
     # geoms starting at subtree "right wrist" - "table",
