@@ -34,6 +34,7 @@ autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
     "exclude-members": "__init__, __post_init__, __new__",
+    "inherited-members": False,
 }
 
 autodoc_typehints = "both"
@@ -41,7 +42,7 @@ autodoc_class_signature = "separated"
 
 # autodoc type aliases
 autodoc_type_aliases = {
-    # Define your type aliases here
+    "ArrayLike": "npt.ArrayLike",
 }
 
 # -- Options for HTML output -------------------------------------------------
