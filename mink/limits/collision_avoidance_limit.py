@@ -114,7 +114,8 @@ def _are_geom_bodies_parent_child(
     parent_weld_id1 = model.body_parentid[weld_id1]
     parent_weld_id2 = model.body_parentid[weld_id2]
 
-    return weld_id1 == parent_weld_id2 or weld_id2 == parent_weld_id1
+    is_parent_child = weld_id1 == parent_weld_id2 or weld_id2 == parent_weld_id1
+    return is_parent_child
 
 
 def _is_pass_contype_conaffinity_check(
@@ -130,8 +131,11 @@ def _is_pass_contype_conaffinity_check(
     Returns:
         True if the geoms pass the contype/conaffinity check, False otherwise.
     """
-    return (bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or
-            bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1]))
+    contype_conaffinity_check = (
+        bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or
+        bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
+    )
+    return contype_conaffinity_check
 
 
 class CollisionAvoidanceLimit(Limit):
