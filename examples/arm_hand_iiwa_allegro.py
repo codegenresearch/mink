@@ -74,23 +74,23 @@ if __name__ == "__main__":
         frame_type="site",
         position_cost=1.0,
         orientation_cost=1.0,
-        lm_damping=1.0,
+        lm_damping=1.0
     )
 
     posture_task = mink.PostureTask(model=model, cost=5e-2)
 
-    finger_tasks = []
-    for finger in fingers:
-        task = mink.RelativeFrameTask(
+    finger_tasks = [
+        mink.RelativeFrameTask(
             frame_name=f"allegro_left/{finger}",
             frame_type="site",
             root_name="allegro_left/palm",
             root_type="body",
             position_cost=1.0,
             orientation_cost=0.0,
-            lm_damping=1.0,
+            lm_damping=1.0
         )
-        finger_tasks.append(task)
+        for finger in fingers
+    ]
 
     tasks = [end_effector_task, posture_task, *finger_tasks]
 
@@ -124,7 +124,9 @@ if __name__ == "__main__":
 
             # Update finger tasks
             for finger, task in zip(fingers, finger_tasks):
-                T_pm = configuration.get_transform(f"{finger}_target", "body", "allegro_left/palm", "body")
+                T_pm = configuration.get_transform(
+                    f"{finger}_target", "body", "allegro_left/palm", "body"
+                )
                 task.set_target(T_pm)
 
             # Update mocap positions
@@ -138,7 +140,9 @@ if __name__ == "__main__":
                 data.mocap_quat[body.mocapid[0]] = T_w_mocap_new.rotation().wxyz
 
             # Compute velocity and integrate into the next configuration
-            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3, limits=limits)
+            vel = mink.solve_ik(
+                configuration, tasks, rate.dt, solver, 1e-3, limits=limits
+            )
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
