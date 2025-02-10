@@ -1,19 +1,18 @@
 """Tests for collision_avoidance_limit.py."""
 
 import itertools
-
 import numpy as np
 from absl.testing import absltest
 from robot_descriptions.loaders.mujoco import load_robot_description
 import mujoco
 
 from mink import Configuration
-from mink.limits import CollisionAvoidanceLimit, Contact, compute_contact_normal_jacobian
+from mink.limits import CollisionAvoidanceLimit, compute_contact_normal_jacobian
 from mink.utils import get_body_geom_ids
 
 
 class TestCollisionAvoidanceLimit(absltest.TestCase):
-    """Tests for the CollisionAvoidanceLimit class."""
+    """Test collision avoidance limit."""
 
     @classmethod
     def setUpClass(cls):
@@ -36,8 +35,8 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         )
 
         # Filter out non-colliding geoms
-        g1_coll = [g for g in g1 if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0]
-        g2_coll = [g for g in g2 if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0]
+        g1_coll = [g for g in g1 if self.model.geom_conaffinity[g] and self.model.geom_contype[g]]
+        g2_coll = [g for g in g2 if self.model.geom_conaffinity[g] and self.model.geom_contype[g]]
 
         # Calculate expected maximum number of contacts
         expected_max_num_contacts = len(list(itertools.product(g1_coll, g2_coll)))
