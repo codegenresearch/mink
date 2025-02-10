@@ -123,16 +123,16 @@ class Task(abc.ABC):
             Pair :math:`(H(q), c(q))`.
         """
         jacobian = self.compute_jacobian(configuration)  # (k, nv)
-        minus_gain_error = -self.gain * self.compute_error(configuration)  # (k,)
+        error = self.compute_error(configuration)  # (k,)
+        weighted_error = -self.gain * self.cost * error  # (k,)
 
-        weight = np.diag(self.cost)
-        weighted_jacobian = weight @ jacobian
-        weighted_error = weight @ minus_gain_error
+        weight_matrix = np.diag(self.cost)
+        weighted_jacobian = weight_matrix @ jacobian  # (k, nv)
 
         mu = self.lm_damping * weighted_error @ weighted_error
         eye_tg = np.eye(configuration.model.nv)
 
         H = weighted_jacobian.T @ weighted_jacobian + mu * eye_tg  # (nv, nv)
-        c = -weighted_error.T @ weighted_jacobian  # (nv,)
+        c = weighted_error.T @ weighted_jacobian  # (nv,)
 
         return Objective(H, c)
