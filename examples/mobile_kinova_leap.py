@@ -89,7 +89,6 @@ if __name__ == "__main__":
     # When move the base, mainly focus on the motion on xy plane, minimize the rotation.
     posture_cost = np.zeros((model.nv,))
     posture_cost[2] = 1e-3  # Mobile Base.
-    # posture_cost[-16:] = 5e-2  # Leap Hand.
     posture_cost[-16:] = 1e-3  # Leap Hand.
 
     posture_task = mink.PostureTask(model, cost=posture_cost)
@@ -132,6 +131,10 @@ if __name__ == "__main__":
 
     key_callback = KeyCallback()
 
+    rate = RateLimiter(frequency=50.0, warn=False)
+    dt = rate.period
+    t = 0.0
+
     with mujoco.viewer.launch_passive(
         model=model,
         data=data,
@@ -155,9 +158,6 @@ if __name__ == "__main__":
 
         T_eef_prev = configuration.get_transform_frame_to_world("pinch_site", "site")
 
-        rate = RateLimiter(frequency=50.0, warn=False)
-        dt = rate.period
-        t = 0.0
         while viewer.is_running():
             # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
@@ -186,11 +186,11 @@ if __name__ == "__main__":
             for i in range(max_iters):
                 if key_callback.fix_base:
                     vel = mink.solve_ik(
-                        configuration, [*tasks, damping_task], rate.dt, solver, 1e-3
+                        configuration, [*tasks, damping_task], dt, solver, 1e-3
                     )
                 else:
-                    vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
-                configuration.integrate_inplace(vel, rate.dt)
+                    vel = mink.solve_ik(configuration, tasks, dt, solver, 1e-3)
+                configuration.integrate_inplace(vel, dt)
 
                 # Exit condition.
                 pos_achieved = True
