@@ -34,19 +34,18 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": True,
+    "inherited-members": None,
     "exclude-members": "__weakref__",
 }
 
-autodoc_typehints = "description"
-autodoc_class_signature = "separated"
+autodoc_typehints = "both"
 
 napoleon_numpy_docstring = False
 napoleon_use_rtype = False
 
 # Type aliases (if applicable)
 autodoc_type_aliases = {
-    "ArrayLike": "npt.ArrayLike",
+    "npt.ArrayLike": "ArrayLike",
 }
 
 # -- Options for HTML output -------------------------------------------------
