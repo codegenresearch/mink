@@ -39,18 +39,35 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_name: str) -> list[int]:
         geom_ids.append(i)
     return geom_ids
 
+def get_subtree_body_ids(model: mujoco.MjModel, body_name: str) -> list[int]:
+    """Retrieve all body IDs in the subtree starting from the given body name.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        body_name (str): The name of the body to start the subtree from.
+
+    Returns:
+        list[int]: A list of body IDs in the subtree.
+    """
+    body_id = model.body(body_name).id
+    subtree_ids = []
+    for i in range(body_id, model.nbody):
+        if model.body_parentid[i] == -1 or model.body_parentid[i] in subtree_ids:
+            subtree_ids.append(i)
+    return subtree_ids
+
 def compensate_gravity(
     model: mujoco.MjModel,
     data: mujoco.MjData,
-    base_body_id: int,
+    subtree_ids: Sequence[int],
     qfrc_applied: Optional[np.ndarray] = None,
 ) -> None:
-    """Compute and apply forces to counteract gravity for the specified subtree.
+    """Compute and apply forces to counteract gravity for the specified subtrees.
 
     Args:
         model (mujoco.MjModel): The MuJoCo model.
         data (mujoco.MjData): The MuJoCo data.
-        base_body_id (int): The body ID of the base of the subtree.
+        subtree_ids (Sequence[int]): A list of body IDs representing the subtrees.
         qfrc_applied (Optional[np.ndarray]): An optional array to store the applied forces.
     """
     if qfrc_applied is None:
@@ -58,11 +75,12 @@ def compensate_gravity(
     else:
         qfrc_applied[:] = 0  # Reset applied forces
 
-    jacp = np.zeros(3 * model.nv)
-    mujoco.mj_jacSubtreeCom(model, data, jacp, None, base_body_id)
-    total_mass = model.body_subtreemass[base_body_id]
-    gravity_force = total_mass * model.opt.gravity[2]
-    qfrc_applied += gravity_force * jacp
+    for body_id in subtree_ids:
+        jacp = np.zeros(3 * model.nv)
+        mujoco.mj_jacSubtreeCom(model, data, jacp, None, body_id)
+        total_mass = model.body_subtreemass[body_id]
+        gravity_force = total_mass * model.opt.gravity[2]
+        qfrc_applied += gravity_force * jacp
 
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
@@ -132,9 +150,9 @@ if __name__ == "__main__":
     ori_threshold = 5e-3  # Updated threshold value
     max_iters = 5  # Updated maximum number of iterations
 
-    # Precompute base body IDs for gravity compensation
-    left_base_body_id = model.body("left/shoulder_link").id
-    right_base_body_id = model.body("right/shoulder_link").id
+    # Precompute subtree IDs for gravity compensation
+    left_subtree_ids = get_subtree_body_ids(model, model.body("left/shoulder_link").id)
+    right_subtree_ids = get_subtree_body_ids(model, model.body("right/shoulder_link").id)
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -184,8 +202,8 @@ if __name__ == "__main__":
                     break
 
             # Apply gravity compensation
-            compensate_gravity(model, data, left_base_body_id)
-            compensate_gravity(model, data, right_base_body_id)
+            compensate_gravity(model, data, left_subtree_ids)
+            compensate_gravity(model, data, right_subtree_ids)
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
             mujoco.mj_step(model, data)
