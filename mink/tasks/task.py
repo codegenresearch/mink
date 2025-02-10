@@ -23,7 +23,23 @@ class Objective(NamedTuple):
 
 
 class Task(abc.ABC):
-    """Abstract base class for kinematic tasks."""
+    """Abstract base class for kinematic tasks.
+
+    This class defines the interface for kinematic tasks, which are used to
+    specify the desired behavior of a robot's end-effector or other frames. Each
+    task defines an error function and its Jacobian, which are used to compute
+    the contribution of the task to the inverse kinematics problem.
+
+    The task dynamics are given by:
+
+    .. math::
+
+        J(q) \Delta q = -\alpha e(q)
+
+    where :math:`J(q)` is the task Jacobian, :math:`\Delta q` is the
+    configuration displacement, :math:`\alpha` is the task gain, and :math:`e(q)`
+    is the task error.
+    """
 
     def __init__(
         self,
@@ -36,7 +52,8 @@ class Task(abc.ABC):
         Args:
             cost: Cost vector with the same dimension as the task error.
             gain: Task gain alpha in [0, 1] for low-pass filtering. Defaults to 1.0
-                for dead-beat control (no filtering).
+                for dead-beat control (no filtering). Lower values cause the task to
+                converge more slowly, similar to low-pass filtering.
             lm_damping: Scale of the Levenberg-Marquardt regularization term, which
                 helps when targets are infeasible. Increase this value if the task is
                 too jerky under unfeasible targets, but be cautious as larger damping
@@ -58,18 +75,6 @@ class Task(abc.ABC):
 
         The error function :math:`e(q) \in \mathbb{R}^{k}` is the quantity that
         the task aims to drive to zero (:math:`k` is the dimension of the task).
-        It appears in the first-order task dynamics:
-
-        .. math::
-
-            J(q) \Delta q = -\alpha e(q)
-
-        The Jacobian matrix :math:`J(q) \in \mathbb{R}^{k \times n_v}`, with
-        :math:`n_v` the dimension of the robot's tangent space, is the
-        derivative of the task error :math:`e(q)` with respect to the
-        configuration :math:`q \in \mathbb{R}^{n_q}`. This Jacobian is
-        implemented in :func:`Task.compute_jacobian`. The configuration
-        displacement :math:`\Delta q` is the output of inverse kinematics.
 
         Args:
             configuration: Robot configuration :math:`q`.
