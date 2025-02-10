@@ -16,7 +16,7 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     ## =================== ##
-    ## Setup IK.
+    ## Setup Inverse Kinematics.
     ## =================== ##
 
     configuration = mink.Configuration(model)
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     mid = model.body("target").mocapid[0]
 
-    # IK settings.
+    # Inverse Kinematics settings.
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
