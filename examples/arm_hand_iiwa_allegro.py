@@ -94,9 +94,9 @@ if __name__ == "__main__":
 
     tasks = [end_effector_task, posture_task, *finger_tasks]
 
-    # IK settings
-    solver = "quadprog"
+    # Define IK settings
     limits = [mink.ConfigurationLimit(model=model)]
+    solver = "quadprog"
 
     model = configuration.model
     data = configuration.data
