@@ -51,6 +51,8 @@ if __name__ == "__main__":
             mink.move_mocap_to_frame(model, data, f"{finger}_target", finger, "site")
 
         rate = RateLimiter(frequency=500.0, warn=False)
+        dt = rate.dt
+        t = 0
         while viewer.is_running():
             # Update task target.
             for finger, task in zip(fingers, finger_tasks):
@@ -58,10 +60,11 @@ if __name__ == "__main__":
                     mink.SE3.from_mocap_name(model, data, f"{finger}_target")
                 )
 
-            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-5)
-            configuration.integrate_inplace(vel, rate.dt)
+            vel = mink.solve_ik(configuration, tasks, dt, solver, 1e-5)
+            configuration.integrate_inplace(vel, dt)
             mujoco.mj_camlight(model, data)
 
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
+            t += dt
