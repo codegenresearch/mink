@@ -9,7 +9,6 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "unitree_g1" / "scene.xml"
 
-
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
 
@@ -29,28 +28,28 @@ if __name__ == "__main__":
         com_task := mink.ComTask(cost=200.0),
     ]
 
-    feet_tasks = []
-    for foot in feet:
-        task = mink.FrameTask(
+    feet_tasks = [
+        mink.FrameTask(
             frame_name=foot,
             frame_type="site",
             position_cost=200.0,
             orientation_cost=10.0,
             lm_damping=1.0,
         )
-        feet_tasks.append(task)
+        for foot in feet
+    ]
     tasks.extend(feet_tasks)
 
-    hand_tasks = []
-    for hand in hands:
-        task = mink.FrameTask(
+    hand_tasks = [
+        mink.FrameTask(
             frame_name=hand,
             frame_type="site",
             position_cost=200.0,
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        hand_tasks.append(task)
+        for hand in hands
+    ]
     tasks.extend(hand_tasks)
 
     com_mid = model.body("com_target").mocapid[0]
