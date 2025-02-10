@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     ## =================== ##
 
-    # IK settings.
+    # IK settings
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         posture_task.set_target_from_configuration(configuration)
         mujoco.mj_forward(model, data)
 
-        # Initialize the mocap target at the end-effector site
+        # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
         # Set up the rate limiter for controlling the loop frequency
