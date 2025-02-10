@@ -92,11 +92,7 @@ if __name__ == "__main__":
 
                 pos_achieved = True
                 ori_achieved = True
-                err = eef_task.compute_error(configuration)
-                pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
-                ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
-
-                for task in [base_task, *feet_tasks]:
+                for task in tasks:
                     err = task.compute_error(configuration)
                     pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
                     ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
