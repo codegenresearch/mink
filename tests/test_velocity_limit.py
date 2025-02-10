@@ -16,14 +16,14 @@ class TestVelocityLimit(absltest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Load a model for testing."""
-        cls.model = load_robot_description("ur5e_mj_description")
+        cls.model = load_robot_description("g1_mj_description")
 
     def setUp(self):
         """Initialize a configuration and velocity limits for testing."""
         self.configuration = Configuration(self.model)
-        self.configuration.update_from_keyframe("home")
+        self.configuration.update_from_keyframe("stand")
         self.velocities = {
-            joint.name: np.pi for joint in self.model.joint if joint.type != mujoco.mjtJoint.mjJNT_FREE
+            self.model.joint(i).name: np.pi for i in range(self.model.njnt) if self.model.joint(i).type != mujoco.mjtJoint.mjJNT_FREE
         }
 
     def test_projection_matrix_and_indices_dimensions(self):
