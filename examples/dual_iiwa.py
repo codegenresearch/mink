@@ -151,7 +151,13 @@ if __name__ == "__main__":
             right_ee_task.set_target(T_wt_right)
 
             vel = mink.solve_ik(
-                configuration, tasks, rate.dt, solver, 1e-2, False, limits=limits
+                configuration,
+                tasks,
+                rate.dt,
+                solver,
+                damping=1e-2,
+                use_sparse_solver=False,
+                limits=limits,
             )
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
