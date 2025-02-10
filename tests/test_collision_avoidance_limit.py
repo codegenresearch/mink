@@ -27,7 +27,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
 
         # Configure model options for consistent testing
         self.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
-        self.model.opt.jacobian = mujoco.mjtJac.mjJAC_DENSE
+        self.model.opt.jacobian = mujoco.mjJAC_DENSE
         self.model.opt.disableflags = (
             mujoco.mjtDisableBit.mjDSBL_CLAMPCTRL
             | mujoco.mjtDisableBit.mjDSBL_PASSIVE
@@ -86,6 +86,17 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
 
         # Initialize MjData object for this test
         data = mujoco.MjData(self.model)
+
+        # Configure model options for this test
+        self.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
+        self.model.opt.jacobian = mujoco.mjJAC_DENSE
+        self.model.opt.disableflags = (
+            mujoco.mjtDisableBit.mjDSBL_CLAMPCTRL
+            | mujoco.mjtDisableBit.mjDSBL_PASSIVE
+            | mujoco.mjtDisableBit.mjDSBL_GRAVITY
+            | mujoco.mjtDisableBit.mjDSBL_FRICTIONLOSS
+            | mujoco.mjtDisableBit.mjDSBL_LIMIT
+        )
 
         # Step the simulation to ensure contacts are updated
         mujoco.mj_step(self.model, data)
