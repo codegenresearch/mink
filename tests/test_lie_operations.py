@@ -39,6 +39,7 @@ class TestOperations(parameterized.TestCase):
         np.testing.assert_allclose(tangent, exp_transform.log())
 
     def test_adjoint(self, group: Type[MatrixLieGroup]):
+        """Check that the adjoint operation is correct."""
         transform = group.sample_uniform()
         omega = np.random.randn(group.tangent_dim)
         assert_transforms_close(
@@ -47,29 +48,34 @@ class TestOperations(parameterized.TestCase):
         )
 
     def test_rminus(self, group: Type[MatrixLieGroup]):
+        """Verify the rminus operation."""
         T_a = group.sample_uniform()
         T_b = group.sample_uniform()
         T_c = T_a.inverse() @ T_b
         np.testing.assert_allclose(T_b.rminus(T_a), T_c.log())
 
     def test_lminus(self, group: Type[MatrixLieGroup]):
+        """Verify the lminus operation."""
         T_a = group.sample_uniform()
         T_b = group.sample_uniform()
         np.testing.assert_allclose(T_a.lminus(T_b), (T_a @ T_b.inverse()).log())
 
     def test_rplus(self, group: Type[MatrixLieGroup]):
+        """Verify the rplus operation."""
         T_a = group.sample_uniform()
         T_b = group.sample_uniform()
         T_c = T_a.inverse() @ T_b
         assert_transforms_close(T_a.rplus(T_c.log()), T_b)
 
     def test_lplus(self, group: Type[MatrixLieGroup]):
+        """Verify the lplus operation."""
         T_a = group.sample_uniform()
         T_b = group.sample_uniform()
         T_c = T_a @ T_b.inverse()
         assert_transforms_close(T_b.lplus(T_c.log()), T_a)
 
     def test_jlog(self, group: Type[MatrixLieGroup]):
+        """Check the jlog operation."""
         state = group.sample_uniform()
         w = np.random.rand(state.tangent_dim) * 1e-4
         state_pert = state.plus(w).log()
@@ -81,75 +87,91 @@ class TestGroupSpecificOperations(absltest.TestCase):
     """Tests specific to individual groups."""
 
     def test_so3_rpy_conversion(self):
+        """Verify RPY conversion for SO3."""
         T = SO3.sample_uniform()
         assert_transforms_close(T, SO3.from_rpy_radians(*T.as_rpy_radians()))
 
     def test_se3_translation_conversion(self):
+        """Verify translation conversion for SE3."""
         T = SE3.sample_uniform()
         translation = T.as_matrix()[:3, 3]
         assert_transforms_close(T, SE3.from_translation(translation))
 
     def test_se3_rotation_conversion(self):
+        """Verify rotation conversion for SE3."""
         T = SE3.sample_uniform()
         rotation_matrix = T.as_matrix()[:3, :3]
         rotation = SO3.from_matrix(rotation_matrix)
         assert_transforms_close(T, SE3.from_rotation(rotation))
 
     def test_so3_invalid_rpy(self):
+        """Test invalid RPY angles for SO3."""
         with self.assertRaises(ValueError):
             SO3.from_rpy_radians(10, 10, 10)  # Invalid RPY angles
 
     def test_se3_invalid_translation(self):
+        """Test invalid translation vector for SE3."""
         with self.assertRaises(ValueError):
             SE3.from_translation(np.array([1, 2]))  # Invalid translation vector
 
     def test_se3_invalid_rotation(self):
+        """Test invalid rotation matrix for SE3."""
         with self.assertRaises(ValueError):
             SE3.from_rotation(SO3.from_matrix(np.eye(2)))  # Invalid rotation matrix
 
     def test_se3_from_matrix(self):
+        """Verify matrix conversion for SE3."""
         T = SE3.sample_uniform()
         matrix = T.as_matrix()
         assert_transforms_close(T, SE3.from_matrix(matrix))
 
     def test_so3_from_matrix(self):
+        """Verify matrix conversion for SO3."""
         T = SO3.sample_uniform()
         matrix = T.as_matrix()
         assert_transforms_close(T, SO3.from_matrix(matrix))
 
     def test_se3_from_translation_invalid_shape(self):
+        """Test invalid translation vector shape for SE3."""
         with self.assertRaises(ValueError):
             SE3.from_translation(np.array([1, 2]))  # Invalid translation vector
 
     def test_se3_from_rotation_invalid_shape(self):
+        """Test invalid rotation matrix shape for SE3."""
         with self.assertRaises(ValueError):
             SE3.from_rotation(SO3.from_matrix(np.eye(2)))  # Invalid rotation matrix
 
     def test_so3_from_rpy_invalid_angles(self):
+        """Test invalid RPY angles for SO3."""
         with self.assertRaises(ValueError):
             SO3.from_rpy_radians(10, 10, 10)  # Invalid RPY angles
 
     def test_se3_copy(self):
+        """Verify copy operation for SE3."""
         T = SE3.sample_uniform()
         T_copy = T.copy()
         assert_transforms_close(T, T_copy)
 
     def test_so3_copy(self):
+        """Verify copy operation for SO3."""
         T = SO3.sample_uniform()
         T_copy = T.copy()
         assert_transforms_close(T, T_copy)
 
     def test_se3_from_rotation_and_translation(self):
+        """Verify rotation and translation conversion for SE3."""
         rotation = SO3.sample_uniform()
         translation = np.random.rand(3)
         T = SE3.from_rotation_and_translation(rotation, translation)
         assert_transforms_close(T, SE3.from_matrix(T.as_matrix()))
 
     def test_se3_from_matrix_invalid_shape(self):
+        """Test invalid matrix shape for SE3."""
         with self.assertRaises(ValueError):
             SE3.from_matrix(np.eye(2))  # Invalid matrix shape
 
     def test_so3_from_matrix_invalid_shape(self):
+        """Test invalid matrix shape for SO3."""
         with self.assertRaises(ValueError):
             SO3.from_matrix(np.eye(2))  # Invalid matrix shape
 
