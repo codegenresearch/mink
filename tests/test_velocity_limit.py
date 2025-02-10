@@ -21,10 +21,10 @@ class TestVelocityLimit(absltest.TestCase):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
         # Arbitrary velocities for testing.
-        self.velocities = {self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)}
+        self.velocities = {self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)}
 
     def test_dimensions(self):
-        """Test the dimensions of the velocity limit indices and projection matrix."""
+        """Test dimensions of velocity limit indices and projection matrix."""
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
         nb = nv - len(get_freejoint_dims(self.model)[1])
@@ -32,13 +32,13 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
 
     def test_indices(self):
-        """Test the indices of the velocity-limited joints."""
+        """Test indices of velocity-limited joints."""
         limit = VelocityLimit(self.model, self.velocities)
-        expected_indices = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
-        self.assertTrue(np.allclose(limit.indices, expected_indices))
+        expected = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
+        self.assertTrue(np.allclose(limit.indices, expected))
 
     def test_model_with_no_limit(self):
-        """Test the behavior of VelocityLimit with a model that has no velocity limits."""
+        """Test behavior with a model that has no velocity limits."""
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
         empty_bounded = VelocityLimit(empty_model)
         self.assertEqual(len(empty_bounded.indices), 0)
@@ -48,7 +48,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(h)
 
     def test_model_with_subset_of_velocities_limited(self):
-        """Test the behavior of VelocityLimit with a subset of joints having velocity limits."""
+        """Test behavior with a subset of joints having velocity limits."""
         limit_subset = {}
         for i, (name, vel) in enumerate(self.velocities.items()):
             if i >= 3:
@@ -59,11 +59,14 @@ class TestVelocityLimit(absltest.TestCase):
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        expected_limit = np.array([3.14] * nb)
+        expected_limit = np.array([np.pi] * nb)
         np.testing.assert_allclose(limit.limit, expected_limit)
+        G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
+        self.assertEqual(G.shape, (2 * nb, nv))
+        self.assertEqual(h.shape, (2 * nb,))
 
     def test_model_with_ball_joint(self):
-        """Test the behavior of VelocityLimit with a model containing a ball joint."""
+        """Test behavior with a model containing a ball joint."""
         xml_str = """
         <mujoco>
           <worldbody>
