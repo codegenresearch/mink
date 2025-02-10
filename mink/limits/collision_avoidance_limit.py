@@ -6,7 +6,6 @@ from typing import List, Sequence, Union
 
 import mujoco
 import numpy as np
-from scipy.spatial.transform import Rotation as R
 
 from ..configuration import Configuration
 from .limit import Constraint, Limit
@@ -79,40 +78,53 @@ def _is_pass_contype_conaffinity_check(
     return cond1 or cond2
 
 
-def validate_se3_transformations(mocap_data: np.ndarray) -> bool:
-    """Validate SE3 transformations from mocap data."""
-    for pose in mocap_data:
-        rotation_matrix = pose[:3, :3]
-        if not np.allclose(rotation_matrix.T @ rotation_matrix, np.eye(3)):
-            return False
-        if not np.isclose(np.linalg.det(rotation_matrix), 1.0):
-            return False
-    return True
+def compute_contact_normal_jacobian(
+    model: mujoco.MjModel,
+    data: mujoco.MjData,
+    contact: Contact
+) -> np.ndarray:
+    """Computes the Jacobian mapping joint velocities to the normal component of
+    the relative Cartesian linear velocity between the geom pair.
+
+    The Jacobian-velocity relationship is given as:
+
+        J dq = n^T (v_2 - v_1)
+
+    where:
+    * J is the computed Jacobian.
+    * dq is the joint velocity vector.
+    * n^T is the transpose of the normal pointing from contact.geom1 to
+        contact.geom2.
+    *  v_1, v_2 are the linear components of the Cartesian velocity of the two
+        closest points in contact.geom1 and contact.geom2.
+
+    Note: n^T (v_2 - v_1) is a scalar that is positive if the geoms are moving away
+    from each other, and negative if they are moving towards each other.
+    """
+    geom1_body = model.geom_bodyid[contact.geom1]
+    geom2_body = model.geom_bodyid[contact.geom2]
+    geom1_contact_pos = contact.fromto[:3]
+    geom2_contact_pos = contact.fromto[3:]
+    jac2 = np.empty((3, model.nv))
+    mujoco.mj_jac(model, data, jac2, None, geom2_contact_pos, geom2_body)
+    jac1 = np.empty((3, model.nv))
+    mujoco.mj_jac(model, data, jac1, None, geom1_contact_pos, geom1_body)
+    return contact.normal @ (jac2 - jac1)
 
 
 class CollisionAvoidanceLimit(Limit):
-    """Normal velocity limit between geom pairs with enhanced testing and SE3 validation.
+    """Normal velocity limit between geom pairs.
 
     Attributes:
         model: MuJoCo model.
         geom_pairs: Set of collision pairs in which to perform active collision
-            avoidance. A collision pair is defined as a pair of geom groups. A geom
-            group is a set of geom names. For each collision pair, the solver will
-            attempt to compute joint velocities that avoid collisions between every
-            geom in the first geom group with every geom in the second geom group.
-            Self collision is achieved by adding a collision pair with the same
-            geom group in both pair fields.
+            avoidance.
         gain: Gain factor in (0, 1] that determines how fast the geoms are
-            allowed to move towards each other at each iteration. Smaller values
-            are safer but may make the geoms move slower towards each other.
+            allowed to move towards each other at each iteration.
         minimum_distance_from_collisions: The minimum distance to leave between
-            any two geoms. A negative distance allows the geoms to penetrate by
-            the specified amount.
+            any two geoms.
         collision_detection_distance: The distance between two geoms at which the
-            active collision avoidance limit will be active. A large value will
-            cause collisions to be detected early, but may incur high computational
-            cost. A negative value will cause the geoms to be detected only after
-            they penetrate by the specified amount.
+            active collision avoidance limit will be active.
         bound_relaxation: An offset on the upper bound of each collision avoidance
             constraint.
     """
@@ -131,23 +143,13 @@ class CollisionAvoidanceLimit(Limit):
         Args:
             model: MuJoCo model.
             geom_pairs: Set of collision pairs in which to perform active collision
-                avoidance. A collision pair is defined as a pair of geom groups. A geom
-                group is a set of geom names. For each collision pair, the mapper will
-                attempt to compute joint velocities that avoid collisions between every
-                geom in the first geom group with every geom in the second geom group.
-                Self collision is achieved by adding a collision pair with the same
-                geom group in both pair fields.
+                avoidance.
             gain: Gain factor in (0, 1] that determines how fast the geoms are
-                allowed to move towards each other at each iteration. Smaller values
-                are safer but may make the geoms move slower towards each other.
+                allowed to move towards each other at each iteration.
             minimum_distance_from_collisions: The minimum distance to leave between
-                any two geoms. A negative distance allows the geoms to penetrate by
-                the specified amount.
+                any two geoms.
             collision_detection_distance: The distance between two geoms at which the
-                active collision avoidance limit will be active. A large value will
-                cause collisions to be detected early, but may incur high computational
-                cost. A negative value will cause the geoms to be detected only after
-                they penetrate by the specified amount.
+                active collision avoidance limit will be active.
             bound_relaxation: An offset on the upper bound of each collision avoidance
                 constraint.
         """
@@ -178,7 +180,7 @@ class CollisionAvoidanceLimit(Limit):
                 upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
-            jac = self.compute_contact_normal_jacobian(configuration.data, contact)
+            jac = compute_contact_normal_jacobian(self.model, configuration.data, contact)
             coefficient_matrix[idx] = -jac
         return Constraint(G=coefficient_matrix, h=upper_bound)
 
@@ -200,37 +202,6 @@ class CollisionAvoidanceLimit(Limit):
         return Contact(
             dist, fromto, geom1_id, geom2_id, self.collision_detection_distance
         )
-
-    def compute_contact_normal_jacobian(
-        self, data: mujoco.MjData, contact: Contact
-    ) -> np.ndarray:
-        """Computes the Jacobian mapping joint velocities to the normal component of
-        the relative Cartesian linear velocity between the geom pair.
-
-        The Jacobian-velocity relationship is given as:
-
-            J dq = n^T (v_2 - v_1)
-
-        where:
-        * J is the computed Jacobian.
-        * dq is the joint velocity vector.
-        * n^T is the transpose of the normal pointing from contact.geom1 to
-            contact.geom2.
-        *  v_1, v_2 are the linear components of the Cartesian velocity of the two
-            closest points in contact.geom1 and contact.geom2.
-
-        Note: n^T (v_2 - v_1) is a scalar that is positive if the geoms are moving away
-        from each other, and negative if they are moving towards each other.
-        """
-        geom1_body = self.model.geom_bodyid[contact.geom1]
-        geom2_body = self.model.geom_bodyid[contact.geom2]
-        geom1_contact_pos = contact.fromto[:3]
-        geom2_contact_pos = contact.fromto[3:]
-        jac2 = np.empty((3, self.model.nv))
-        mujoco.mj_jac(self.model, data, jac2, None, geom2_contact_pos, geom2_body)
-        jac1 = np.empty((3, self.model.nv))
-        mujoco.mj_jac(self.model, data, jac1, None, geom1_contact_pos, geom1_body)
-        return contact.normal @ (jac2 - jac1)
 
     def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
         """Take a heterogeneous list of geoms (specified via ID or name) and return
@@ -262,10 +233,6 @@ class CollisionAvoidanceLimit(Limit):
             2) Geoms where the body of one geom is a parent of the body of the other
                 geom are not included.
             3) Geoms that fail the contype-conaffinity check are ignored.
-
-        Note:
-            1) If two bodies are kinematically welded together (no joints between them)
-                they are considered to be the same body within this function.
         """
         geom_id_pairs = []
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
