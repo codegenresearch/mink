@@ -11,7 +11,7 @@ from mink.utils import get_freejoint_dims
 
 
 class TestVelocityLimit(absltest.TestCase):
-    """Test suite for the VelocityLimit class."""
+    """Test the VelocityLimit class."""
 
     @classmethod
     def setUpClass(cls):
@@ -22,9 +22,7 @@ class TestVelocityLimit(absltest.TestCase):
         """Initialize a configuration and velocity limits for testing."""
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        self.velocities = {
-            self.model.joint(i).name: np.pi for i in range(self.model.njnt) if self.model.joint(i).type != mujoco.mjtJoint.mjJNT_FREE
-        }
+        self.velocities = {self.model.joint(i).name: np.pi for i in range(self.model.njnt) if self.model.joint(i).type != mujoco.mjtJoint.mjJNT_FREE}
 
     def test_projection_matrix_and_indices_dimensions(self):
         """Test dimensions of projection matrix and indices."""
