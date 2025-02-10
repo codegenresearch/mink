@@ -24,16 +24,16 @@ class TestConfiguration(absltest.TestCase):
         self.assertEqual(configuration.nq, self.model.nq)
         self.assertEqual(configuration.nv, self.model.nv)
 
+    def test_initialize_from_q(self):
+        """Test that initialization from a specific configuration vector works."""
+        configuration = mink.Configuration(self.model, self.q_ref)
+        np.testing.assert_array_equal(configuration.q, self.q_ref)
+
     def test_initialize_from_keyframe(self):
         """Test that keyframe initialization correctly updates the configuration."""
         configuration = mink.Configuration(self.model)
         np.testing.assert_array_equal(configuration.q, np.zeros(self.model.nq))
         configuration.update_from_keyframe("home")
-        np.testing.assert_array_equal(configuration.q, self.q_ref)
-
-    def test_initialize_from_q(self):
-        """Test that initialization from a specific configuration vector works."""
-        configuration = mink.Configuration(self.model, self.q_ref)
         np.testing.assert_array_equal(configuration.q, self.q_ref)
 
     def test_site_transform_world_frame(self):
@@ -113,7 +113,7 @@ class TestConfiguration(absltest.TestCase):
         with self.assertRaises(mink.NotWithinConfigurationLimits):
             configuration.check_limits()
 
-    def test_check_limits_with_free_joints(self):
+    def test_check_limits_freejoint(self):
         """Check that limits are correctly handled with free joints."""
         xml_str = """
         <mujoco>
