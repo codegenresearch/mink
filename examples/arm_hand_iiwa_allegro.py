@@ -79,8 +79,9 @@ if __name__ == "__main__":
 
     posture_task = mink.PostureTask(model=model, cost=5e-2)
 
-    finger_tasks = [
-        mink.RelativeFrameTask(
+    finger_tasks = []
+    for finger in fingers:
+        task = mink.RelativeFrameTask(
             frame_name=f"allegro_left/{finger}",
             frame_type="site",
             root_name="allegro_left/palm",
@@ -89,8 +90,7 @@ if __name__ == "__main__":
             orientation_cost=0.0,
             lm_damping=1.0
         )
-        for finger in fingers
-    ]
+        finger_tasks.append(task)
 
     tasks = [end_effector_task, posture_task, *finger_tasks]
 
@@ -118,18 +118,18 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=100.0, warn=False)
 
         while viewer.is_running():
-            # Update kuka end-effector task
+            # Update kuka end-effector task.
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
-            # Update finger tasks
+            # Update finger tasks.
             for finger, task in zip(fingers, finger_tasks):
                 T_pm = configuration.get_transform(
                     f"{finger}_target", "body", "allegro_left/palm", "body"
                 )
                 task.set_target(T_pm)
 
-            # Update mocap positions
+            # Update mocap positions.
             T_eef = configuration.get_transform_frame_to_world("attachment_site", "site")
             T = T_eef @ T_eef_prev.inverse()
             for finger in fingers:
@@ -139,7 +139,7 @@ if __name__ == "__main__":
                 data.mocap_pos[body.mocapid[0]] = T_w_mocap_new.translation()
                 data.mocap_quat[body.mocapid[0]] = T_w_mocap_new.rotation().wxyz
 
-            # Compute velocity and integrate into the next configuration
+            # Compute velocity and integrate into the next configuration.
             vel = mink.solve_ik(
                 configuration, tasks, rate.dt, solver, 1e-3, limits=limits
             )
@@ -148,6 +148,6 @@ if __name__ == "__main__":
 
             T_eef_prev = T_eef.copy()
 
-            # Visualize at fixed FPS
+            # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
