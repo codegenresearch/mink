@@ -57,7 +57,7 @@ class PostureTask(Task):
             lm_damping=lm_damping,
         )
         self.target_q = None
-        self._v_ids = np.asarray(v_ids_or_none) if (v_ids_or_none := get_freejoint_dims(model)[1]) else None
+        self._v_ids = get_freejoint_dims(model)[1]
         self.k = model.nv
         self.nq = model.nq
 
