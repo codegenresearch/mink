@@ -9,12 +9,12 @@ from pathlib import Path
 import toml
 
 # Read project version from pyproject.toml
-pyproject_path: Path = Path(__file__).absolute().parent.parent / "pyproject.toml"
+pyproject_path = Path(__file__).absolute().parent.parent / "pyproject.toml"
 pyproject = toml.load(pyproject_path)
-version: str = pyproject["tool"]["poetry"]["version"]
+version = pyproject["tool"]["poetry"]["version"]
 
-# Prepend 'v' to the version if it is purely alphabetical
-if version.isalpha():
+# Prepend 'v' to the version if it is not purely alphabetical
+if not version.isalpha():
     version = f"v{version}"
 
 project = "mink"
