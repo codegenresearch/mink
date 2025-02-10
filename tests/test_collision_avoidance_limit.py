@@ -20,21 +20,22 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.model = load_robot_description("ur5e_mj_description")
+
+    def setUp(self):
+        self.configuration = Configuration(self.model)
+        self.configuration.update_from_keyframe("home")
+        self.data = mujoco.MjData(self.model)
+
         # Configure model options for consistent testing
-        cls.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
-        cls.model.opt.jacobian = mujoco.mjtJac.mjJAC_DENSE
-        cls.model.opt.disableflags = (
+        self.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
+        self.model.opt.jacobian = mujoco.mjtJac.mjJAC_DENSE
+        self.model.opt.disableflags = (
             mujoco.mjtDisableBit.mjDSBL_CLAMPCTRL
             | mujoco.mjtDisableBit.mjDSBL_PASSIVE
             | mujoco.mjtDisableBit.mjDSBL_GRAVITY
             | mujoco.mjtDisableBit.mjDSBL_FRICTIONLOSS
             | mujoco.mjtDisableBit.mjDSBL_LIMIT
         )
-
-    def setUp(self):
-        self.configuration = Configuration(self.model)
-        self.configuration.update_from_keyframe("home")
-        self.data = mujoco.MjData(self.model)
 
     def test_dimensions(self):
         g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
