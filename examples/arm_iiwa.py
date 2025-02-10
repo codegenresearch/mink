@@ -18,11 +18,11 @@ import mink
 
 # Define the path to the XML file containing the robot model
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "kuka_iiwa_14" / "scene.xml"
+_XML = _HERE / "kuka_iiwa_14" / "scene.xml"
 
-def main():
+if __name__ == "__main__":
     # Load the MuJoCo model and data
-    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
     ## =================== ##
@@ -60,7 +60,7 @@ def main():
         # Reset the robot to the home position
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
-        posture_task.set_target_from_configuration(configuration)  # Set posture target
+        posture_task.set_target_from_configuration()  # Set posture target
         mujoco.mj_forward(model, data)
 
         # Initialize the mocap target at the end-effector site
@@ -71,7 +71,7 @@ def main():
 
         # Main simulation loop
         while viewer.is_running():
-            # Update the task target based on the mocap position
+            # Update task target
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
@@ -83,7 +83,6 @@ def main():
                 pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
                 ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
-                    print(f"Exiting after {i + 1} iterations.")
                     break
 
             # Apply the computed configuration to the robot's actuators
@@ -93,6 +92,3 @@ def main():
             # Synchronize the viewer and sleep to maintain the desired loop rate
             viewer.sync()
             rate.sleep()
-
-if __name__ == "__main__":
-    main()
