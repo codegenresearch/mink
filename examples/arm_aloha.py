@@ -63,6 +63,7 @@ if __name__ == "__main__":
             lm_damping=1.0,
             velocity_cost=1.0,
             acceleration_cost=1.0,
+            velocity_limits=velocity_limits,
         ),
     ]
 
