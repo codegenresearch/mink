@@ -10,7 +10,7 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "boston_dynamics_spot" / "scene.xml"
 
-def main():
+if __name__ == "__main__":
     # Load model and data
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
@@ -18,9 +18,9 @@ def main():
     # Initialize configuration
     configuration = mink.Configuration(model)
 
-    # =================== #
-    # Setup IK.
-    # =================== #
+    ## =================== ##
+    ## Setup IK.
+    ## =================== ##
 
     # Define feet and tasks
     feet = ["FL", "FR", "HR", "HL"]
@@ -37,15 +37,15 @@ def main():
     posture_task = mink.PostureTask(model, cost=1e-5)
 
     # Initialize feet tasks
-    feet_tasks = [
-        mink.FrameTask(
+    feet_tasks = []
+    for foot in feet:
+        task = mink.FrameTask(
             frame_name=foot,
             frame_type="geom",
             position_cost=1.0,
             orientation_cost=0.0,
         )
-        for foot in feet
-    ]
+        feet_tasks.append(task)
 
     # Initialize end-effector task
     eef_task = mink.FrameTask(
@@ -106,14 +106,12 @@ def main():
                 configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if position and orientation are achieved
-                pos_achieved = all(
-                    np.linalg.norm(task.compute_error(configuration)[:3]) <= pos_threshold
-                    for task in tasks
-                )
-                ori_achieved = all(
-                    np.linalg.norm(task.compute_error(configuration)[3:]) <= ori_threshold
-                    for task in tasks
-                )
+                pos_achieved = True
+                ori_achieved = True
+                for task in tasks:
+                    err = task.compute_error(configuration)
+                    pos_achieved &= np.linalg.norm(err[:3]) <= pos_threshold
+                    ori_achieved &= np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
                     break
 
@@ -124,6 +122,3 @@ def main():
             # Visualize at fixed FPS
             viewer.sync()
             rate.sleep()
-
-if __name__ == "__main__":
-    main()
