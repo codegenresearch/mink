@@ -22,7 +22,7 @@ class TestOperations(parameterized.TestCase):
         transform = group.sample_uniform()
         assert_transforms_close(transform, transform.inverse().inverse())
 
-    def test_matrix_conversion_bijective(self, group: Type[MatrixLieGroup]):
+    def test_matrix_bijective(self, group: Type[MatrixLieGroup]):
         """Ensure matrix conversion is bijective."""
         transform = group.sample_uniform()
         assert_transforms_close(transform, group.from_matrix(transform.as_matrix()))
@@ -70,14 +70,14 @@ class TestOperations(parameterized.TestCase):
         assert_transforms_close(T_b.lplus(T_c.log()), T_a)
 
     def test_jlog(self, group: Type[MatrixLieGroup]):
-        transform = group.sample_uniform()
-        w = np.random.rand(transform.tangent_dim) * 1e-4
-        transform_pert = transform.plus(w).log()
-        transform_lin = transform.log() + transform.jlog() @ w
-        np.testing.assert_allclose(transform_pert, transform_lin, atol=1e-7)
+        state = group.sample_uniform()
+        w = np.random.rand(state.tangent_dim) * 1e-4
+        state_pert = state.plus(w).log()
+        state_lin = state.log() + state.jlog() @ w
+        np.testing.assert_allclose(state_pert, state_lin, atol=1e-7)
 
 
-class TestSpecificOperations(absltest.TestCase):
+class TestGroupSpecificOperations(absltest.TestCase):
     """Tests specific to individual groups."""
 
     def test_so3_rpy_conversion(self):
@@ -128,6 +128,16 @@ class TestSpecificOperations(absltest.TestCase):
     def test_so3_from_rpy_invalid_angles(self):
         with self.assertRaises(ValueError):
             SO3.from_rpy_radians(10, 10, 10)  # Invalid RPY angles
+
+    def test_se3_copy(self):
+        T = SE3.sample_uniform()
+        T_copy = T.copy()
+        assert_transforms_close(T, T_copy)
+
+    def test_so3_copy(self):
+        T = SO3.sample_uniform()
+        T_copy = T.copy()
+        assert_transforms_close(T, T_copy)
 
 
 if __name__ == "__main__":
