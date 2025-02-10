@@ -33,7 +33,7 @@ class MatrixLieGroup(abc.ABC):
         assert isinstance(other, MatrixLieGroup)
         return self.multiply(other=other)
 
-    # Factory methods.
+    # Factory
 
     @classmethod
     @abc.abstractmethod
@@ -53,19 +53,19 @@ class MatrixLieGroup(abc.ABC):
         """Draws a random sample from the group."""
         raise NotImplementedError
 
-    # Accessors.
+    # Accessors
 
     @abc.abstractmethod
     def as_matrix(self) -> np.ndarray:
-        """Returns the matrix representation."""
+        """Gets the matrix representation."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def parameters(self) -> np.ndarray:
-        """Returns the underlying parameters."""
+        """Gets the underlying parameters."""
         raise NotImplementedError
 
-    # Operations.
+    # Operations
 
     @abc.abstractmethod
     def apply(self, target: np.ndarray) -> np.ndarray:
@@ -103,7 +103,7 @@ class MatrixLieGroup(abc.ABC):
         """Normalizes the group element."""
         raise NotImplementedError
 
-    # Right and left plus and minus.
+    # Right and left plus and minus
 
     # Eqn. 25.
     def rplus(self, other: np.ndarray) -> Self:
@@ -133,7 +133,7 @@ class MatrixLieGroup(abc.ABC):
         """Alias for rminus."""
         return self.rminus(other)
 
-    # Jacobians.
+    # Jacobians
 
     @classmethod
     @abc.abstractmethod
@@ -145,7 +145,6 @@ class MatrixLieGroup(abc.ABC):
     @abc.abstractmethod
     def ljacinv(cls, other: np.ndarray) -> np.ndarray:
         """Computes the inverse of the left Jacobian."""
-        # NOTE: Can just be np.linalg.inv(cls.ljac(other)).
         raise NotImplementedError
 
     # Eqn. 67.
