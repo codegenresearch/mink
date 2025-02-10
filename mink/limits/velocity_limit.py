@@ -91,11 +91,11 @@ class VelocityLimit(Limit):
             Pair :math:`(G, h)` representing the inequality constraint as
             :math:`G \Delta q \leq h`. Here, :math:`G` is a 2D numpy array of shape
             (2 * nb, nv) and :math:`h` is a 1D numpy array of shape (2 * nb,).
-            If there is no limit, returns ``None``.
+            If there is no limit, returns an empty `Constraint` object.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
-            return None
+            return Constraint()
         G = np.vstack([self.projection_matrix, -self.projection_matrix])
         h = np.hstack([dt * self.limit, dt * self.limit])
         return Constraint(G=G, h=h)
