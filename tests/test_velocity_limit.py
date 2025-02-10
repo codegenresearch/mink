@@ -220,12 +220,5 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertTrue(np.all(G_task @ posture_task <= h_task))
 
 
-This revised code addresses the feedback by:
-1. Removing the invalid syntax comment at the end of the file.
-2. Ensuring that all comments are clear and directly related to the functionality being tested.
-3. Using a fixed value for `nb` in the `test_dimensions` method to match the gold code.
-4. Simplifying the logic for creating `limit_subset` in the `test_model_with_subset_of_velocities_limited` method.
-5. Ensuring that error messages in assertions match the expected format in the gold code.
-6. Removing any unused imports to keep the code clean.
-7. Ensuring the overall structure of the test class matches the gold code, including the order of test methods.
-8. Adding more descriptive docstrings for each test method to clarify what each test is verifying.
+if __name__ == "__main__":
+    absltest.main()
