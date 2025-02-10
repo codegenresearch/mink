@@ -64,9 +64,7 @@ def _are_geom_bodies_parent_child(
     weld_parent_id2 = model.body_parentid[body_weldid2]
 
     # Check if one body is the parent of the other.
-    cond1 = body_weldid1 == weld_parent_weldid2
-    cond2 = body_weldid2 == weld_parent_weldid1
-    return cond1 or cond2
+    return body_weldid1 == weld_parent_id2 or body_weldid2 == weld_parent_id1
 
 
 def _is_pass_contype_conaffinity_check(
@@ -84,15 +82,10 @@ class CollisionAvoidanceLimit(Limit):
     Attributes:
         model: MuJoCo model instance.
         geom_pairs: List of collision pairs, where each pair consists of two geom groups.
-            Each geom group is a sequence of geom names or IDs. The class computes joint
-            velocities to avoid collisions between every geom in the first group with every
-            geom in the second group.
+            Each geom group is a sequence of geom names or IDs.
         gain: Gain factor in (0, 1] that controls the speed of approach to collision limits.
-            Lower values are safer but may slow down the approach.
         minimum_distance_from_collisions: Minimum distance to maintain between geoms.
-            Negative values allow penetration by the specified amount.
         collision_detection_distance: Distance at which collision detection becomes active.
-            Larger values detect collisions earlier but may increase computational cost.
         bound_relaxation: Offset applied to the upper bound of collision avoidance constraints.
     """
 
@@ -110,15 +103,10 @@ class CollisionAvoidanceLimit(Limit):
         Args:
             model: MuJoCo model instance.
             geom_pairs: List of collision pairs, where each pair consists of two geom groups.
-                Each geom group is a sequence of geom names or IDs. The class computes joint
-                velocities to avoid collisions between every geom in the first group with every
-                geom in the second group.
+                Each geom group is a sequence of geom names or IDs.
             gain: Gain factor in (0, 1] that controls the speed of approach to collision limits.
-                Lower values are safer but may slow down the approach.
             minimum_distance_from_collisions: Minimum distance to maintain between geoms.
-                Negative values allow penetration by the specified amount.
             collision_detection_distance: Distance at which collision detection becomes active.
-                Larger values detect collisions earlier but may increase computational cost.
             bound_relaxation: Offset applied to the upper bound of collision avoidance constraints.
         """
         self.model = model
@@ -277,13 +265,8 @@ class CollisionAvoidanceLimit(Limit):
         geom_id_pairs = []
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
-                weld_body_cond = not _is_welded_together(self.model, geom_a, geom_b)
-                parent_child_cond = not _are_geom_bodies_parent_child(
-                    self.model, geom_a, geom_b
-                )
-                contype_conaffinity_cond = _is_pass_contype_conaffinity_check(
-                    self.model, geom_a, geom_b
-                )
-                if weld_body_cond and parent_child_cond and contype_conaffinity_cond:
+                if (not _is_welded_together(self.model, geom_a, geom_b) and
+                    not _are_geom_bodies_parent_child(self.model, geom_a, geom_b) and
+                    _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)):
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
