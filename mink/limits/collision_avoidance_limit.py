@@ -35,49 +35,6 @@ class Contact:
         return self.dist == self.distmax and not self.fromto.any()
 
 
-def is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
-    """Returns true if the geoms are part of the same body, or if their bodies are
-    welded together."""
-    body1 = model.geom_bodyid[geom_id1]
-    body2 = model.geom_bodyid[geom_id2]
-    weld1 = model.body_weldid[body1]
-    weld2 = model.body_weldid[body2]
-    return weld1 == weld2
-
-
-def are_geom_bodies_parent_child(
-    model: mujoco.MjModel, geom_id1: int, geom_id2: int
-) -> bool:
-    """Returns true if the geom bodies have a parent-child relationship."""
-    body_id1 = model.geom_bodyid[geom_id1]
-    body_id2 = model.geom_bodyid[geom_id2]
-
-    # body_weldid is the ID of the body's weld.
-    body_weldid1 = model.body_weldid[body_id1]
-    body_weldid2 = model.body_weldid[body_id2]
-
-    # weld_parent_id is the ID of the parent of the body's weld.
-    weld_parent_id1 = model.body_parentid[body_weldid1]
-    weld_parent_id2 = model.body_parentid[body_weldid2]
-
-    # weld_parent_weldid is the weld ID of the parent of the body's weld.
-    weld_parent_weldid1 = model.body_weldid[weld_parent_id1]
-    weld_parent_weldid2 = model.body_weldid[weld_parent_id2]
-
-    cond1 = body_weldid1 == weld_parent_weldid2
-    cond2 = body_weldid2 == weld_parent_weldid1
-    return cond1 or cond2
-
-
-def is_pass_contype_conaffinity_check(
-    model: mujoco.MjModel, geom_id1: int, geom_id2: int
-) -> bool:
-    """Returns true if the geoms pass the contype/conaffinity check."""
-    cond1 = bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2])
-    cond2 = bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
-    return cond1 or cond2
-
-
 def compute_contact_normal_jacobian(
     model: mujoco.MjModel, data: mujoco.MjData, contact: Contact
 ) -> np.ndarray:
@@ -184,6 +141,15 @@ class CollisionAvoidanceLimit(Limit):
         configuration: Configuration,
         dt: float,
     ) -> Constraint:
+        """Compute the quadratic programming inequalities for collision avoidance.
+
+        Args:
+            configuration: Robot configuration.
+            dt: Integration timestep in [s].
+
+        Returns:
+            Pair (G, h) representing the inequality constraint as G * delta_q <= h.
+        """
         upper_bound = np.full((self.max_num_contacts,), np.inf)
         coefficient_matrix = np.zeros((self.max_num_contacts, self.model.nv))
         for idx, (geom1_id, geom2_id) in enumerate(self.geom_id_pairs):
@@ -192,17 +158,16 @@ class CollisionAvoidanceLimit(Limit):
             )
             if contact.inactive:
                 continue
-            hi_bound_dist = contact.dist
-            if hi_bound_dist > self.minimum_distance_from_collisions:
-                dist = hi_bound_dist - self.minimum_distance_from_collisions
-                upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
+            dist = contact.dist
+            if dist > self.minimum_distance_from_collisions:
+                upper_bound[idx] = (
+                    self.gain * (dist - self.minimum_distance_from_collisions) / dt
+                ) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
             jac = compute_contact_normal_jacobian(self.model, configuration.data, contact)
             coefficient_matrix[idx] = -jac
         return Constraint(G=coefficient_matrix, h=upper_bound)
-
-    # Private methods.
 
     def _compute_contact_with_minimum_distance(
         self, data: mujoco.MjData, geom1_id: int, geom2_id: int
@@ -259,13 +224,53 @@ class CollisionAvoidanceLimit(Limit):
         geom_id_pairs = []
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
-                weld_body_cond = not is_welded_together(self.model, geom_a, geom_b)
-                parent_child_cond = not are_geom_bodies_parent_child(
+                weld_body_cond = not self._is_welded_together(self.model, geom_a, geom_b)
+                parent_child_cond = not self._are_geom_bodies_parent_child(
                     self.model, geom_a, geom_b
                 )
-                contype_conaffinity_cond = is_pass_contype_conaffinity_check(
+                contype_conaffinity_cond = self._is_pass_contype_conaffinity_check(
                     self.model, geom_a, geom_b
                 )
                 if weld_body_cond and parent_child_cond and contype_conaffinity_cond:
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
+
+    def _is_welded_together(self, model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
+        """Returns true if the geoms are part of the same body, or if their bodies are
+        welded together."""
+        body1 = model.geom_bodyid[geom_id1]
+        body2 = model.geom_bodyid[geom_id2]
+        weld1 = model.body_weldid[body1]
+        weld2 = model.body_weldid[body2]
+        return weld1 == weld2
+
+    def _are_geom_bodies_parent_child(
+        self, model: mujoco.MjModel, geom_id1: int, geom_id2: int
+    ) -> bool:
+        """Returns true if the geom bodies have a parent-child relationship."""
+        body_id1 = model.geom_bodyid[geom_id1]
+        body_id2 = model.geom_bodyid[geom_id2]
+
+        # body_weldid is the ID of the body's weld.
+        body_weldid1 = model.body_weldid[body_id1]
+        body_weldid2 = model.body_weldid[body_id2]
+
+        # weld_parent_id is the ID of the parent of the body's weld.
+        weld_parent_id1 = model.body_parentid[body_weldid1]
+        weld_parent_id2 = model.body_parentid[body_weldid2]
+
+        # weld_parent_weldid is the weld ID of the parent of the body's weld.
+        weld_parent_weldid1 = model.body_weldid[weld_parent_id1]
+        weld_parent_weldid2 = model.body_weldid[weld_parent_id2]
+
+        cond1 = body_weldid1 == weld_parent_weldid2
+        cond2 = body_weldid2 == weld_parent_weldid1
+        return cond1 or cond2
+
+    def _is_pass_contype_conaffinity_check(
+        self, model: mujoco.MjModel, geom_id1: int, geom_id2: int
+    ) -> bool:
+        """Returns true if the geoms pass the contype/conaffinity check."""
+        cond1 = bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2])
+        cond2 = bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
+        return cond1 or cond2
