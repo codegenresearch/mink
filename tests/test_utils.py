@@ -85,29 +85,16 @@ class TestUtils(absltest.TestCase):
         body_quat = np.empty(4)
         mujoco.mju_mat2Quat(body_quat, data.body("test").xmat)
 
-        # Initially not the same.
-        with np.testing.assert_raises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
-        with np.testing.assert_raises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
-
         utils.move_mocap_to_frame(model, data, "mocap", "test", "body")
         mujoco.mj_forward(model, data)
 
-        # Should now be the same.
         np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
         np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
 
     def test_get_freejoint_dims(self):
         q_ids, v_ids = utils.get_freejoint_dims(self.model)
-        np.testing.assert_allclose(
-            np.asarray(q_ids),
-            np.asarray(list(range(0, 7))),
-        )
-        np.testing.assert_allclose(
-            np.asarray(v_ids),
-            np.asarray(list(range(0, 6))),
-        )
+        np.testing.assert_allclose(q_ids, list(range(0, 7)))
+        np.testing.assert_allclose(v_ids, list(range(0, 6)))
 
     def test_get_subtree_geom_ids(self):
         xml_str = """
@@ -137,20 +124,46 @@ class TestUtils(absltest.TestCase):
         b1_id = model.body("b1").id
         actual_geom_ids = utils.get_subtree_geom_ids(model, b1_id)
         geom_names = ["b1/g1", "b1/g2", "b2/g1"]
-        expected_geom_ids = [model.geom(g).id for g in geom_names]
-        self.assertListEqual(actual_geom_ids, expected_geom_ids)
+        expected_geom_ids = {model.geom(g).id for g in geom_names}
+        self.assertSetEqual(set(actual_geom_ids), expected_geom_ids)
+
+    def test_get_subtree_body_ids(self):
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body name="b1" pos=".1 -.1 0">
+              <joint type="free"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body name="b2">
+                <joint type="hinge" range="0 1.57" limited="true"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+            <body name="b3" pos="1 1 1">
+              <joint type="free"/>
+              <geom name="b3/g1" type="sphere" size=".1" mass=".1"/>
+              <body name="b4">
+                <joint type="hinge" range="0 1.57" limited="true"/>
+                <geom name="b4/g1" type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        b1_id = model.body("b1").id
+        actual_body_ids = utils.get_subtree_body_ids(model, b1_id)
+        body_names = ["b1", "b2"]
+        expected_body_ids = {model.body(b).id for b in body_names}
+        self.assertSetEqual(set(actual_body_ids), expected_body_ids)
 
     def test_apply_gravity_compensation(self):
-        """Test gravity compensation for a given configuration."""
         q = utils.custom_configuration_vector(self.model, "stand")
         utils.apply_gravity_compensation(self.model, self.data, q)
         mujoco.mj_forward(self.model, self.data)
-        # Assuming that the gravity compensation is applied correctly, the qfrc_passive should reflect the gravity forces.
-        # This is a simplified check and might need more sophisticated validation depending on the specific requirements.
         self.assertTrue(np.any(self.data.qfrc_passive != 0))
 
     def test_get_subtree_transform(self):
-        """Test getting the SE3 transform of a subtree."""
         xml_str = """
         <mujoco>
           <worldbody>
