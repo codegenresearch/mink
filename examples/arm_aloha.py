@@ -49,7 +49,7 @@ def compensate_gravity(
     for subtree_id in subtree_ids:
         total_mass = model.body_subtreemass[subtree_id]
         mujoco.mj_jacSubtreeCom(model, data, jac, subtree_id)
-        qfrc_applied[:] -= total_mass * (model.opt.gravity * jac).sum(axis=0)
+        qfrc_applied[:] -= total_mass * (model.opt.gravity @ jac)
 
 
 if __name__ == "__main__":
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=collision_pairs,
+        geom_pairs=collision_pairs,  # type: ignore
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
