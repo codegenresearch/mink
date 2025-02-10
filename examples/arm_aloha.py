@@ -30,8 +30,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names: list[str] = []
-    velocity_limits: dict[str, float] = {}
+    joint_names = []
+    velocity_limits = {}
     for prefix in ["left", "right"]:
         for n in _JOINT_NAMES:
             name = f"{prefix}/{n}"
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=collision_pairs,  # type: ignore
+        geom_pairs=collision_pairs,
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
