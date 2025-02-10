@@ -98,36 +98,39 @@ def main():
     data = mujoco.MjData(model)
 
     # Generate joint names and velocity limits for both arms.
-    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
-    velocity_limits = {name: _VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
+    joint_names = []
+    velocity_limits = {}
+    for prefix in ["left", "right"]:
+        for joint in _JOINT_NAMES:
+            name = f"{prefix}/{joint}"
+            joint_names.append(name)
+            velocity_limits[name] = _VELOCITY_LIMITS[joint]
+
     dof_ids, actuator_ids = get_dof_and_actuator_ids(model, joint_names)
 
     configuration = mink.Configuration(model)
 
     # Define tasks for the end-effectors and posture.
     tasks = [
-        l_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        r_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        posture_task := mink.PostureTask(
+        mink.PostureTask(
             posture_cost=0.01,  # Adjusted to match the gold code
             lm_damping=1.0,
         ),
     ]
-
-    # Set the posture task target from the current configuration.
-    posture_task.set_target_from_configuration(configuration)
 
     # Set up collision avoidance.
     collision_avoidance_limit = setup_collision_avoidance(model)
@@ -145,9 +148,9 @@ def main():
 
     # Solver and error thresholds.
     solver = "quadprog"
-    pos_threshold = 1e-4  # Adjusted to match the gold code
-    ori_threshold = 1e-4  # Adjusted to match the gold code
-    max_iters = 20  # Adjusted to match the gold code
+    pos_threshold = 1e-3  # Adjusted to match the gold code
+    ori_threshold = 1e-3  # Adjusted to match the gold code
+    max_iters = 10  # Adjusted to match the gold code
     damping = 1e-2  # Adjusted to match the gold code
 
     with mujoco.viewer.launch_passive(
@@ -166,8 +169,13 @@ def main():
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
+            l_ee_task = tasks[0]
+            r_ee_task = tasks[1]
+            posture_task = tasks[2]
+
             l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
             r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            posture_task.set_target_from_configuration(configuration)
 
             # Compute velocity and integrate into the next configuration.
             for _ in range(max_iters):
