@@ -86,7 +86,7 @@ if __name__ == "__main__":
         data.mocap_pos[com_mid] = data.subtree_com[1]
 
         # Set up the rate limiter
-        rate_limiter = RateLimiter(frequency=200.0, warn=False)
+        rate = RateLimiter(frequency=200.0, warn=False)
 
         # Main loop
         while viewer.is_running():
@@ -97,10 +97,10 @@ if __name__ == "__main__":
                 hand_task.set_target(mink.SE3.from_mocap_id(data, hands_mid[i]))
 
             # Solve inverse kinematics and integrate
-            velocity = mink.solve_ik(configuration, tasks, rate_limiter.dt, solver, 1e-1)
-            configuration.integrate_inplace(velocity, rate_limiter.dt)
+            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-1)
+            configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
             # Visualize at fixed FPS
             viewer.sync()
-            rate_limiter.sleep()
+            rate.sleep()
