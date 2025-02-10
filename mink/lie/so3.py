@@ -9,7 +9,7 @@ import numpy as np
 from .base import MatrixLieGroup
 from .utils import get_epsilon, skew
 
-_IDENTITY_WXYZ_XYZ = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)
+_IDENTITY_WXYZ = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)
 _INVERT_QUAT_SIGN = np.array([1.0, -1.0, -1.0, -1.0], dtype=np.float64)
 
 
@@ -58,25 +58,25 @@ class SO3(MatrixLieGroup):
     @classmethod
     def from_x_radians(cls, theta: float) -> SO3:
         """Create an SO3 instance from a rotation around the x-axis by theta radians."""
-        return cls.exp(np.array([theta, 0.0, 0.0], dtype=np.float64))
+        return SO3.exp(np.array([theta, 0.0, 0.0], dtype=np.float64))
 
     @classmethod
     def from_y_radians(cls, theta: float) -> SO3:
         """Create an SO3 instance from a rotation around the y-axis by theta radians."""
-        return cls.exp(np.array([0.0, theta, 0.0], dtype=np.float64))
+        return SO3.exp(np.array([0.0, theta, 0.0], dtype=np.float64))
 
     @classmethod
     def from_z_radians(cls, theta: float) -> SO3:
         """Create an SO3 instance from a rotation around the z-axis by theta radians."""
-        return cls.exp(np.array([0.0, 0.0, theta], dtype=np.float64))
+        return SO3.exp(np.array([0.0, 0.0, theta], dtype=np.float64))
 
     @classmethod
     def from_rpy_radians(cls, roll: float, pitch: float, yaw: float) -> SO3:
         """Create an SO3 instance from roll, pitch, and yaw angles in radians."""
         return (
-            cls.from_z_radians(yaw)
-            @ cls.from_y_radians(pitch)
-            @ cls.from_x_radians(roll)
+            SO3.from_z_radians(yaw)
+            @ SO3.from_y_radians(pitch)
+            @ SO3.from_x_radians(roll)
         )
 
     @classmethod
@@ -95,7 +95,7 @@ class SO3(MatrixLieGroup):
     @classmethod
     def identity(cls) -> SO3:
         """Return the identity rotation (no rotation)."""
-        return SO3(wxyz=_IDENTITY_WXYZ_XYZ)
+        return SO3(wxyz=_IDENTITY_WXYZ)
 
     @classmethod
     def sample_uniform(cls) -> SO3:
