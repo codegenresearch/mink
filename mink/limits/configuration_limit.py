@@ -1,19 +1,16 @@
-"""Joint position limit."""
+"""This module defines an inequality constraint on joint positions in a robot model, ignoring floating base joints."""
 
 import mujoco
 import numpy as np
 
 from ..configuration import Configuration
-from ..constants import dof_width, qpos_width
+from ..constants import qpos_width
 from .exceptions import LimitDefinitionError
 from .limit import Constraint, Limit
 
 
 class ConfigurationLimit(Limit):
-    """Inequality constraint on joint positions in a robot model.
-
-    Floating base joints are ignored.
-    """
+    """Inequality constraint on joint positions in a robot model, ignoring floating base joints."""
 
     def __init__(
         self,
@@ -21,39 +18,34 @@ class ConfigurationLimit(Limit):
         gain: float = 0.95,
         min_distance_from_limits: float = 0.0,
     ):
-        """Initialize configuration limits.
+        """Initialize the configuration limits.
 
         Args:
             model: MuJoCo model.
-            gain: Gain factor in (0, 1] that determines how fast each joint is
-                allowed to move towards the joint limits at each timestep. Values lower
-                ttan 1 are safer but may make the joints move slowly.
-            min_distance_from_limits: Offset in meters (slide joints) or radians
-                (hinge joints) to be added to the limits. Positive values decrease the
-                range of motion, negative values increase it (i.e. negative values
-                allow penetration).
+            gain: Gain factor in (0, 1] that determines how fast each joint is allowed to move towards the joint limits at each timestep. Values lower than 1 are safer but may make the joints move slowly.
+            min_distance_from_limits: Offset in meters (slide joints) or radians (hinge joints) to be added to the limits. Positive values decrease the range of motion, negative values increase it (i.e., negative values allow penetration).
+
+        Raises:
+            LimitDefinitionError: If the gain is not in the range (0, 1].
         """
         if not 0.0 < gain <= 1.0:
             raise LimitDefinitionError(
                 f"{self.__class__.__name__} gain must be in the range (0, 1]"
             )
 
-        index_list: list[int] = []  # DoF indices that are limited.
-        lower = np.full(model.nq, -mujoco.mjMAXVAL)
-        upper = np.full(model.nq, mujoco.mjMAXVAL)
+        index_list = []  # List to store DoF indices that are limited.
+        lower = np.full(model.nq, -np.inf)
+        upper = np.full(model.nq, np.inf)
         for jnt in range(model.njnt):
             jnt_type = model.jnt_type[jnt]
             qpos_dim = qpos_width(jnt_type)
             jnt_range = model.jnt_range[jnt]
             padr = model.jnt_qposadr[jnt]
-            # Skip free joints and joints without limits.
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE or not model.jnt_limited[jnt]:
                 continue
             lower[padr : padr + qpos_dim] = jnt_range[0] + min_distance_from_limits
             upper[padr : padr + qpos_dim] = jnt_range[1] - min_distance_from_limits
-            jnt_dim = dof_width(jnt_type)
-            jnt_id = model.jnt_dofadr[jnt]
-            index_list.extend(range(jnt_id, jnt_id + jnt_dim))
+            index_list.append(model.jnt_dofadr[jnt])
 
         self.indices = np.array(index_list)
         self.indices.setflags(write=False)
@@ -92,11 +84,9 @@ class ConfigurationLimit(Limit):
             :math:`G \Delta q \leq h`, or ``None`` if there is no limit.
         """
         del dt  # Unused.
-        if self.projection_matrix is None:
-            return Constraint()
 
-        # Upper.
-        delta_q_max = np.zeros((self.model.nv,))
+        # Calculate the maximum allowable change in position towards the upper limit.
+        delta_q_max = np.zeros(self.model.nv)
         mujoco.mj_differentiatePos(
             m=self.model,
             qvel=delta_q_max,
@@ -105,14 +95,12 @@ class ConfigurationLimit(Limit):
             qpos2=self.upper,
         )
 
-        # Lower.
-        delta_q_min = np.zeros((self.model.nv,))
+        # Calculate the maximum allowable change in position towards the lower limit.
+        delta_q_min = np.zeros(self.model.nv)
         mujoco.mj_differentiatePos(
             m=self.model,
             qvel=delta_q_min,
             dt=1.0,
-            # NOTE: mujoco.mj_differentiatePos does `qpos2 - qpos1` so notice the order
-            # swap here compared to above.
             qpos1=self.lower,
             qpos2=configuration.q,
         )
