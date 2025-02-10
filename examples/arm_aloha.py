@@ -49,7 +49,7 @@ def compensate_gravity(
     for subtree_id in subtree_ids:
         total_mass = model.body_subtreemass[subtree_id]
         mujoco.mj_jacSubtreeCom(model, data, jac, subtree_id)
-        qfrc_applied[:] -= model.opt.gravity @ (total_mass * jac)
+        qfrc_applied[:] -= total_mass * (model.opt.gravity @ jac)
 
 
 if __name__ == "__main__":
@@ -57,8 +57,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Bodies for which to apply gravity compensation.
-    l_subtree_id = model.body("left/base_link").id
-    r_subtree_id = model.body("right/base_link").id
+    left_subtree_id = model.body("left/base_link").id
+    right_subtree_id = model.body("right/base_link").id
 
     # Get the dof and actuator ids for the joints we wish to control.
     joint_names: list[str] = []
@@ -172,7 +172,7 @@ if __name__ == "__main__":
                     break
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
-            compensate_gravity(model, data, [l_subtree_id, r_subtree_id])
+            compensate_gravity(model, data, [left_subtree_id, right_subtree_id])
             mujoco.mj_step(model, data)
 
             # Visualize at fixed FPS.
