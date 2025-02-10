@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Sequence, Dict, List
+from typing import Optional, Sequence
 
 import mujoco
 import mujoco.viewer
@@ -22,7 +22,7 @@ _JOINT_NAMES = [
 ]
 
 # Velocity limits for each joint.
-_VELOCITY_LIMITS: Dict[str, float] = {joint: np.pi for joint in _JOINT_NAMES}
+_VELOCITY_LIMITS = {n: np.pi for n in _JOINT_NAMES}
 
 
 def compensate_gravity(
@@ -45,7 +45,7 @@ def compensate_gravity(
     for subtree_id in subtree_ids:
         total_mass = model.body_subtreemass[subtree_id]
         mujoco.mj_jacSubtreeCom(model, data, jac, subtree_id)
-        qfrc_applied[:] -= model.opt.gravity * (total_mass * jac)
+        qfrc_applied[:] -= model.opt.gravity * total_mass * jac
 
 
 if __name__ == "__main__":
@@ -57,13 +57,13 @@ if __name__ == "__main__":
     right_subtree_id = model.body("right/base_link").id
 
     # Collect joint and actuator IDs for both arms.
-    joint_names: List[str] = []
-    velocity_limits: Dict[str, float] = {}
+    joint_names = []
+    velocity_limits = {}
     for prefix in ["left", "right"]:
-        for joint in _JOINT_NAMES:
-            name = f"{prefix}/{joint}"
+        for n in _JOINT_NAMES:
+            name = f"{prefix}/{n}"
             joint_names.append(name)
-            velocity_limits[name] = _VELOCITY_LIMITS[joint]
+            velocity_limits[name] = _VELOCITY_LIMITS[n]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
