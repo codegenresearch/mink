@@ -23,6 +23,9 @@ class PostureTask(Task):
         _v_ids: Indices of free joint dimensions.
     """
 
+    target_q: Optional[np.ndarray] = None
+    _v_ids: Optional[np.ndarray] = None
+
     def __init__(
         self,
         model: mujoco.MjModel,
@@ -49,11 +52,10 @@ class PostureTask(Task):
             gain=gain,
             lm_damping=lm_damping,
         )
-        self.target_q = None
 
         # Identify the indices of free joint dimensions
-        _, v_ids = get_freejoint_dims(model)
-        self._v_ids = np.array(v_ids) if v_ids else None
+        _, v_ids_or_none = get_freejoint_dims(model)
+        self._v_ids = np.array(v_ids_or_none) if v_ids_or_none else None
 
         self.k = model.nv
         self.nq = model.nq
@@ -70,7 +72,7 @@ class PostureTask(Task):
         target_q = np.atleast_1d(target_q)
         if target_q.ndim != 1 or target_q.shape[0] != self.nq:
             raise InvalidTarget(
-                f"Expected target posture shape ({self.nq},), got {target_q.shape}"
+                f"Expected target posture to have shape ({self.nq},), got {target_q.shape}"
             )
         self.target_q = target_q.copy()
 
