@@ -16,73 +16,95 @@ from .utils import assert_transforms_close
     ("SO3", SO3),
     ("SE3", SE3),
 )
-class TestGeneralOperations(parameterized.TestCase):
-    def test_inverse_is_bijective(self, group: Type[MatrixLieGroup]):
-        """Verify that applying inverse twice returns the original transform."""
-        transform = group.sample_uniform()
-        assert_transforms_close(transform, transform.inverse().inverse())
+class TestOperations(parameterized.TestCase):
+    def test_inverse(self, group: Type[MatrixLieGroup]):
+        """Verify inverse operation is bijective."""
+        T = group.sample_uniform()
+        assert_transforms_close(T, T.inverse().inverse())
 
-    def test_matrix_conversion_is_bijective(self, group: Type[MatrixLieGroup]):
-        """Ensure conversion to and from matrix representations is accurate."""
-        transform = group.sample_uniform()
-        assert_transforms_close(transform, group.from_matrix(transform.as_matrix()))
+    def test_matrix_conversion(self, group: Type[MatrixLieGroup]):
+        """Ensure matrix conversion is bijective."""
+        T = group.sample_uniform()
+        assert_transforms_close(T, group.from_matrix(T.as_matrix()))
 
-    def test_log_exp_operations_are_bijective(self, group: Type[MatrixLieGroup]):
-        """Validate the one-to-one mapping between log and exp operations."""
-        transform = group.sample_uniform()
+    def test_log_exp(self, group: Type[MatrixLieGroup]):
+        """Validate log and exp operations are bijective."""
+        T = group.sample_uniform()
 
-        tangent = transform.log()
+        tangent = T.log()
         self.assertEqual(tangent.shape, (group.tangent_dim,))
 
-        exp_transform = group.exp(tangent)
-        assert_transforms_close(transform, exp_transform)
-        np.testing.assert_allclose(tangent, exp_transform.log())
+        exp_T = group.exp(tangent)
+        assert_transforms_close(T, exp_T)
+        np.testing.assert_allclose(tangent, exp_T.log())
 
-    def test_adjoint_operation(self, group: Type[MatrixLieGroup]):
-        transform = group.sample_uniform()
+    def test_adjoint(self, group: Type[MatrixLieGroup]):
+        T = group.sample_uniform()
         omega = np.random.randn(group.tangent_dim)
         assert_transforms_close(
-            transform @ group.exp(omega),
-            group.exp(transform.adjoint() @ omega) @ transform,
+            T @ group.exp(omega),
+            group.exp(T.adjoint() @ omega) @ T,
         )
 
-    def test_right_minus_operation(self, group: Type[MatrixLieGroup]):
-        transform_a = group.sample_uniform()
-        transform_b = group.sample_uniform()
-        transform_c = transform_a.inverse() @ transform_b
-        np.testing.assert_allclose(transform_b.rminus(transform_a), transform_c.log())
+    def test_rminus(self, group: Type[MatrixLieGroup]):
+        T_a = group.sample_uniform()
+        T_b = group.sample_uniform()
+        T_c = T_a.inverse() @ T_b
+        np.testing.assert_allclose(T_b.rminus(T_a), T_c.log())
 
-    def test_left_minus_operation(self, group: Type[MatrixLieGroup]):
-        transform_a = group.sample_uniform()
-        transform_b = group.sample_uniform()
-        np.testing.assert_allclose(transform_a.lminus(transform_b), (transform_a @ transform_b.inverse()).log())
+    def test_lminus(self, group: Type[MatrixLieGroup]):
+        T_a = group.sample_uniform()
+        T_b = group.sample_uniform()
+        np.testing.assert_allclose(T_a.lminus(T_b), (T_a @ T_b.inverse()).log())
 
-    def test_right_plus_operation(self, group: Type[MatrixLieGroup]):
-        transform_a = group.sample_uniform()
-        transform_b = group.sample_uniform()
-        transform_c = transform_a.inverse() @ transform_b
-        assert_transforms_close(transform_a.rplus(transform_c.log()), transform_b)
+    def test_rplus(self, group: Type[MatrixLieGroup]):
+        T_a = group.sample_uniform()
+        T_b = group.sample_uniform()
+        T_c = T_a.inverse() @ T_b
+        assert_transforms_close(T_a.rplus(T_c.log()), T_b)
 
-    def test_left_plus_operation(self, group: Type[MatrixLieGroup]):
-        transform_a = group.sample_uniform()
-        transform_b = group.sample_uniform()
-        transform_c = transform_a @ transform_b.inverse()
-        assert_transforms_close(transform_b.lplus(transform_c.log()), transform_a)
+    def test_lplus(self, group: Type[MatrixLieGroup]):
+        T_a = group.sample_uniform()
+        T_b = group.sample_uniform()
+        T_c = T_a @ T_b.inverse()
+        assert_transforms_close(T_b.lplus(T_c.log()), T_a)
 
-    def test_jacobian_of_log_operation(self, group: Type[MatrixLieGroup]):
-        state = group.sample_uniform()
-        perturbation = np.random.rand(state.tangent_dim) * 1e-4
-        perturbed_state_log = state.plus(perturbation).log()
-        linearized_state_log = state.log() + state.jlog() @ perturbation
-        np.testing.assert_allclose(perturbed_state_log, linearized_state_log, atol=1e-7)
+    def test_jlog(self, group: Type[MatrixLieGroup]):
+        T = group.sample_uniform()
+        w = np.random.rand(T.tangent_dim) * 1e-4
+        T_pert = T.plus(w).log()
+        T_lin = T.log() + T.jlog() @ w
+        np.testing.assert_allclose(T_pert, T_lin, atol=1e-7)
 
 
-class TestSpecificGroupOperations(absltest.TestCase):
+class TestSpecificOperations(absltest.TestCase):
     """Tests specific to individual groups."""
 
-    def test_so3_rpy_conversion_is_bijective(self):
-        transform = SO3.sample_uniform()
-        assert_transforms_close(transform, SO3.from_rpy_radians(*transform.as_rpy_radians()))
+    def test_so3_rpy_conversion(self):
+        T = SO3.sample_uniform()
+        assert_transforms_close(T, SO3.from_rpy_radians(*T.as_rpy_radians()))
+
+    def test_se3_translation(self):
+        T = SE3.sample_uniform()
+        translation = T.as_matrix()[:3, 3]
+        assert_transforms_close(T, SE3.from_translation(translation))
+
+    def test_se3_rotation(self):
+        T = SE3.sample_uniform()
+        rotation = T.as_matrix()[:3, :3]
+        assert_transforms_close(T, SE3.from_rotation(rotation))
+
+    def test_so3_invalid_rpy(self):
+        with self.assertRaises(ValueError):
+            SO3.from_rpy_radians(10, 10, 10)  # Invalid RPY angles
+
+    def test_se3_invalid_translation(self):
+        with self.assertRaises(ValueError):
+            SE3.from_translation(np.array([1, 2]))  # Invalid translation vector
+
+    def test_se3_invalid_rotation(self):
+        with self.assertRaises(ValueError):
+            SE3.from_rotation(np.eye(2))  # Invalid rotation matrix
 
 
 if __name__ == "__main__":
