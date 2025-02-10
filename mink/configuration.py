@@ -5,6 +5,10 @@ enabling easy access to kinematic quantities such as frame transforms and Jacobi
 It automatically performs forward kinematics at each time step, ensuring that all
 kinematic queries return up-to-date information.
 
+Attributes:
+    model: Mujoco model.
+    data: Mujoco data associated with the model.
+
 In this context, a frame refers to a coordinate system that can be attached to
 different elements of the robot model. Currently supported frames include
 `body`, `geom`, and `site`.
@@ -12,7 +16,7 @@ different elements of the robot model. Currently supported frames include
 Key functionalities include:
 
     - Running forward kinematics to update the state.
-    - Checking configuration limits.
+    - Checking configuration bounds.
     - Computing Jacobians for different frames.
     - Retrieving frame transforms relative to the world frame.
     - Integrating velocities to update configurations.
@@ -60,45 +64,38 @@ class Configuration:
     def update(self, q: Optional[np.ndarray] = None) -> None:
         """Run forward kinematics to update the state.
 
-        If a configuration vector `q` is provided, it overrides the internal data.qpos
-        before performing kinematics.
-
         Args:
             q: Optional configuration vector to override the internal data.qpos with.
         """
         if q is not None:
             self.data.qpos = q
-        # Perform forward kinematics to update frame transforms and Jacobians.
         mujoco.mj_kinematics(self.model, self.data)
         mujoco.mj_comPos(self.model, self.data)
 
     def update_from_keyframe(self, key_name: str) -> None:
         """Update the configuration from a keyframe.
 
-        Updates the configuration using the configuration vector associated with the
-        specified keyframe.
-
         Args:
             key_name: The name of the keyframe.
 
         Raises:
-            mink.InvalidKeyframe: If no keyframe with the specified name is found in the model.
+            ValueError: If no keyframe with the specified name is found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise exceptions.InvalidKeyframe(key_name, self.model)
+            raise ValueError(f"No keyframe named '{key_name}' found in the model.")
         self.update(q=self.model.key_qpos[key_id])
 
-    def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
-        """Check if the current configuration is within the specified joint limits.
+    def check_bounds(self, tol: float = 1e-6, safety_break: bool = True) -> None:
+        """Check if the current configuration is within the specified joint bounds.
 
         Args:
-            tol: Tolerance in radians for checking joint limits.
-            safety_break: If True, raise an exception if the configuration is out of limits.
+            tol: Tolerance in radians for checking joint bounds.
+            safety_break: If True, raise an exception if the configuration is out of bounds.
                 If False, print a warning and continue execution.
 
         Raises:
-            mink.NotWithinConfigurationLimits: If the configuration is out of limits and safety_break is True.
+            mink.NotWithinConfigurationBounds: If the configuration is out of bounds and safety_break is True.
         """
         for jnt in range(self.model.njnt):
             jnt_type = self.model.jnt_type[jnt]
@@ -113,7 +110,7 @@ class Configuration:
             qmax = self.model.jnt_range[jnt, 1]
             if qval < qmin - tol or qval > qmax + tol:
                 if safety_break:
-                    raise exceptions.NotWithinConfigurationLimits(
+                    raise exceptions.NotWithinConfigurationBounds(
                         joint_id=jnt,
                         value=qval,
                         lower=qmin,
@@ -122,27 +119,19 @@ class Configuration:
                     )
                 else:
                     print(
-                        f"Value {qval} at index {jnt} is out of limits: "
+                        f"Value {qval} at index {jnt} is out of bounds: "
                         f"[{qmin}, {qmax}]"
                     )
 
     def get_frame_jacobian(self, frame_name: str, frame_type: str) -> np.ndarray:
         """Compute the Jacobian matrix of a frame velocity relative to the world frame.
 
-        Denoting our frame by :math:`B` and the world frame by :math:`W`, the
-        Jacobian matrix :math:`{}_B J_{WB}` is related to the body velocity
-        :math:`{}_B v_{WB}` by:
-
-        .. math::
-
-            {}_B v_{WB} = {}_B J_{WB} \dot{q}
-
         Args:
             frame_name: Name of the frame in the MJCF.
             frame_type: Type of frame. Can be 'geom', 'body', or 'site'.
 
         Returns:
-            Jacobian matrix :math:`{}_B J_{WB}` of the frame velocity relative to the world frame.
+            Jacobian matrix of the frame velocity relative to the world frame.
 
         Raises:
             mink.UnsupportedFrame: If the frame type is not supported.
@@ -212,7 +201,7 @@ class Configuration:
 
         Args:
             velocity: The velocity vector in tangent space.
-            dt: Integration duration in seconds.
+            dt: Integration duration in [s].
 
         Returns:
             The new configuration vector after integration.
@@ -226,7 +215,7 @@ class Configuration:
 
         Args:
             velocity: The velocity vector in tangent space.
-            dt: Integration duration in seconds.
+            dt: Integration duration in [s].
         """
         mujoco.mj_integratePos(self.model, self.data.qpos, velocity, dt)
         self.update()
