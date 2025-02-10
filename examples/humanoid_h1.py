@@ -16,21 +16,50 @@ if __name__ == "__main__":
     feet = ["right_foot", "left_foot"]
     hands = ["right_wrist", "left_wrist"]
 
-    tasks = [
-        mink.FrameTask(frame_name="pelvis", frame_type="body", position_cost=0.0, orientation_cost=10.0),
-        mink.PostureTask(model, cost=1.0),
-        mink.ComTask(cost=200.0),
-    ]
+    tasks = []
 
-    tasks.extend([
-        mink.FrameTask(frame_name=foot, frame_type="site", position_cost=200.0, orientation_cost=10.0, lm_damping=1.0)
-        for foot in feet
-    ])
+    # Create and add pelvis orientation task
+    pelvis_orientation_task = mink.FrameTask(
+        frame_name="pelvis",
+        frame_type="body",
+        position_cost=0.0,
+        orientation_cost=10.0,
+    )
+    tasks.append(pelvis_orientation_task)
 
-    tasks.extend([
-        mink.FrameTask(frame_name=hand, frame_type="site", position_cost=200.0, orientation_cost=0.0, lm_damping=1.0)
-        for hand in hands
-    ])
+    # Create and add posture task
+    posture_task = mink.PostureTask(model, cost=1.0)
+    tasks.append(posture_task)
+
+    # Create and add COM task
+    com_task = mink.ComTask(cost=200.0)
+    tasks.append(com_task)
+
+    # Create and add feet tasks
+    feet_tasks = []
+    for foot in feet:
+        foot_task = mink.FrameTask(
+            frame_name=foot,
+            frame_type="site",
+            position_cost=200.0,
+            orientation_cost=10.0,
+            lm_damping=1.0,
+        )
+        feet_tasks.append(foot_task)
+    tasks.extend(feet_tasks)
+
+    # Create and add hand tasks
+    hand_tasks = []
+    for hand in hands:
+        hand_task = mink.FrameTask(
+            frame_name=hand,
+            frame_type="site",
+            position_cost=200.0,
+            orientation_cost=0.0,
+            lm_damping=1.0,
+        )
+        hand_tasks.append(hand_task)
+    tasks.extend(hand_tasks)
 
     com_mid = model.body("com_target").mocapid[0]
     feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
@@ -40,13 +69,15 @@ if __name__ == "__main__":
     data = configuration.data
     solver = "quadprog"
 
-    with mujoco.viewer.launch_passive(model=model, data=data, show_left_ui=False, show_right_ui=False) as viewer:
+    with mujoco.viewer.launch_passive(
+        model=model, data=data, show_left_ui=False, show_right_ui=False
+    ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
         # Initialize to the home keyframe.
         configuration.update_from_keyframe("stand")
-        tasks[1].set_target_from_configuration(configuration)
-        tasks[0].set_target_from_configuration(configuration)
+        posture_task.set_target_from_configuration(configuration)
+        pelvis_orientation_task.set_target_from_configuration(configuration)
 
         # Initialize mocap bodies at their respective sites.
         for hand, foot in zip(hands, feet):
@@ -57,8 +88,8 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0, warn=False)
         while viewer.is_running():
             # Update task targets.
-            tasks[2].set_target(data.mocap_pos[com_mid])
-            for i, (hand_task, foot_task) in enumerate(zip(tasks[3:5], tasks[5:])):
+            com_task.set_target(data.mocap_pos[com_mid])
+            for i, (hand_task, foot_task) in enumerate(zip(hand_tasks, feet_tasks)):
                 foot_task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
                 hand_task.set_target(mink.SE3.from_mocap_id(data, hands_mid[i]))
 
