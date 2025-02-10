@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 import mujoco
 import numpy as np
@@ -19,10 +19,11 @@ class PostureTask(Task):
     affected by this task.
 
     Attributes:
-        target_q: Target configuration for the robot's joints.
+        target_q: Target joint configuration.
     """
 
     target_q: Optional[np.ndarray]
+    _v_ids: Optional[np.ndarray]
 
     def __init__(
         self,
@@ -53,8 +54,8 @@ class PostureTask(Task):
         self.target_q = None
 
         # Identify the indices of free joint dimensions
-        _, self._v_ids = get_freejoint_dims(model)
-        self._v_ids = np.asarray(self._v_ids) if self._v_ids else None
+        _, free_joint_indices = get_freejoint_dims(model)
+        self._v_ids = np.asarray(free_joint_indices) if free_joint_indices else None
 
         self.k = model.nv
         self.nq = model.nq
@@ -113,7 +114,6 @@ class PostureTask(Task):
             qpos1=configuration.q,
             qpos2=self.target_q,
         )
-
         # Set the error for free joint dimensions to zero
         if self._v_ids is not None:
             qvel[self._v_ids] = 0.0
