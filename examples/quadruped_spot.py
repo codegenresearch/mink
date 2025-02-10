@@ -7,21 +7,17 @@ from loop_rate_limiters import RateLimiter
 
 import mink
 
-# File description: This script sets up and runs an inverse kinematics (IK) simulation for the Boston Dynamics Spot robot using the MuJoCo physics engine. It defines tasks for the robot's base, feet, and end-effector, and uses an iterative solver to achieve the desired configurations.
+# File description: This script sets up and runs an inverse kinematics (IK) simulation for the Boston Dynamics Spot robot using the MuJoCo physics engine.
 
 _HERE = Path(__file__).parent
 _XML = _HERE / "boston_dynamics_spot" / "scene.xml"
 
 if __name__ == "__main__":
-    ## =================== ##
-    ## Load Model and Data ##
-    ## =================== ##
+    # Load model and data
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    ## =================== ##
-    ## Setup IK Configuration ##
-    ## =================== ##
+    # Setup IK configuration
     configuration = mink.Configuration(model)
 
     feet = ["FL", "FR", "HR", "HL"]
@@ -54,29 +50,24 @@ if __name__ == "__main__":
 
     tasks = [base_task, posture_task, *feet_tasks, eef_task]
 
-    ## =================== ##
-    ## Define Mocap IDs for Targets ##
-    ## =================== ##
+    # Define mocap IDs for targets
     base_mid = model.body("body_target").mocapid[0]
     feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
     eef_mid = model.body("EE_target").mocapid[0]
 
-    ## =================== ##
-    ## IK Settings with Validation ##
-    ## =================== ##
+    # IK settings
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
     max_iters = 20
 
+    # Error handling for IK settings
     if pos_threshold <= 0 or ori_threshold <= 0:
         raise ValueError("Position and orientation thresholds must be greater than zero.")
     if max_iters <= 0:
         raise ValueError("Maximum iterations must be greater than zero.")
 
-    ## =================== ##
-    ## Launch MuJoCo Viewer ##
-    ## =================== ##
+    # Launch MuJoCo viewer
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
@@ -111,7 +102,7 @@ if __name__ == "__main__":
                 # Check if position and orientation goals are achieved
                 pos_achieved = True
                 ori_achieved = True
-                for task in tasks:
+                for task in [eef_task, base_task, *feet_tasks]:
                     err = task.compute_error(configuration)
                     pos_achieved &= np.linalg.norm(err[:3]) <= pos_threshold
                     ori_achieved &= np.linalg.norm(err[3:]) <= ori_threshold
