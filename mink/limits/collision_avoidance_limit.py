@@ -267,7 +267,11 @@ class CollisionAvoidanceLimit(Limit):
             fromto,
         )
         return Contact(
-            dist, fromto, geom1_id, geom2_id, self.collision_detection_distance
+            dist=dist,
+            fromto=fromto,
+            geom1=geom1_id,
+            geom2=geom2_id,
+            distmax=self.collision_detection_distance,
         )
 
     def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
