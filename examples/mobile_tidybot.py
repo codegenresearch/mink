@@ -30,12 +30,14 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Joints we wish to control.
+    # fmt: off
     joint_names = [
         # Base joints.
         "joint_x", "joint_y", "joint_th",
         # Arm joints.
         "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7",
     ]
+    # fmt: on
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -92,7 +94,6 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "pinch_site_target", "pinch_site", "site")
 
         rate = RateLimiter(frequency=200.0, warn=False)
-        dt = rate.period
         t = 0.0
         while viewer.is_running():
             # Update task target.
@@ -103,16 +104,18 @@ if __name__ == "__main__":
             for i in range(max_iters):
                 if key_callback.fix_base:
                     vel = mink.solve_ik(
-                        configuration, [*tasks, damping_task], dt, solver, damping=1e-3
+                        configuration, [*tasks, damping_task], rate.dt, solver, damping=1e-3
                     )
                 else:
-                    vel = mink.solve_ik(configuration, tasks, dt, solver, damping=1e-3)
-                configuration.integrate_inplace(vel, dt)
+                    vel = mink.solve_ik(configuration, tasks, rate.dt, solver, damping=1e-3)
+                configuration.integrate_inplace(vel, rate.dt)
 
                 # Exit condition.
+                pos_achieved = True
+                ori_achieved = True
                 err = end_effector_task.compute_error(configuration)
-                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
-                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
+                pos_achieved &= np.linalg.norm(err[:3]) <= pos_threshold
+                ori_achieved &= np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
                     break
 
@@ -125,4 +128,4 @@ if __name__ == "__main__":
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
-            t += dt
+            t += rate.dt
