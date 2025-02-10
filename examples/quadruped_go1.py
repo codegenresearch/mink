@@ -1,4 +1,5 @@
 from pathlib import Path
+import warnings
 
 import mujoco
 import mujoco.viewer
@@ -9,6 +10,8 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "unitree_go1" / "scene.xml"
 
+# Set consistent frequency for RateLimiter
+FREQUENCY = 200.0
 
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
@@ -59,7 +62,7 @@ if __name__ == "__main__":
             mink.move_mocap_to_frame(model, data, f"{foot}_target", foot, "site")
         mink.move_mocap_to_frame(model, data, "trunk_target", "trunk", "body")
 
-        rate = RateLimiter(frequency=500.0, warn=False)
+        rate = RateLimiter(frequency=FREQUENCY, warn=True)
         while viewer.is_running():
             # Update task targets.
             base_task.set_target(mink.SE3.from_mocap_id(data, base_mid))
