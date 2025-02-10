@@ -58,7 +58,6 @@ class TestConfigurationLimit(absltest.TestCase):
         """Test behavior with a model that has no velocity limits."""
         xml_str = """
         <mujoco>
-          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="free" name="floating"/>
@@ -83,7 +82,6 @@ class TestConfigurationLimit(absltest.TestCase):
         """Test behavior with a model that has a subset of velocity-limited joints."""
         xml_str = """
         <mujoco>
-          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="hinge" name="hinge_unlimited"/>
@@ -102,14 +100,13 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        np.testing.assert_allclose(limit.lower, np.array([0.0]))
-        np.testing.assert_allclose(limit.upper, np.array([1.57]))
+        np.testing.assert_allclose(limit.lower, np.asarray([0.0]))
+        np.testing.assert_allclose(limit.upper, np.asarray([1.57]))
 
     def test_freejoint_ignored(self):
         """Test that free joints are ignored in the velocity limits."""
         xml_str = """
         <mujoco>
-          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="free" name="floating"/>
@@ -128,8 +125,8 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        np.testing.assert_allclose(limit.lower, np.array([0.0]))
-        np.testing.assert_allclose(limit.upper, np.array([1.57]))
+        np.testing.assert_allclose(limit.lower, np.asarray([0.0]))
+        np.testing.assert_allclose(limit.upper, np.asarray([1.57]))
 
     def test_far_from_limit(self, tol=1e-10):
         """Test that the limit has no effect when the configuration is far away."""
