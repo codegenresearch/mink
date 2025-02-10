@@ -11,7 +11,7 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
 # Joint names for a single arm.
-JOINT_NAMES = [
+_JOINT_NAMES = [
     "waist",
     "shoulder",
     "elbow",
@@ -22,7 +22,9 @@ JOINT_NAMES = [
 
 # Velocity limits for each joint, sourced from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-VELOCITY_LIMITS = {joint: np.pi for joint in JOINT_NAMES}
+_VELOCITY_LIMITS = {}
+for joint in _JOINT_NAMES:
+    _VELOCITY_LIMITS[joint] = np.pi
 
 
 def construct_model(xml_path):
@@ -79,9 +81,11 @@ def setup_collision_avoidance(model):
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
+    table_geom = ["table"]
     collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),
-        (l_wrist_geoms + r_wrist_geoms, frame_geoms + ["table"]),
+        (l_wrist_geoms, frame_geoms + table_geom),
+        (r_wrist_geoms, frame_geoms + table_geom),
     ]
     return mink.CollisionAvoidanceLimit(
         model=model,
@@ -96,25 +100,29 @@ def main():
     data = mujoco.MjData(model)
 
     # Generate joint names and velocity limits for both arms.
-    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in JOINT_NAMES]
+    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
     dof_ids, actuator_ids = get_dof_and_actuator_ids(model, joint_names)
 
     configuration = mink.Configuration(model)
 
-    # Define tasks for the end-effectors.
+    # Define tasks for the end-effectors and posture.
     tasks = [
-        mink.FrameTask(
+        left_ee_task := mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        mink.FrameTask(
+        right_ee_task := mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+        posture_task := mink.PostureTask(
+            posture_cost=1.0,
             lm_damping=1.0,
         ),
     ]
@@ -125,7 +133,7 @@ def main():
     # Define configuration limits.
     limits = [
         mink.ConfigurationLimit(model=model),
-        mink.VelocityLimit(model, VELOCITY_LIMITS),
+        mink.VelocityLimit(model, _VELOCITY_LIMITS),
         collision_avoidance_limit,
     ]
 
@@ -137,7 +145,7 @@ def main():
     solver = "quadprog"
     position_threshold = 1e-4
     orientation_threshold = 1e-4
-    max_iterations = 20
+    max_iterations = 10
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -155,8 +163,8 @@ def main():
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
-            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute velocity and integrate into the next configuration.
             for _ in range(max_iterations):
@@ -171,11 +179,11 @@ def main():
                 configuration.integrate_inplace(velocity, rate.dt)
 
                 # Check if the tasks are achieved.
-                left_error = tasks[0].compute_error(configuration)
+                left_error = left_ee_task.compute_error(configuration)
                 left_position_achieved = np.linalg.norm(left_error[:3]) <= position_threshold
                 left_orientation_achieved = np.linalg.norm(left_error[3:]) <= orientation_threshold
 
-                right_error = tasks[1].compute_error(configuration)
+                right_error = right_ee_task.compute_error(configuration)
                 right_position_achieved = np.linalg.norm(right_error[:3]) <= position_threshold
                 right_orientation_achieved = np.linalg.norm(right_error[3:]) <= orientation_threshold
 
