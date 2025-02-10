@@ -54,10 +54,10 @@ class Configuration:
     def update(self, q: Optional[np.ndarray] = None) -> None:
         """Run forward kinematics.
 
-        This method updates the kinematic state of the model. If a configuration vector
-        `q` is provided, it overrides the internal `data.qpos` with this vector. The
-        method then calls `mj_kinematics` to update the kinematic state and `mj_comPos`
-        to update the center of mass positions.
+        Updates the kinematic state of the model. If a configuration vector `q` is
+        provided, it overrides the internal `data.qpos` with this vector. The method
+        then calls `mj_kinematics` to update the kinematic state and `mj_comPos` to
+        update the center of mass positions.
 
         Args:
             q: Optional configuration vector to override internal data.qpos with.
@@ -74,11 +74,11 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            InvalidKeyframe: If no key named `key` was found in the model.
+            InvalidKeyframe: If no key named `key_name` was found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise exceptions.InvalidKeyframe(key_name, self.model)
+            raise exceptions.InvalidKeyframe(key_name)
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
