@@ -1,7 +1,5 @@
 """Frame task implementation."""
 
-from __future__ import annotations
-
 from typing import Optional
 
 import numpy as np
@@ -14,13 +12,12 @@ from .task import Task
 
 
 class FrameTask(Task):
-    """Regulate the pose of a frame expressed in the world frame.
+    """Regulate the pose of a robot frame in the world frame.
 
     Attributes:
-        frame_name: Name of the frame to regulate, typically the name of body, geom
-            or site in the robot model.
-        frame_type: The frame type: `body`, `geom` or `site`.
-        transform_frame_to_world: Target pose of the frame.
+        frame_name (str): Name of the frame to regulate.
+        frame_type (str): The frame type: `body`, `geom`, or `site`.
+        transform_target_to_world (Optional[SE3]): Target pose of the frame.
     """
 
     k: int = 6
@@ -34,7 +31,17 @@ class FrameTask(Task):
         orientation_cost: npt.ArrayLike,
         gain: float = 1.0,
         lm_damping: float = 0.0,
-    ):
+    ) -> None:
+        """Initialize the FrameTask.
+
+        Args:
+            frame_name (str): Name of the frame to regulate.
+            frame_type (str): The frame type: `body`, `geom`, or `site`.
+            position_cost (npt.ArrayLike): Cost for the position error.
+            orientation_cost (npt.ArrayLike): Cost for the orientation error.
+            gain (float, optional): Gain for the task. Defaults to 1.0.
+            lm_damping (float, optional): Damping for the Levenberg-Marquardt algorithm. Defaults to 0.0.
+        """
         super().__init__(cost=np.zeros((self.k,)), gain=gain, lm_damping=lm_damping)
         self.frame_name = frame_name
         self.frame_type = frame_type
@@ -46,11 +53,20 @@ class FrameTask(Task):
         self.set_orientation_cost(orientation_cost)
 
     def set_position_cost(self, position_cost: npt.ArrayLike) -> None:
+        """Set the cost for the position error.
+
+        Args:
+            position_cost (npt.ArrayLike): Cost for the position error.
+
+        Raises:
+            TaskDefinitionError: If the position cost is not a vector of shape (1,) or (3,).
+            TaskDefinitionError: If the position cost contains negative values.
+        """
         position_cost = np.atleast_1d(position_cost)
         if position_cost.ndim != 1 or position_cost.shape[0] not in (1, 3):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} position cost should be a vector of shape "
-                "1 (aka identical cost for all coordinates) or (3,) but got "
+                "1 (identical cost for all coordinates) or (3,) but got "
                 f"{position_cost.shape}"
             )
         if not np.all(position_cost >= 0.0):
@@ -60,25 +76,33 @@ class FrameTask(Task):
         self.cost[:3] = position_cost
 
     def set_orientation_cost(self, orientation_cost: npt.ArrayLike) -> None:
+        """Set the cost for the orientation error.
+
+        Args:
+            orientation_cost (npt.ArrayLike): Cost for the orientation error.
+
+        Raises:
+            TaskDefinitionError: If the orientation cost is not a vector of shape (1,) or (3,).
+            TaskDefinitionError: If the orientation cost contains negative values.
+        """
         orientation_cost = np.atleast_1d(orientation_cost)
         if orientation_cost.ndim != 1 or orientation_cost.shape[0] not in (1, 3):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} orientation cost should be a vector of "
-                "shape 1 (aka identical cost for all coordinates) or (3,) but got "
+                "shape 1 (identical cost for all coordinates) or (3,) but got "
                 f"{orientation_cost.shape}"
             )
         if not np.all(orientation_cost >= 0.0):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} position cost should be >= 0"
+                f"{self.__class__.__name__} orientation cost should be >= 0"
             )
         self.cost[3:] = orientation_cost
 
     def set_target(self, transform_target_to_world: SE3) -> None:
-        """Set the target pose.
+        """Set the target pose in the world frame.
 
         Args:
-            transform_target_to_world: Transform from the task target frame to the
-                world frame.
+            transform_target_to_world (SE3): Transform from the task target frame to the world frame.
         """
         self.transform_target_to_world = transform_target_to_world.copy()
 
@@ -86,7 +110,7 @@ class FrameTask(Task):
         """Set the target pose from a given robot configuration.
 
         Args:
-            configuration: Robot configuration :math:`q`.
+            configuration (Configuration): Robot configuration :math:`q`.
         """
         self.set_target(
             configuration.get_transform_frame_to_world(self.frame_name, self.frame_type)
@@ -108,10 +132,13 @@ class FrameTask(Task):
         :math:`0` the inertial frame.
 
         Args:
-            configuration: Robot configuration :math:`q`.
+            configuration (Configuration): Robot configuration :math:`q`.
 
         Returns:
-            Frame task error vector :math:`e(q)`.
+            np.ndarray: Frame task error vector :math:`e(q)`.
+
+        Raises:
+            TargetNotSet: If the target pose has not been set.
         """
         if self.transform_target_to_world is None:
             raise TargetNotSet(self.__class__.__name__)
@@ -124,14 +151,14 @@ class FrameTask(Task):
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the frame task Jacobian.
 
-        The derivation of the formula for this Jacobian is detailed in
-        [FrameTaskJacobian]_.
-
         Args:
-            configuration: Robot configuration :math:`q`.
+            configuration (Configuration): Robot configuration :math:`q`.
 
         Returns:
-            Frame task jacobian :math:`J(q)`.
+            np.ndarray: Frame task jacobian :math:`J(q)`.
+
+        Raises:
+            TargetNotSet: If the target pose has not been set.
         """
         if self.transform_target_to_world is None:
             raise TargetNotSet(self.__class__.__name__)
