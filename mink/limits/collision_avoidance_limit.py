@@ -204,10 +204,10 @@ class CollisionAvoidanceLimit(Limit):
             )
             if contact.inactive:
                 continue
-            dist = contact.dist
-            if dist > self.minimum_distance_from_collisions:
+            hi_bound_dist = contact.dist
+            if hi_bound_dist > self.minimum_distance_from_collisions:
                 upper_bound[idx] = (
-                    self.gain * (dist - self.minimum_distance_from_collisions) / dt
+                    self.gain * (hi_bound_dist - self.minimum_distance_from_collisions) / dt
                 ) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
@@ -220,7 +220,7 @@ class CollisionAvoidanceLimit(Limit):
     ) -> Contact:
         """Returns the smallest signed distance between a geom pair."""
         fromto = np.empty(6)
-        dist = mujoco.mj_geomDistance(
+        hi_bound_dist = mujoco.mj_geomDistance(
             self.model,
             data,
             geom1_id,
@@ -229,7 +229,7 @@ class CollisionAvoidanceLimit(Limit):
             fromto,
         )
         return Contact(
-            dist, fromto, geom1_id, geom2_id, self.collision_detection_distance
+            hi_bound_dist, fromto, geom1_id, geom2_id, self.collision_detection_distance
         )
 
     def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
