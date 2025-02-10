@@ -22,9 +22,7 @@ _JOINT_NAMES = [
 
 # Velocity limits for each joint, sourced from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {}
-for joint in _JOINT_NAMES:
-    _VELOCITY_LIMITS[joint] = np.pi
+_VELOCITY_LIMITS = {joint: np.pi for joint in _JOINT_NAMES}
 
 
 def construct_model(xml_path):
@@ -126,6 +124,9 @@ def main():
             lm_damping=1.0,
         ),
     ]
+
+    # Set the posture task target from the current configuration.
+    posture_task.set_target(configuration.q)
 
     # Set up collision avoidance.
     collision_avoidance_limit = setup_collision_avoidance(model)
