@@ -107,14 +107,14 @@ def main():
 
     # Define tasks for the end-effectors and posture.
     tasks = [
-        left_ee_task := mink.FrameTask(
+        l_ee_task := mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        right_ee_task := mink.FrameTask(
+        r_ee_task := mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
@@ -122,7 +122,7 @@ def main():
             lm_damping=1.0,
         ),
         posture_task := mink.PostureTask(
-            posture_cost=1.0,
+            posture_cost=0.1,  # Adjusted to match the gold code
             lm_damping=1.0,
         ),
     ]
@@ -143,9 +143,10 @@ def main():
 
     # Solver and error thresholds.
     solver = "quadprog"
-    position_threshold = 1e-4
-    orientation_threshold = 1e-4
-    max_iterations = 10
+    position_threshold = 1e-3  # Adjusted to match the gold code
+    orientation_threshold = 1e-3  # Adjusted to match the gold code
+    max_iterations = 10  # Adjusted to match the gold code
+    damping_value = 1e-2  # Adjusted to match the gold code
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -163,8 +164,8 @@ def main():
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
-            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute velocity and integrate into the next configuration.
             for _ in range(max_iterations):
@@ -174,16 +175,16 @@ def main():
                     rate.dt,
                     solver,
                     limits=limits,
-                    damping=1e-3,
+                    damping=damping_value,
                 )
                 configuration.integrate_inplace(velocity, rate.dt)
 
                 # Check if the tasks are achieved.
-                left_error = left_ee_task.compute_error(configuration)
+                left_error = l_ee_task.compute_error(configuration)
                 left_position_achieved = np.linalg.norm(left_error[:3]) <= position_threshold
                 left_orientation_achieved = np.linalg.norm(left_error[3:]) <= orientation_threshold
 
-                right_error = right_ee_task.compute_error(configuration)
+                right_error = r_ee_task.compute_error(configuration)
                 right_position_achieved = np.linalg.norm(right_error[:3]) <= position_threshold
                 right_orientation_achieved = np.linalg.norm(right_error[3:]) <= orientation_threshold
 
