@@ -82,8 +82,10 @@ class SO3(MatrixLieGroup):
     @classmethod
     def from_matrix(cls, matrix: np.ndarray) -> SO3:
         """Create an SO3 instance from a 3x3 rotation matrix."""
-        assert matrix.shape == (SO3.matrix_dim, SO3.matrix_dim)
-        wxyz = np.zeros(SO3.parameters_dim, dtype=np.float64)
+        assert matrix.shape == (cls.matrix_dim, cls.matrix_dim), (
+            f"Expected a 3x3 matrix but got a matrix of shape {matrix.shape}."
+        )
+        wxyz = np.zeros(cls.parameters_dim, dtype=np.float64)
         mujoco.mju_mat2Quat(wxyz, matrix.ravel())
         return cls(wxyz=wxyz)
 
@@ -160,7 +162,9 @@ class SO3(MatrixLieGroup):
 
         Equation 136.
         """
-        assert target.shape == (self.space_dim,)
+        assert target.shape == (self.space_dim,), (
+            f"Expected a 3D vector but got a vector of shape {target.shape}."
+        )
         padded_target = np.concatenate([np.zeros(1, dtype=np.float64), target])
         return (self @ SO3(wxyz=padded_target) @ self.inverse()).wxyz[1:]
 
@@ -176,7 +180,9 @@ class SO3(MatrixLieGroup):
 
         Equation 132.
         """
-        assert tangent.shape == (cls.tangent_dim,)
+        assert tangent.shape == (cls.tangent_dim,), (
+            f"Expected a 3D tangent vector but got a vector of shape {tangent.shape}."
+        )
         theta_squared = tangent @ tangent
         theta_pow_4 = theta_squared * theta_squared
         use_taylor = theta_squared < get_epsilon(tangent.dtype)
