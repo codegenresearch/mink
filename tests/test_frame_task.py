@@ -217,5 +217,5 @@ if __name__ == "__main__":
 3. **Cost Validation**: Verified that the cost values being tested are consistent with the gold code.
 4. **Redundant Tests**: Reviewed and ensured no redundant tests.
 5. **Imports**: Double-checked imports to match the gold code.
-6. **Test Structure**: Maintained consistent structure and naming conventions.
+6. **Test Structure and Naming**: Maintained consistent structure and naming conventions.
 7. **Final Review**: Conducted a thorough review to ensure no discrepancies.
