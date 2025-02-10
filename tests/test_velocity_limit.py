@@ -34,10 +34,12 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_indices(self):
         limit = VelocityLimit(self.model, self.velocities)
-        expected_indices = np.array([i for i in range(1, self.model.njnt) if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE])
+        expected_indices = np.array(
+            [i for i in range(self.model.njnt) if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE]
+        )
         self.assertTrue(np.allclose(limit.indices, expected_indices))
 
-    def test_no_velocity_limits(self):
+    def test_model_with_no_limit(self):
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
         empty_bounded = VelocityLimit(empty_model)
         self.assertEqual(len(empty_bounded.indices), 0)
@@ -46,9 +48,12 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(G)
         self.assertIsNone(h)
 
-    def test_subset_of_joints_with_velocity_limits(self):
+    def test_model_with_subset_of_velocities_limited(self):
         # Use valid joint names from the model
-        valid_joint_names = [self.model.joint(i).name for i in range(1, self.model.njnt) if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE]
+        valid_joint_names = [
+            self.model.joint(i).name for i in range(self.model.njnt)
+            if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE
+        ]
         velocities = {joint_name: np.pi for joint_name in valid_joint_names[:3]}
         limit = VelocityLimit(self.model, velocities)
         nb = len(velocities)
@@ -58,7 +63,7 @@ class TestVelocityLimit(absltest.TestCase):
         expected_limits = np.array([np.pi] * nb)
         np.testing.assert_allclose(limit.limit, expected_limits)
 
-    def test_ball_joint_with_velocity_limits(self):
+    def test_model_with_ball_joint(self):
         xml_str = """
         <mujoco>
           <worldbody>
