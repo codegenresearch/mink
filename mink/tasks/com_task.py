@@ -52,7 +52,7 @@ class ComTask(Task):
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"(identical cost for all coordinates) or ({self.k},). Got {cost.shape}"
+                f"(aka identical cost for all coordinates) or ({self.k},). Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
             raise TaskDefinitionError(f"{self.__class__.__name__} cost must be >= 0")
