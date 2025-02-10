@@ -10,7 +10,7 @@ from .exceptions import InvalidDamping, InvalidGain
 
 
 class Objective(NamedTuple):
-    r"""Quadratic objective of the form :math:`x^T H x + c^T x`."""
+    r"""Quadratic objective of the form :math:`\frac{1}{2} x^T H x + c^T x`."""
 
     H: np.ndarray
     """Hessian matrix, of shape (n_v, n_v)"""
@@ -19,7 +19,7 @@ class Objective(NamedTuple):
 
     def value(self, x: np.ndarray) -> float:
         """Returns the value of the objective at the input vector x."""
-        return x.T @ self.H @ x + self.c @ x
+        return 0.5 * x.T @ self.H @ x + self.c @ x
 
 
 class Task(abc.ABC):
@@ -107,7 +107,7 @@ class Task(abc.ABC):
 
         .. math::
 
-            \| J \Delta q + \alpha e \|_{W}^2 = \Delta q^T H \Delta q + c^T q
+            \| J \Delta q + \alpha e \|_{W}^2 = \frac{1}{2} \Delta q^T H \Delta q + c^T q
 
         The weight matrix :math:`W \in \mathbb{R}^{k \times k}` weights and
         normalizes task coordinates to the same unit. The unit of the overall
