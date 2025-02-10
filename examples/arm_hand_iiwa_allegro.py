@@ -27,6 +27,7 @@ HOME_QPOS = [
 ]
 # fmt: on
 
+
 def construct_model():
     """Constructs the Mujoco model by combining the arm and hand MJCF models."""
     arm_mjcf = mjcf.from_path(_ARM_XML.as_posix())
@@ -56,6 +57,7 @@ def construct_model():
         arm_mjcf.to_xml_string(), arm_mjcf.get_assets()
     )
 
+
 def initialize_mocap_targets(model, data):
     """Initializes the mocap targets at their respective sites."""
     mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
@@ -63,6 +65,7 @@ def initialize_mocap_targets(model, data):
         mink.move_mocap_to_frame(
             model, data, f"{finger}_target", f"allegro_left/{finger}", "site"
         )
+
 
 if __name__ == "__main__":
     model = construct_model()
@@ -74,7 +77,7 @@ if __name__ == "__main__":
         frame_type="site",
         position_cost=1.0,
         orientation_cost=1.0,
-        lm_damping=1.0
+        lm_damping=1.0,
     )
 
     posture_task = mink.PostureTask(model=model, cost=5e-2)
@@ -88,7 +91,7 @@ if __name__ == "__main__":
             root_type="body",
             position_cost=1.0,
             orientation_cost=0.0,
-            lm_damping=1.0
+            lm_damping=1.0,
         )
         finger_tasks.append(task)
 
