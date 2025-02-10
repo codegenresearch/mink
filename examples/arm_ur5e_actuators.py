@@ -22,9 +22,9 @@ if __name__ == "__main__":
     ## =================== ##
     configuration = mink.Configuration(model)
 
-    # Define tasks
+    # Define tasks.
     tasks = [
-        end_effector_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="attachment_site",
             frame_type="site",
             position_cost=1.0,
@@ -33,19 +33,22 @@ if __name__ == "__main__":
         ),
     ]
 
-    # Enable collision avoidance between (wrist3, floor) and (wrist3, wall)
+    # Enable collision avoidance between (wrist3, floor) and (wrist3, wall).
     wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
         (wrist_3_geoms, ["floor", "wall"]),
     ]
 
-    # Define configuration and collision avoidance limits
+    # Define configuration and collision avoidance limits.
     limits = [
         mink.ConfigurationLimit(model=configuration.model),
-        mink.CollisionAvoidanceLimit(model=configuration.model, geom_pairs=collision_pairs),
+        mink.CollisionAvoidanceLimit(
+            model=configuration.model,
+            geom_pairs=collision_pairs,
+        ),
     ]
 
-    # Define velocity limits
+    # Define velocity limits.
     max_velocities = {
         "shoulder_pan": np.pi,
         "shoulder_lift": np.pi,
@@ -57,10 +60,10 @@ if __name__ == "__main__":
     velocity_limit = mink.VelocityLimit(model, max_velocities)
     limits.append(velocity_limit)
 
-    # Initialize mid variable
+    # Initialize mid variable.
     mid = model.body("target").mocapid[0]
 
-    # IK settings
+    # IK settings.
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
@@ -70,33 +73,41 @@ if __name__ == "__main__":
     ## Initialize Viewer   ##
     ## =================== ##
     with mujoco.viewer.launch_passive(
-        model=model, data=data, show_left_ui=False, show_right_ui=False
+        model=model,
+        data=data,
+        show_left_ui=False,
+        show_right_ui=False,
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
-        # Reset to the home keyframe
+        # Reset to the home keyframe.
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
 
-        # Initialize the mocap target at the end-effector site
+        # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
-        # Initialize rate limiter
+        # Initialize rate limiter.
         rate = RateLimiter(frequency=500.0, warn=False)
 
         ## =================== ##
         ## Main Loop           ##
         ## =================== ##
         while viewer.is_running():
-            # Update task target
+            # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
-            # Compute velocity and integrate into the next configuration
+            # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
                 vel = mink.solve_ik(
-                    configuration, tasks, rate.dt, solver, damping=1e-3, limits=limits
+                    configuration,
+                    tasks,
+                    rate.dt,
+                    solver,
+                    damping=1e-3,
+                    limits=limits,
                 )
                 configuration.integrate_inplace(vel, rate.dt)
                 err = end_effector_task.compute_error(configuration)
@@ -105,10 +116,10 @@ if __name__ == "__main__":
                 if pos_achieved and ori_achieved:
                     break
 
-            # Update control and step the simulation
+            # Update control and step the simulation.
             data.ctrl = configuration.q
             mujoco.mj_step(model, data)
 
-            # Visualize at fixed FPS
+            # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
