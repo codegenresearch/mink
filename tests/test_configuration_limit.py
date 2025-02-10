@@ -52,7 +52,7 @@ class TestConfigurationLimit(absltest.TestCase):
         """Test that the indices of the velocity-limited joints are correct."""
         limit = ConfigurationLimit(self.model)
         expected = np.arange(6, self.model.nv)
-        np.testing.assert_allclose(limit.indices, expected)
+        self.assertTrue(np.allclose(limit.indices, expected))
 
     def test_model_with_no_limit(self):
         """Test behavior with a model that has no velocity limits."""
