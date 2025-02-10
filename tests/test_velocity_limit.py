@@ -11,19 +11,25 @@ from mink.utils import get_freejoint_dims
 
 
 class TestVelocityLimit(absltest.TestCase):
-    """Test the VelocityLimit class."""
+    """Test velocity limit."""
 
     @classmethod
     def setUpClass(cls):
         """Load a model for testing."""
-        cls.model = load_robot_description("g1_mj_description")
+        cls.model = load_robot_description("ur5e_mj_description")
 
     def setUp(self):
         """Initialize a configuration and velocity limits for testing."""
         self.configuration = Configuration(self.model)
-        self.configuration.update_from_keyframe("stand")
+        self.configuration.update_from_keyframe("home")
+        # NOTE: These velocities are arbitrary and do not match real hardware.
         self.velocities = {
-            self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
+            "shoulder_pan_joint": np.pi,
+            "shoulder_lift_joint": np.pi,
+            "elbow_joint": np.pi,
+            "wrist_1_joint": np.pi,
+            "wrist_2_joint": np.pi,
+            "wrist_3_joint": np.pi,
         }
 
     def test_dimensions(self):
@@ -34,7 +40,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
 
-    def test_no_velocity_limits(self):
+    def test_model_with_no_limit(self):
         """Test behavior with no velocity limits."""
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
         empty_bounded = VelocityLimit(empty_model)
@@ -44,7 +50,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(G)
         self.assertIsNone(h)
 
-    def test_subset_of_velocity_limits(self):
+    def test_model_with_subset_of_velocities_limited(self):
         """Test behavior with a subset of velocity limits."""
         velocities = {
             "wrist_1_joint": 3.14,
@@ -56,6 +62,12 @@ class TestVelocityLimit(absltest.TestCase):
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+
+    def test_indices(self):
+        """Test the indices of the velocity limits."""
+        limit = VelocityLimit(self.model, self.velocities)
+        expected_indices = np.array([2, 3, 4, 5, 6, 7])
+        self.assertTrue(np.allclose(limit.indices, expected_indices))
 
     def test_ball_joint_velocity_limits(self):
         """Test velocity limits for a ball joint."""
