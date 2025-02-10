@@ -52,11 +52,12 @@ if __name__ == "__main__":
     )
 
     posture_cost = np.zeros((model.nv,))
-    posture_cost[3:] = 1e-3
+    posture_cost[2] = 1e-3
     posture_task = mink.PostureTask(model, cost=posture_cost)
 
     immobile_base_cost = np.zeros((model.nv,))
-    immobile_base_cost[:3] = 100
+    immobile_base_cost[:2] = 100
+    immobile_base_cost[2] = 1e-3
     damping_task = mink.DampingTask(model, immobile_base_cost)
 
     tasks = [
@@ -113,8 +114,10 @@ if __name__ == "__main__":
 
                 # Exit condition.
                 err = end_effector_task.compute_error(configuration)
-                pos_achieved = bool(np.linalg.norm(err[:3]) <= pos_threshold)
-                ori_achieved = bool(np.linalg.norm(err[3:]) <= ori_threshold)
+                pos_achieved = True
+                ori_achieved = True
+                pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
+                ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
                 if pos_achieved and ori_achieved:
                     break
 
