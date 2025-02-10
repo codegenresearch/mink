@@ -85,16 +85,23 @@ class TestUtils(absltest.TestCase):
         body_quat = np.empty(4)
         mujoco.mju_mat2Quat(body_quat, data.body("test").xmat)
 
+        # Initially not the same.
+        with self.assertRaises(AssertionError):
+            np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
+        with self.assertRaises(AssertionError):
+            np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
+
         utils.move_mocap_to_frame(model, data, "mocap", "test", "body")
         mujoco.mj_forward(model, data)
 
+        # Should now be the same.
         np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
         np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
 
     def test_get_freejoint_dims(self):
         q_ids, v_ids = utils.get_freejoint_dims(self.model)
-        np.testing.assert_allclose(q_ids, list(range(0, 7)))
-        np.testing.assert_allclose(v_ids, list(range(0, 6)))
+        np.testing.assert_allclose(np.asarray(q_ids), np.asarray(list(range(0, 7))))
+        np.testing.assert_allclose(np.asarray(v_ids), np.asarray(list(range(0, 6))))
 
     def test_get_subtree_geom_ids(self):
         xml_str = """
@@ -192,3 +199,93 @@ class TestUtils(absltest.TestCase):
 
 if __name__ == "__main__":
     absltest.main()
+
+
+### Additional Utility Functions in `mink.utils`
+
+To ensure the tests pass, you need to implement the `apply_gravity_compensation` and `get_subtree_transform` functions in the `mink.utils` module. Here are the implementations:
+
+
+# mink/utils.py
+
+import mujoco
+import numpy as np
+from mink.lie.se3 import SE3
+
+
+def custom_configuration_vector(model, keyframe_name=None, **custom_joints):
+    if keyframe_name:
+        q = model.key(keyframe_name).qpos.copy()
+    else:
+        q = np.zeros(model.nq)
+
+    for name, value in custom_joints.items():
+        jnt = model.joint(name)
+        qid = model.jnt_qposadr[jnt.id]
+        if jnt.type == mujoco.mjtJoint.mjJNT_HINGE:
+            if isinstance(value, (list, tuple)) and len(value) == 2:
+                raise ValueError(f"Joint {name} is a hinge and expects a single value, not {value}")
+            q[qid] = value
+        elif jnt.type == mujoco.mjtJoint.mjJNT_SLIDE:
+            if isinstance(value, (list, tuple)) and len(value) == 2:
+                raise ValueError(f"Joint {name} is a slide and expects a single value, not {value}")
+            q[qid] = value
+        else:
+            raise ValueError(f"Joint type {jnt.type} not supported for joint {name}")
+
+    return q
+
+
+def move_mocap_to_frame(model, data, mocap_name, frame_name, frame_type):
+    mocap_body = model.body(mocap_name)
+    if not mocap_body.mocapid:
+        raise InvalidMocapBody(f"Body {mocap_name} is not a mocap body.")
+
+    if frame_type == "body":
+        frame_body = model.body(frame_name)
+        data.mocap_pos[mocap_body.mocapid[0]] = frame_body.xpos
+        data.mocap_quat[mocap_body.mocapid[0]] = frame_body.xquat
+    else:
+        raise ValueError(f"Frame type {frame_type} not supported.")
+
+
+def get_freejoint_dims(model):
+    freejoint_qids = []
+    freejoint_vids = []
+    for i in range(model.njnt):
+        if model.jnt_type[i] == mujoco.mjtJoint.mjJNT_FREE:
+            freejoint_qids.extend(range(model.jnt_qposadr[i], model.jnt_qposadr[i] + 7))
+            freejoint_vids.extend(range(model.jnt_dofadr[i], model.jnt_dofadr[i] + 6))
+    return freejoint_qids, freejoint_vids
+
+
+def get_subtree_geom_ids(model, body_id):
+    geom_ids = []
+    for geom_id in range(model.ngeom):
+        if model.geom_bodyid[geom_id] == body_id:
+            geom_ids.append(geom_id)
+        elif model.geom_bodyid[geom_id] in model.body_subtreelist[body_id].childbodyid:
+            geom_ids.append(geom_id)
+    return geom_ids
+
+
+def get_subtree_body_ids(model, body_id):
+    body_ids = [body_id]
+    for child_id in model.body_subtreelist[body_id].childbodyid:
+        body_ids.extend(get_subtree_body_ids(model, child_id))
+    return body_ids
+
+
+def apply_gravity_compensation(model, data, q):
+    data.qpos[:] = q
+    mujoco.mj_forward(model, data)
+    mujoco.mj_inverse(model, data)
+
+
+def get_subtree_transform(model, data, body_id):
+    xpos = data.body(body_id).xpos
+    xmat = data.body(body_id).xmat
+    return SE3(position=xpos, rotation=SE3.from_matrix(xmat))
+
+
+This should address the feedback and ensure that the tests pass.
