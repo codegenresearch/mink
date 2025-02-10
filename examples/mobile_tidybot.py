@@ -115,10 +115,8 @@ if __name__ == "__main__":
 
                 # Exit condition.
                 err = end_effector_task.compute_error(configuration)
-                pos_achieved = True
-                ori_achieved = True
-                pos_achieved &= np.linalg.norm(err[:3]) <= pos_threshold
-                ori_achieved &= np.linalg.norm(err[3:]) <= ori_threshold
+                pos_achieved = bool(np.linalg.norm(err[:3]) <= pos_threshold)
+                ori_achieved = bool(np.linalg.norm(err[3:]) <= ori_threshold)
                 if pos_achieved and ori_achieved:
                     break
 
@@ -129,7 +127,7 @@ if __name__ == "__main__":
             else:
                 mujoco.mj_forward(model, data)
 
-            # Synchronize the viewer and sleep to maintain the desired frame rate.
+            # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
             t += dt
