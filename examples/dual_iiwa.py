@@ -19,8 +19,8 @@ def construct_model():
     root.statistic.meansize = 0.08
     root.statistic.extent = 1.0
     root.statistic.center = (0, 0, 0.5)
-    root.visual.global_.azimuth = -180
-    root.visual.global_.elevation = -20
+    getattr(root.visual, "global").azimuth = -180
+    getattr(root.visual, "global").elevation = -20
 
     root.worldbody.add("light", pos="0 0 1.5", directional="true")
 
@@ -35,15 +35,15 @@ def construct_model():
     left_iiwa.model = "l_iiwa"
     left_iiwa.find("key", "home").remove()
     left_site.attach(left_iiwa)
-    for i, geom in enumerate(left_iiwa.worldbody.find_all("geom")):
-        geom.name = f"l_geom_{i}"
+    for i, g in enumerate(left_iiwa.worldbody.find_all("geom")):
+        g.name = f"geom_{i}"
 
     right_iiwa = mjcf.from_path(_XML_PATH.as_posix())
     right_iiwa.model = "r_iiwa"
     right_iiwa.find("key", "home").remove()
     right_site.attach(right_iiwa)
-    for i, geom in enumerate(right_iiwa.worldbody.find_all("geom")):
-        geom.name = f"r_geom_{i}"
+    for i, g in enumerate(right_iiwa.worldbody.find_all("geom")):
+        g.name = f"geom_{i}"
 
     body = root.worldbody.add("body", name="l_target", mocap=True)
     body.add(
@@ -72,18 +72,20 @@ if __name__ == "__main__":
     model = construct_model()
     configuration = mink.Configuration(model)
 
-    left_ee_task = mink.FrameTask(
-        frame_name="l_iiwa/attachment_site",
-        frame_type="site",
-        position_cost=2.0,
-        orientation_cost=1.0,
-    )
-    right_ee_task = mink.FrameTask(
-        frame_name="r_iiwa/attachment_site",
-        frame_type="site",
-        position_cost=2.0,
-        orientation_cost=1.0,
-    )
+    tasks = [
+        mink.FrameTask(
+            frame_name="l_iiwa/attachment_site",
+            frame_type="site",
+            position_cost=2.0,
+            orientation_cost=1.0,
+        ),
+        mink.FrameTask(
+            frame_name="r_iiwa/attachment_site",
+            frame_type="site",
+            position_cost=2.0,
+            orientation_cost=1.0,
+        ),
+    ]
 
     collision_pairs = [
         (
@@ -102,14 +104,14 @@ if __name__ == "__main__":
         ),
     ]
 
-    left_target_id = model.body("l_target").mocapid[0]
-    right_target_id = model.body("r_target").mocapid[0]
+    left_mid = model.body("l_target").mocapid[0]
+    right_mid = model.body("r_target").mocapid[0]
     solver = "osqp"
 
-    left_target_position = np.array([0.392, -0.392, 0.6])
-    right_target_position = np.array([0.392, 0.392, 0.6])
-    left_target_velocity = np.zeros(3)
-    right_target_velocity = np.zeros(3)
+    l_y_des = np.array([0.392, -0.392, 0.6])
+    r_y_des = np.array([0.392, 0.392, 0.6])
+    l_dy_des = np.zeros(3)
+    r_dy_des = np.zeros(3)
 
     with mujoco.viewer.launch_passive(
         model=model, data=configuration.data, show_left_ui=False, show_right_ui=False
@@ -124,39 +126,33 @@ if __name__ == "__main__":
             model, configuration.data, "r_target", "r_iiwa/attachment_site", "site"
         )
 
-        rate_limiter = RateLimiter(frequency=60.0, warn=True)
-        time = 0.0
+        rate = RateLimiter(frequency=60.0, warn=True)
+        t = 0.0
         while viewer.is_running():
-            mu = (1 + np.cos(time)) / 2
-            left_target_position[:] = (
-                left_target_position
-                + (right_target_position - left_target_position + 0.2 * np.array([0, 0, np.sin(mu * np.pi) ** 2])) * mu
+            mu = (1 + np.cos(t)) / 2
+            l_y_des[:] = (
+                l_y_des
+                + (r_y_des - l_y_des + 0.2 * np.array([0, 0, np.sin(mu * np.pi) ** 2])) * mu
             )
-            right_target_position[:] = (
-                right_target_position
-                + (left_target_position - right_target_position + 0.2 * np.array([0, 0, -np.sin(mu * np.pi) ** 2])) * mu
+            r_y_des[:] = (
+                r_y_des
+                + (l_y_des - r_y_des + 0.2 * np.array([0, 0, -np.sin(mu * np.pi) ** 2])) * mu
             )
-            configuration.data.mocap_pos[left_target_id] = left_target_position
-            configuration.data.mocap_pos[right_target_id] = right_target_position
+            configuration.data.mocap_pos[left_mid] = l_y_des
+            configuration.data.mocap_pos[right_mid] = r_y_des
 
             # Update task targets.
-            left_target_frame = mink.SE3.from_mocap_name(model, configuration.data, "l_target")
-            left_ee_task.set_target(left_target_frame)
-            right_target_frame = mink.SE3.from_mocap_name(model, configuration.data, "r_target")
-            right_ee_task.set_target(right_target_frame)
+            T_wt_left = mink.SE3.from_mocap_name(model, configuration.data, "l_target")
+            tasks[0].set_target(T_wt_left)
+            T_wt_right = mink.SE3.from_mocap_name(model, configuration.data, "r_target")
+            tasks[1].set_target(T_wt_right)
 
-            velocity = mink.solve_ik(
-                configuration,
-                [left_ee_task, right_ee_task],
-                rate_limiter.dt,
-                solver,
-                1e-2,
-                False,
-                limits=limits
+            vel = mink.solve_ik(
+                configuration, tasks, rate.dt, solver, 1e-2, False, limits=limits
             )
-            configuration.integrate_inplace(velocity, rate_limiter.dt)
+            configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, configuration.data)
 
             viewer.sync()
-            rate_limiter.sleep()
-            time += rate_limiter.dt
+            rate.sleep()
+            t += rate.dt
