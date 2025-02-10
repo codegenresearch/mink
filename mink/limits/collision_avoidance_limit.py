@@ -123,7 +123,7 @@ def _is_pass_contype_conaffinity_check(
 
 
 class CollisionAvoidanceLimit(Limit):
-    """Normal velocity limit between geom pairs with posture tasks and simplified velocity handling.
+    """Normal velocity limit between geom pairs.
 
     Attributes:
         model: MuJoCo model.
@@ -258,7 +258,7 @@ class CollisionAvoidanceLimit(Limit):
             elif isinstance(g, str):
                 list_of_int.append(self.model.geom(g).id)
             else:
-                raise ValueError(f"Geom must be int or str, got {type(g)}")
+                assert False, f"Geom must be int or str, got {type(g)}"
         return list_of_int
 
     def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
@@ -287,10 +287,6 @@ class CollisionAvoidanceLimit(Limit):
             2) Geoms where the body of one geom is a parent of the body of the other
                 geom are not included.
             3) Geoms that fail the contype-conaffinity check are ignored.
-
-        Note:
-            If two bodies are kinematically welded together (no joints between them),
-            they are considered to be the same body within this function.
 
         Args:
             geom_pairs: Sequence of collision pairs, each containing two geom groups.
