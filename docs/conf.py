@@ -33,10 +33,15 @@ napoleon_use_rtype = False
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
-    "inherited-members": False,
     "exclude-members": "__init__, __post_init__, __new__",
-    "autodoc_typehints": "both",
-    "autodoc_class_signature": "separated",
+}
+
+autodoc_typehints = "both"
+autodoc_class_signature = "separated"
+
+# autodoc type aliases
+autodoc_type_aliases = {
+    # Define your type aliases here
 }
 
 # -- Options for HTML output -------------------------------------------------
