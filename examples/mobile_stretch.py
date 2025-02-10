@@ -8,13 +8,14 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "hello_robot_stretch_3" / "scene.xml"
+_XML = _HERE / "hello_robot_stretch_3" / "scene.xml"
 
-def construct_model(xml_path):
-    return mujoco.MjModel.from_xml_path(xml_path.as_posix())
+if __name__ == "__main__":
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+    configuration = mink.Configuration(model)
+    data = configuration.data
 
-def initialize_tasks(model):
-    return [
+    tasks = [
         base_task := mink.FrameTask(
             frame_name="base_link",
             frame_type="body",
@@ -29,12 +30,6 @@ def initialize_tasks(model):
         ),
     ]
 
-def main():
-    model = construct_model(_XML_PATH)
-    configuration = mink.Configuration(model)
-    data = configuration.data
-    tasks = initialize_tasks(model)
-
     solver = "quadprog"
     circle_radius = 0.5
     mid = model.body("base_target").mocapid[0]
@@ -46,7 +41,6 @@ def main():
 
         # Initialize to the home keyframe.
         configuration.update_from_keyframe("home")
-        base_task, fingertip_task = tasks
         base_task.set_target_from_configuration(configuration)
         assert base_task.transform_target_to_world is not None
 
@@ -70,14 +64,11 @@ def main():
             base_task.set_target(mink.SE3.from_mocap_id(data, mid))
 
             # Compute velocity and integrate into the next configuration.
-            vel = mink.solve_ik(configuration, tasks, rate.period, solver, 1e-3)
-            configuration.integrate_inplace(vel, rate.period)
+            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
+            configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
-            t += rate.period
-
-if __name__ == "__main__":
-    main()
+            t += rate.dt
