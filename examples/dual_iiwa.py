@@ -148,7 +148,7 @@ if __name__ == "__main__":
             data.mocap_pos[left_mid] = l_y_des
             data.mocap_pos[right_mid] = r_y_des
 
-            # Update task targets
+            # Update task targets.
             T_wt_left = mink.SE3.from_mocap_name(model, data, "l_target")
             left_ee_task.set_target(T_wt_left)
             T_wt_right = mink.SE3.from_mocap_name(model, data, "r_target")
