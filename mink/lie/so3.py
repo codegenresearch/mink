@@ -81,18 +81,21 @@ class SO3(MatrixLieGroup):
 
     @classmethod
     def from_matrix(cls, matrix: np.ndarray) -> SO3:
-        """Create an SO3 instance from a 3x3 rotation matrix."""
-        assert matrix.shape == (cls.matrix_dim, cls.matrix_dim), (
+        """Create an SO3 instance from a 3x3 rotation matrix.
+
+        Equation 138.
+        """
+        assert matrix.shape == (SO3.matrix_dim, SO3.matrix_dim), (
             f"Expected a 3x3 matrix but got a matrix of shape {matrix.shape}."
         )
-        wxyz = np.zeros(cls.parameters_dim, dtype=np.float64)
+        wxyz = np.zeros(SO3.parameters_dim, dtype=np.float64)
         mujoco.mju_mat2Quat(wxyz, matrix.ravel())
-        return cls(wxyz=wxyz)
+        return SO3(wxyz=wxyz)
 
     @classmethod
     def identity(cls) -> SO3:
         """Return the identity rotation (no rotation)."""
-        return cls(wxyz=_IDENTITY_WXYZ)
+        return SO3(wxyz=_IDENTITY_WXYZ)
 
     @classmethod
     def sample_uniform(cls) -> SO3:
@@ -115,7 +118,7 @@ class SO3(MatrixLieGroup):
             ],
             dtype=np.float64,
         )
-        return cls(wxyz=wxyz)
+        return SO3(wxyz=wxyz)
 
     def as_matrix(self) -> np.ndarray:
         """Convert the quaternion to a 3x3 rotation matrix.
@@ -195,7 +198,7 @@ class SO3(MatrixLieGroup):
             real = np.cos(safe_half_theta)
             imaginary = np.sin(safe_half_theta) / safe_theta
         wxyz = np.concatenate([np.array([real]), imaginary * tangent])
-        return cls(wxyz=wxyz)
+        return SO3(wxyz=wxyz)
 
     def log(self) -> np.ndarray:
         """Logarithmic map from the manifold to the tangent space.
