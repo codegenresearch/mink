@@ -37,6 +37,8 @@ autodoc_default_options = {
     "member-order": "bysource",
     "inherited-members": False,
     "exclude-members": "__init__, __post_init__, __new__",
+    "autodoc_typehints": "description",
+    "autodoc_class_signature": "separated",
 }
 
 autodoc_type_aliases = {
