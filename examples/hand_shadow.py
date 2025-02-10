@@ -62,8 +62,8 @@ if __name__ == "__main__":
                 task.set_target(mink.SE3.from_mocap_name(model, data, f"{finger}_target"))
 
             # Solve inverse kinematics and integrate velocity.
-            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-5)
-            configuration.integrate_inplace(vel, rate.dt)
+            vel = mink.solve_ik(configuration, tasks, dt, solver, 1e-5)
+            configuration.integrate_inplace(vel, dt)
             mujoco.mj_camlight(model, data)
 
             # Visualize at fixed FPS.
