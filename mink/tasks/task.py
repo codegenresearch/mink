@@ -23,7 +23,7 @@ class Objective(NamedTuple):
 
 
 class Task(abc.ABC):
-    """Abstract base class for kinematic tasks.
+    r"""Abstract base class for kinematic tasks.
 
     This class defines the interface for kinematic tasks, which are used to specify
     desired behaviors for a robot's configuration. Each task defines an error function
@@ -51,11 +51,11 @@ class Task(abc.ABC):
         gain: float = 1.0,
         lm_damping: float = 0.0,
     ):
-        """Constructor.
+        r"""Constructor.
 
         Args:
             cost: Cost vector with the same dimension as the error of the task.
-            gain: Task gain :math:`\\alpha` in [0, 1] for additional low-pass filtering.
+            gain: Task gain :math:`\alpha` in [0, 1] for additional low-pass filtering.
                 A gain of 1.0 corresponds to dead-beat control, which converges as fast
                 as possible. Lower values cause the task to converge more slowly, similar
                 to low-pass filtering.
@@ -79,12 +79,7 @@ class Task(abc.ABC):
         r"""Compute the task error function at the current configuration.
 
         The error function :math:`e(q) \in \mathbb{R}^{k}` is the quantity that the task
-        aims to drive to zero (:math:`k` is the dimension of the task). It appears in the
-        first-order task dynamics:
-
-        .. math::
-
-            J(q) \Delta q = -\alpha e(q)
+        aims to drive to zero (:math:`k` is the dimension of the task).
 
         Args:
             configuration: Robot configuration :math:`q`.
