@@ -27,12 +27,12 @@ def move_mocap_to_frame(
     if mocap_id == -1:
         raise InvalidMocapBody(mocap_name, model)
 
-    frame_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
-    if frame_id == -1:
+    obj_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
+    if obj_id == -1:
         raise ValueError(f"Frame '{frame_name}' of type '{frame_type}' not found in the model.")
 
-    frame_pos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[frame_id]
-    frame_xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
+    frame_pos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
+    frame_xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
 
     data.mocap_pos[mocap_id] = frame_pos.copy()
     mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], frame_xmat)
@@ -86,7 +86,12 @@ def custom_configuration_vector(
     for joint_name, value in kwargs.items():
         joint = model.joint(joint_name)
         qid = joint.qposadr
-        q[qid:qid + joint.dof] = np.atleast_1d(value)[:joint.dof]
+        value_array = np.atleast_1d(value)
+        if value_array.shape != (joint.dof,):
+            raise ValueError(
+                f"Joint '{joint_name}' should have a qpos value of shape ({joint.dof},) but got {value_array.shape}"
+            )
+        q[qid:qid + joint.dof] = value_array
     return q
 
 
@@ -123,6 +128,26 @@ def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     geom_start = model.body_geomadr[body_id]
     geom_end = geom_start + model.body_geomnum[body_id]
     return list(range(geom_start, geom_end))
+
+
+def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+    """Collect all body IDs in the subtree starting from a given body.
+
+    Args:
+        model: Mujoco model.
+        body_id: ID of the starting body.
+
+    Returns:
+        List of body IDs in the subtree.
+    """
+    def gather_bodies(current_body_id: int) -> List[int]:
+        bodies = [current_body_id]
+        for child_id in range(model.nbody):
+            if model.body_parentid[child_id] == current_body_id:
+                bodies.extend(gather_bodies(child_id))
+        return bodies
+
+    return gather_bodies(body_id)
 
 
 def apply_gravity_compensation(
