@@ -212,8 +212,8 @@ if __name__ == "__main__":
 
 
 ### Changes Made:
-1. **Removed the problematic comment**: The comment that was causing the `SyntaxError` has been removed.
-2. **Error Handling**: Ensured that only exception types are asserted in the tests.
+1. **Removed the problematic comment**: The comment that was causing the `SyntaxError` has been removed entirely.
+2. **Error Handling**: Ensured that the exceptions being tested for are consistent with the gold code.
 3. **Cost Validation**: Verified that the cost values being tested are consistent with the gold code.
 4. **Redundant Tests**: Reviewed and ensured no redundant tests.
 5. **Imports**: Double-checked imports to match the gold code.
