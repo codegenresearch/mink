@@ -19,19 +19,22 @@ if __name__ == "__main__":
 
     # Initialize finger tasks
     fingers = ["thumb", "first", "middle", "ring", "little"]
-    finger_tasks = [
-        mink.FrameTask(
+    finger_tasks = []
+    for finger in fingers:
+        task = mink.FrameTask(
             frame_name=finger,
             frame_type="site",
             position_cost=1.0,
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        for finger in fingers
-    ]
+        finger_tasks.append(task)
 
     # Combine all tasks
-    tasks = [posture_task, *finger_tasks]
+    tasks = [
+        posture_task,
+        *finger_tasks,
+    ]
 
     model = configuration.model
     data = configuration.data
