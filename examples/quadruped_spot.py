@@ -10,7 +10,6 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "boston_dynamics_spot" / "scene.xml"
 
-
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
@@ -32,15 +31,15 @@ if __name__ == "__main__":
 
     posture_task = mink.PostureTask(model, cost=1e-5)
 
-    feet_tasks = []
-    for foot in feet:
-        task = mink.FrameTask(
+    feet_tasks = [
+        mink.FrameTask(
             frame_name=foot,
             frame_type="geom",
             position_cost=1.0,
             orientation_cost=0.0,
         )
-        feet_tasks.append(task)
+        for foot in feet
+    ]
 
     eef_task = mink.FrameTask(
         frame_name="EE",
@@ -63,6 +62,8 @@ if __name__ == "__main__":
     ori_threshold = 1e-4
     max_iters = 20
 
+    rate = RateLimiter(frequency=500.0, warn=False)
+
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
@@ -78,7 +79,6 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "body_target", "body", "body")
         mink.move_mocap_to_frame(model, data, "EE_target", "EE", "site")
 
-        rate = RateLimiter(frequency=500.0, warn=False)
         while viewer.is_running():
             base_task.set_target(mink.SE3.from_mocap_id(data, base_mid))
             for i, task in enumerate(feet_tasks):
@@ -87,19 +87,17 @@ if __name__ == "__main__":
 
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
-                vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
+                vel = mink.solve_ik(configuration, tasks, rate.dt, solver, damping=1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
 
-                pos_achieved = True
-                ori_achieved = True
-                for task in [
-                    eef_task,
-                    base_task,
-                    *feet_tasks,
-                ]:
-                    err = eef_task.compute_error(configuration)
-                    pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
-                    ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
+                pos_achieved = all(
+                    np.linalg.norm(task.compute_error(configuration)[:3]) <= pos_threshold
+                    for task in [eef_task, base_task, *feet_tasks]
+                )
+                ori_achieved = all(
+                    np.linalg.norm(task.compute_error(configuration)[3:]) <= ori_threshold
+                    for task in [eef_task, base_task, *feet_tasks]
+                )
                 if pos_achieved and ori_achieved:
                     break
 
