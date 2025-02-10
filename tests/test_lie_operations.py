@@ -16,7 +16,7 @@ from .utils import assert_transforms_close
     ("SO3", SO3),
     ("SE3", SE3),
 )
-class TestOperations(parameterized.TestCase):
+class TestGeneralOperations(parameterized.TestCase):
     def test_inverse_bijective(self, group: Type[MatrixLieGroup]):
         """Check inverse of inverse."""
         transform = group.sample_uniform()
@@ -107,7 +107,7 @@ class TestOperations(parameterized.TestCase):
         np.testing.assert_allclose(transform.lminus(identity), np.zeros(transform.tangent_dim))
 
 
-class TestSE3Operations(absltest.TestCase):
+class TestSE3Operations(parameterized.TestCase):
     """SE3 specific tests."""
 
     def test_se3_translation(self):
@@ -133,7 +133,7 @@ class TestSE3Operations(absltest.TestCase):
             SE3.exp(np.random.rand(6))  # Invalid tangent vector size
 
 
-class TestSO3Operations(absltest.TestCase):
+class TestSO3Operations(parameterized.TestCase):
     """SO3 specific tests."""
 
     def test_so3_rpy_bijective(self):
