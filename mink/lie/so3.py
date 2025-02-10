@@ -74,23 +74,23 @@ class SO3(MatrixLieGroup):
     def from_rpy_radians(cls, roll: float, pitch: float, yaw: float) -> SO3:
         """Create an SO3 instance from roll, pitch, and yaw angles in radians."""
         return (
-            SO3.from_z_radians(yaw)
-            @ SO3.from_y_radians(pitch)
-            @ SO3.from_x_radians(roll)
+            cls.from_z_radians(yaw)
+            @ cls.from_y_radians(pitch)
+            @ cls.from_x_radians(roll)
         )
 
     @classmethod
     def from_matrix(cls, matrix: np.ndarray) -> SO3:
         """Create an SO3 instance from a 3x3 rotation matrix."""
-        assert matrix.shape == (SO3.matrix_dim, SO3.matrix_dim)
-        wxyz = np.zeros(SO3.parameters_dim, dtype=np.float64)
+        assert matrix.shape == (cls.matrix_dim, cls.matrix_dim)
+        wxyz = np.zeros(cls.parameters_dim, dtype=np.float64)
         mujoco.mju_mat2Quat(wxyz, matrix.ravel())
-        return SO3(wxyz=wxyz)
+        return cls(wxyz=wxyz)
 
     @classmethod
     def identity(cls) -> SO3:
         """Return the identity rotation (no rotation)."""
-        return SO3(wxyz=_IDENTITY_WXYZ)
+        return cls(wxyz=_IDENTITY_WXYZ)
 
     @classmethod
     def sample_uniform(cls) -> SO3:
@@ -113,7 +113,7 @@ class SO3(MatrixLieGroup):
             ],
             dtype=np.float64,
         )
-        return SO3(wxyz=wxyz)
+        return cls(wxyz=wxyz)
 
     def as_matrix(self) -> np.ndarray:
         """Convert the quaternion to a 3x3 rotation matrix.
@@ -160,7 +160,7 @@ class SO3(MatrixLieGroup):
 
         Equation 136.
         """
-        assert target.shape == (SO3.space_dim,)
+        assert target.shape == (self.space_dim,)
         padded_target = np.concatenate([np.zeros(1, dtype=np.float64), target])
         return (self @ SO3(wxyz=padded_target) @ self.inverse()).wxyz[1:]
 
@@ -176,7 +176,7 @@ class SO3(MatrixLieGroup):
 
         Equation 132.
         """
-        assert tangent.shape == (SO3.tangent_dim,)
+        assert tangent.shape == (cls.tangent_dim,)
         theta_squared = tangent @ tangent
         theta_pow_4 = theta_squared * theta_squared
         use_taylor = theta_squared < get_epsilon(tangent.dtype)
@@ -189,7 +189,7 @@ class SO3(MatrixLieGroup):
             real = np.cos(safe_half_theta)
             imaginary = np.sin(safe_half_theta) / safe_theta
         wxyz = np.concatenate([np.array([real]), imaginary * tangent])
-        return SO3(wxyz=wxyz)
+        return cls(wxyz=wxyz)
 
     def log(self) -> np.ndarray:
         """Logarithmic map from the manifold to the tangent space.
