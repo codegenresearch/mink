@@ -49,11 +49,7 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_model_with_subset_of_velocities_limited(self):
         """Test behavior with a subset of joints having velocity limits."""
-        limit_subset = {}
-        for key, value in self.velocities.items():
-            if len(limit_subset) >= 3:
-                break
-            limit_subset[key] = value
+        limit_subset = {key: value for index, (key, value) in enumerate(self.velocities.items()) if index < 3}
         limit = VelocityLimit(self.model, limit_subset)
         nb = 3
         nv = self.model.nv
@@ -116,7 +112,7 @@ class TestVelocityLimit(absltest.TestCase):
         expected_error_message = "Joint ball must have a limit of shape (3,). Got: (2,)"
         self.assertEqual(str(cm.exception), expected_error_message)
 
-    def test_freejoint_raises_error(self):
+    def test_that_freejoint_raises_error(self):
         """Test that VelocityLimit raises an error for free joints."""
         xml_str = """
         <mujoco>
