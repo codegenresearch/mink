@@ -14,9 +14,6 @@ from .task import Task
 class ComTask(Task):
     """Regulate the center-of-mass (CoM) position of a robot.
 
-    This task aims to align the robot's center of mass with a specified target position
-    in the world frame.
-
     Attributes:
         target_com: Desired center-of-mass position in the world frame.
     """
@@ -88,12 +85,13 @@ class ComTask(Task):
     def compute_error(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the CoM task error.
 
-        The error is defined as the difference between the target CoM position and the
-        current CoM position:
+        The error is defined as:
 
         .. math::
 
             e(q) = c^* - c
+
+        where :math:`c^*` is the target CoM position and :math:`c` is the current CoM position.
 
         Args:
             configuration: Robot configuration :math:`q`.
@@ -106,7 +104,7 @@ class ComTask(Task):
         """
         if self.target_com is None:
             raise TargetNotSet(self.__class__.__name__)
-        return configuration.data.subtree_com[1] - self.target_com
+        return self.target_com - configuration.data.subtree_com[1]
 
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the CoM task Jacobian.
