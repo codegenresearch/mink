@@ -31,11 +31,11 @@ class Configuration:
 
     Key functionalities:
 
-    * Running forward kinematics to update the state.
-    * Checking configuration limits.
-    * Computing Jacobians for different frames.
-    * Retrieving frame transforms relative to the world frame.
-    * Integrating velocities to update configurations.
+    - Running forward kinematics to update the state.
+    - Checking configuration limits.
+    - Computing Jacobians for different frames.
+    - Retrieving frame transforms relative to the world frame.
+    - Integrating velocities to update configurations.
     """
 
     def __init__(
