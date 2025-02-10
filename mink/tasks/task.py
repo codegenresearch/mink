@@ -13,9 +13,9 @@ class Objective(NamedTuple):
     r"""Quadratic objective of the form :math:`\frac{1}{2} x^T H x + c^T x`."""
 
     H: np.ndarray
-    """Hessian matrix, shape (n_v, n_v)"""
+    """Hessian matrix, of shape (n_v, n_v)"""
     c: np.ndarray
-    """Linear vector, shape (n_v,)"""
+    """Linear vector, of shape (n_v,)"""
 
     def value(self, x: np.ndarray) -> float:
         """Returns the value of the objective at the input vector x."""
@@ -71,12 +71,6 @@ class Task(abc.ABC):
         implemented in :func:`Task.compute_jacobian`. The configuration
         displacement :math:`\Delta q` is the output of inverse kinematics.
 
-        In the first-order task dynamics, the error :math:`e(q)` is multiplied
-        by the task gain :math:`\alpha \in [0, 1]`. This gain can be 1.0 for
-        dead-beat control (*i.e.* converge as fast as possible), but might be
-        unstable as it neglects our first-order approximation. Lower values
-        cause the task to slow down, similar to low-pass filtering.
-
         Args:
             configuration: Robot configuration :math:`q`.
 
@@ -89,10 +83,9 @@ class Task(abc.ABC):
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the task Jacobian at the current configuration.
 
-        The task Jacobian :math:`J(q) \in \mathbb{R}^{k \times n_v}` is the first order
-        derivative of the error :math:`e(q) \in \mathbb{R}^{k}` that defines the task,
-        with :math:`k` the dimension of the task and :math:`n_v` the dimension of the
-        robot's tangent space.
+        The task Jacobian :math:`J(q) \in \mathbb{R}^{k \times n_v}` is the first-order
+        derivative of the task error :math:`e(q) \in \mathbb{R}^{k}` with respect to the
+        configuration :math:`q \in \mathbb{R}^{n_q}`.
 
         Args:
             configuration: Robot configuration :math:`q`.
