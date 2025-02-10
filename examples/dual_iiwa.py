@@ -74,14 +74,15 @@ if __name__ == "__main__":
     model = configuration.model
     data = configuration.data
 
+    # Define tasks for left and right end-effectors
     tasks = [
-        mink.FrameTask(
+        left_ee_task := mink.FrameTask(
             frame_name="l_iiwa/attachment_site",
             frame_type="site",
             position_cost=2.0,
             orientation_cost=1.0,
         ),
-        mink.FrameTask(
+        right_ee_task := mink.FrameTask(
             frame_name="r_iiwa/attachment_site",
             frame_type="site",
             position_cost=2.0,
@@ -89,6 +90,7 @@ if __name__ == "__main__":
         ),
     ]
 
+    # Define collision pairs for collision avoidance
     collision_pairs = [
         (
             mink.get_subtree_geom_ids(model, model.body("l_iiwa/link5").id),
@@ -96,6 +98,7 @@ if __name__ == "__main__":
         ),
     ]
 
+    # Define limits for the configuration
     limits = [
         mink.ConfigurationLimit(model=model),
         mink.CollisionAvoidanceLimit(
@@ -106,10 +109,12 @@ if __name__ == "__main__":
         ),
     ]
 
+    # Get mocap IDs for left and right targets
     left_mid = model.body("l_target").mocapid[0]
     right_mid = model.body("r_target").mocapid[0]
     solver = "osqp"
 
+    # Initialize desired positions for left and right targets
     A = np.array([0.392, -0.392, 0.6])
     B = np.array([0.392, 0.392, 0.6])
     l_y_des = A.copy()
@@ -121,6 +126,7 @@ if __name__ == "__main__":
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
         viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
 
+        # Move mocap targets to the initial positions of the end-effectors
         mink.move_mocap_to_frame(
             model, data, "l_target", "l_iiwa/attachment_site", "site"
         )
@@ -128,27 +134,32 @@ if __name__ == "__main__":
             model, data, "r_target", "r_iiwa/attachment_site", "site"
         )
 
+        # Set up rate limiter for controlling the loop frequency
         rate = RateLimiter(frequency=60.0, warn=False)
         t = 0.0
+
         while viewer.is_running():
+            # Update desired positions for left and right targets
             mu = (1 + np.cos(t)) / 2
             l_y_des[:] = A + (B - A + 0.2 * np.array([0, 0, np.sin(mu * np.pi) ** 2])) * mu
             r_y_des[:] = B + (A - B + 0.2 * np.array([0, 0, -np.sin(mu * np.pi) ** 2])) * mu
             data.mocap_pos[left_mid] = l_y_des
             data.mocap_pos[right_mid] = r_y_des
 
-            # Update task targets.
+            # Update task targets
             T_wt_left = mink.SE3.from_mocap_name(model, data, "l_target")
-            tasks[0].set_target(T_wt_left)
+            left_ee_task.set_target(T_wt_left)
             T_wt_right = mink.SE3.from_mocap_name(model, data, "r_target")
-            tasks[1].set_target(T_wt_right)
+            right_ee_task.set_target(T_wt_right)
 
+            # Solve inverse kinematics and integrate the solution
             vel = mink.solve_ik(
                 configuration, tasks, rate.dt, solver, 1e-2, False, limits=limits
             )
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
+            # Sync viewer and sleep to maintain loop rate
             viewer.sync()
             rate.sleep()
             t += rate.dt
