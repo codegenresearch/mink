@@ -46,17 +46,12 @@ class VelocityLimit(Limit):
         for joint_name, max_vel in velocities.items():
             jid = model.joint(joint_name).id
             jnt_type = model.jnt_type[jid]
-            vdim = dof_width(jnt_type)
             vadr = model.jnt_dofadr[jid]
+            vdim = dof_width(jnt_type)
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
                 raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
             max_vel = np.atleast_1d(max_vel)
-            if jnt_type == mujoco.mjtJoint.mjJNT_BALL and max_vel.shape != (3,):
-                raise LimitDefinitionError(
-                    f"Joint {joint_name} must have a limit of shape (3,). "
-                    f"Got: {max_vel.shape}"
-                )
-            elif max_vel.shape != (vdim,):
+            if max_vel.shape != (vdim,):
                 raise LimitDefinitionError(
                     f"Joint {joint_name} must have a limit of shape ({vdim},). "
                     f"Got: {max_vel.shape}"
@@ -83,7 +78,7 @@ class VelocityLimit(Limit):
 
             -v_{\text{max}} \cdot dt \leq \Delta q \leq v_{\text{max}} \cdot dt
 
-        where :math:`v_{max} \in {\cal T}` is the robot's velocity limit
+        where :math:`v_{\text{max}} \in {\cal T}` is the robot's velocity limit
         vector and :math:`\Delta q \in T_q({\cal C})` is the displacement in the
         tangent space at :math:`q`. See the :ref:`derivations` section for
         more information.
@@ -96,11 +91,11 @@ class VelocityLimit(Limit):
             Pair :math:`(G, h)` representing the inequality constraint as
             :math:`G \Delta q \leq h`. Here, :math:`G` is a 2D numpy array of shape
             (2 * nb, nv) and :math:`h` is a 1D numpy array of shape (2 * nb,).
-            If there is no limit, returns an empty constraint.
+            If there is no limit, returns ``None``.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
-            return Constraint()
+            return None
         G = np.vstack([self.projection_matrix, -self.projection_matrix])
         h = np.hstack([dt * self.limit, dt * self.limit])
         return Constraint(G=G, h=h)
