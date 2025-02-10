@@ -4,6 +4,9 @@ The :class:`Configuration` class bundles a MuJoCo model and its associated data,
 enabling easy access to kinematic quantities such as frame transforms and Jacobians. It
 automatically performs forward kinematics at each time step, ensuring that all
 kinematic queries return up-to-date information.
+
+For more details on MuJoCo models and data, refer to the
+`MuJoCo documentation <https://mujoco.readthedocs.io/en/latest/modeling.html>`_.
 """
 
 from typing import Optional
@@ -41,7 +44,7 @@ class Configuration:
         self,
         model: mujoco.MjModel,
         q: Optional[np.ndarray] = None,
-    ) -> None:
+    ):
         """Initialize the configuration with a MuJoCo model and an optional configuration vector.
 
         Args:
@@ -73,11 +76,11 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            InvalidKeyframe: if no key named `key` was found in the model.
+            ValueError: if no key named `key` was found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise exceptions.InvalidKeyframe(key_name, self.model)
+            raise ValueError(f"No keyframe named '{key_name}' found in the model.")
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
