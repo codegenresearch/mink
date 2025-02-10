@@ -89,14 +89,14 @@ if __name__ == "__main__":
     ]
 
     # Set up collision avoidance for specified geometries.
-    left_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
-    right_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
-    left_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
-    right_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
+    l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
+    r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
+    l_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
+    r_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
-        (left_wrist_geoms, right_wrist_geoms),
-        (left_upper_arm_geoms + right_upper_arm_geoms, frame_geoms + ["table"]),
+        (l_wrist_geoms, r_wrist_geoms),
+        (l_upper_arm_geoms + r_upper_arm_geoms, frame_geoms + ["table"]),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
@@ -142,7 +142,7 @@ if __name__ == "__main__":
             r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Solve IK and integrate the solution.
-            for _ in range(max_iters):
+            for i in range(max_iters):
                 vel = mink.solve_ik(
                     configuration,
                     tasks,
