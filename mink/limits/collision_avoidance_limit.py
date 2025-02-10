@@ -19,7 +19,15 @@ CollisionPairs = Sequence[CollisionPair]
 
 @dataclass(frozen=True)
 class _Contact:
-    """Data class to store contact information between two geoms."""
+    """Data class to store contact information between two geoms.
+
+    Attributes:
+        dist: Distance between the two geoms.
+        fromto: Array containing the start and end points of the contact line.
+        geom1: ID of the first geom.
+        geom2: ID of the second geom.
+        distmax: Maximum distance at which the contact is considered.
+    """
     dist: float
     fromto: np.ndarray
     geom1: int
@@ -39,7 +47,16 @@ class _Contact:
 
 
 def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
-    """Determine if two geoms are part of the same body or are welded together."""
+    """Determine if two geoms are part of the same body or are welded together.
+
+    Args:
+        model: MuJoCo model.
+        geom_id1: ID of the first geom.
+        geom_id2: ID of the second geom.
+
+    Returns:
+        True if the geoms are part of the same body or are welded together, False otherwise.
+    """
     body1 = model.geom_bodyid[geom_id1]
     body2 = model.geom_bodyid[geom_id2]
     weld1 = model.body_weldid[body1]
@@ -50,7 +67,16 @@ def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> 
 def _are_geom_bodies_parent_child(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
-    """Check if the bodies of two geoms have a parent-child relationship."""
+    """Check if the bodies of two geoms have a parent-child relationship.
+
+    Args:
+        model: MuJoCo model.
+        geom_id1: ID of the first geom.
+        geom_id2: ID of the second geom.
+
+    Returns:
+        True if the bodies of the geoms have a parent-child relationship, False otherwise.
+    """
     body_id1 = model.geom_bodyid[geom_id1]
     body_id2 = model.geom_bodyid[geom_id2]
 
@@ -74,14 +100,23 @@ def _are_geom_bodies_parent_child(
 def _is_pass_contype_conaffinity_check(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
-    """Check if two geoms pass the contype/conaffinity check."""
+    """Check if two geoms pass the contype/conaffinity check.
+
+    Args:
+        model: MuJoCo model.
+        geom_id1: ID of the first geom.
+        geom_id2: ID of the second geom.
+
+    Returns:
+        True if the geoms pass the contype/conaffinity check, False otherwise.
+    """
     cond1 = bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2])
     cond2 = bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
     return cond1 or cond2
 
 
 class CollisionAvoidanceLimit(Limit):
-    """Class to enforce collision avoidance between specified geom pairs.
+    """Normal velocity limit between geom pairs.
 
     Attributes:
         model: MuJoCo model.
@@ -105,6 +140,8 @@ class CollisionAvoidanceLimit(Limit):
             they penetrate by the specified amount.
         bound_relaxation: An offset on the upper bound of each collision avoidance
             constraint.
+        geom_id_pairs: List of geom ID pairs for collision avoidance.
+        max_num_contacts: Maximum number of contacts to consider.
     """
 
     def __init__(
@@ -222,6 +259,21 @@ class CollisionAvoidanceLimit(Limit):
         """Compute the Jacobian mapping joint velocities to the normal component of
         the relative Cartesian linear velocity between two geoms.
 
+        The Jacobian-velocity relationship is given as:
+
+            J dq = n^T (v_2 - v_1)
+
+        where:
+        * J is the computed Jacobian.
+        * dq is the joint velocity vector.
+        * n^T is the transpose of the normal pointing from contact.geom1 to
+            contact.geom2.
+        * v_1, v_2 are the linear components of the Cartesian velocity of the two
+            closest points in contact.geom1 and contact.geom2.
+
+        Note: n^T (v_2 - v_1) is a scalar that is positive if the geoms are moving away
+        from each other, and negative if they are moving towards each other.
+
         Args:
             data: MuJoCo data structure.
             contact: _Contact object containing the contact information.
@@ -258,7 +310,7 @@ class CollisionAvoidanceLimit(Limit):
                 raise TypeError("Geom list must contain only integers or strings.")
         return list_of_int
 
-    def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
+    def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs) -> List[tuple[List[int], List[int]]]:
         """Convert collision pairs of geom names to collision pairs of geom IDs.
 
         Args:
