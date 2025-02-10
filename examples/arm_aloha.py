@@ -41,10 +41,10 @@ if __name__ == "__main__":
     joint_names: list[str] = []
     velocity_limits: dict[str, float] = {}
     for prefix in ["left", "right"]:
-        for name in _JOINT_NAMES:
-            joint_name = f"{prefix}/{name}"
-            joint_names.append(joint_name)
-            velocity_limits[joint_name] = _VELOCITY_LIMITS[name]
+        for n in _JOINT_NAMES:
+            name = f"{prefix}/{n}"
+            joint_names.append(name)
+            velocity_limits[name] = _VELOCITY_LIMITS[n]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -69,8 +69,7 @@ if __name__ == "__main__":
         ),
     ]
 
-    # Set up collision avoidance between the wrists and the table, and between the two wrists.
-    # Collision pairs are defined as follows:
+    # Enable collision avoidance between the following geoms:
     # - Geoms starting at subtree "right wrist" - geoms starting at subtree "left wrist".
     # - Geoms starting at subtree "right wrist" and "left wrist" - geoms starting at subtree "metal_frame" and "table".
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
