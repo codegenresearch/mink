@@ -33,12 +33,12 @@ class MatrixLieGroup(abc.ABC):
         assert isinstance(other, MatrixLieGroup)
         return self.multiply(other=other)
 
-    # Factory methods.
+    # Factory
 
     @classmethod
     @abc.abstractmethod
     def identity(cls) -> Self:
-        """Returns the identity element of the group."""
+        """Returns identity element."""
         raise NotImplementedError
 
     @classmethod
@@ -53,7 +53,7 @@ class MatrixLieGroup(abc.ABC):
         """Draws a uniform sample from the group."""
         raise NotImplementedError
 
-    # Accessor methods.
+    # Accessors
 
     @abc.abstractmethod
     def as_matrix(self) -> np.ndarray:
@@ -65,7 +65,7 @@ class MatrixLieGroup(abc.ABC):
         """Returns the underlying parameter representation of the transformation."""
         raise NotImplementedError
 
-    # Group operations.
+    # Operations
 
     @abc.abstractmethod
     def apply(self, target: np.ndarray) -> np.ndarray:
@@ -80,12 +80,12 @@ class MatrixLieGroup(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def exp(cls, tangent: np.ndarray) -> Self:
-        """Computes the exponential map of a tangent vector, resulting in a group element."""
+        """Computes expm(wedge(tangent))."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def log(self) -> np.ndarray:
-        """Computes the logarithmic map of the transformation, resulting in a tangent vector."""
+        """Computes vee(logm(transformation matrix))."""
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -103,24 +103,24 @@ class MatrixLieGroup(abc.ABC):
         """Normalizes the transformation to ensure it lies on the group manifold."""
         raise NotImplementedError
 
-    # Right and left plus and minus operators.
+    # Right and left plus and minus operators
 
-    # Equation 25.
+    # Eqn. 25
     def rplus(self, other: np.ndarray) -> Self:
         """Applies a tangent vector to the transformation using the right plus operator."""
         return self @ self.exp(other)
 
-    # Equation 26.
+    # Eqn. 26
     def rminus(self, other: Self) -> np.ndarray:
         """Computes the tangent vector that transforms this transformation to another using the right minus operator."""
         return (other.inverse() @ self).log()
 
-    # Equation 27.
+    # Eqn. 27
     def lplus(self, other: np.ndarray) -> Self:
         """Applies a tangent vector to the transformation using the left plus operator."""
         return self.exp(other) @ self
 
-    # Equation 28.
+    # Eqn. 28
     def lminus(self, other: Self) -> np.ndarray:
         """Computes the tangent vector that transforms this transformation to another using the left minus operator."""
         return (self @ other.inverse()).log()
@@ -133,7 +133,7 @@ class MatrixLieGroup(abc.ABC):
         """Alias for the right minus operator."""
         return self.rminus(other)
 
-    # Jacobian methods.
+    # Jacobians
 
     @classmethod
     @abc.abstractmethod
@@ -148,18 +148,19 @@ class MatrixLieGroup(abc.ABC):
         # NOTE: This can be computed as the inverse of the left Jacobian.
         raise NotImplementedError
 
-    # Equation 67.
+    # Eqn. 67
     @classmethod
     def rjac(cls, other: np.ndarray) -> np.ndarray:
         """Computes the right Jacobian of the exponential map."""
         return cls.ljac(-other)
 
+    # Eqn. 68
     @classmethod
     def rjacinv(cls, other: np.ndarray) -> np.ndarray:
         """Computes the inverse of the right Jacobian of the exponential map."""
         return cls.ljacinv(-other)
 
-    # Equation 79.
+    # Eqn. 79
     def jlog(self) -> np.ndarray:
         """Computes the Jacobian of the logarithmic map."""
         return self.rjacinv(self.log())
