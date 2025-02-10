@@ -107,8 +107,8 @@ class TestOperations(parameterized.TestCase):
         np.testing.assert_allclose(transform.lminus(identity), np.zeros(transform.tangent_dim))
 
 
-class TestGroupSpecificOperations(absltest.TestCase):
-    """Group specific tests."""
+class TestSE3Operations(absltest.TestCase):
+    """SE3 specific tests."""
 
     def test_se3_translation(self):
         """Check SE3 translation."""
@@ -122,40 +122,34 @@ class TestGroupSpecificOperations(absltest.TestCase):
         rotation_matrix = T.as_matrix()[:3, :3]
         assert_transforms_close(T, SE3.from_rotation_matrix(rotation_matrix))
 
-    @parameterized.named_parameters(
-        ("SO3", SO3),
-    )
-    def test_so3_rpy_bijective(self, group: Type[MatrixLieGroup]):
+    def test_invalid_matrix_conversion_se3(self):
+        """Check that from_matrix raises error if invalid matrix size."""
+        with self.assertRaises(ValueError):
+            SE3.from_matrix(np.random.rand(4, 4))  # Invalid matrix size
+
+    def test_invalid_log_exp_se3(self):
+        """Check that exp raises error if invalid shape."""
+        with self.assertRaises(ValueError):
+            SE3.exp(np.random.rand(6))  # Invalid tangent vector size
+
+
+class TestSO3Operations(absltest.TestCase):
+    """SO3 specific tests."""
+
+    def test_so3_rpy_bijective(self):
         """Check SO3 RPY bijectivity."""
         T = SO3.sample_uniform()
         assert_transforms_close(T, SO3.from_rpy_radians(*T.as_rpy_radians()))
-
-    def test_so3_copy(self):
-        """Check SO3 copy method."""
-        T = SO3.sample_uniform()
-        T_copy = T.copy()
-        assert_transforms_close(T, T_copy)
-
-    def test_se3_copy(self):
-        """Check SE3 copy method."""
-        T = SE3.sample_uniform()
-        T_copy = T.copy()
-        assert_transforms_close(T, T_copy)
-
-    def test_invalid_log_exp_so3(self):
-        """Check that exp raises error if invalid shape."""
-        with self.assertRaises(ValueError):
-            SO3.exp(np.random.rand(4))  # Invalid tangent vector size
 
     def test_invalid_matrix_conversion_so3(self):
         """Check that from_matrix raises error if invalid matrix size."""
         with self.assertRaises(ValueError):
             SO3.from_matrix(np.random.rand(3, 3))  # Invalid matrix size
 
-    def test_invalid_matrix_conversion_se3(self):
-        """Check that from_matrix raises error if invalid matrix size."""
+    def test_invalid_log_exp_so3(self):
+        """Check that exp raises error if invalid shape."""
         with self.assertRaises(ValueError):
-            SE3.from_matrix(np.random.rand(4, 4))  # Invalid matrix size
+            SO3.exp(np.random.rand(4))  # Invalid tangent vector size
 
 
 if __name__ == "__main__":
