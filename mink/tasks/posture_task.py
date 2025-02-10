@@ -57,7 +57,8 @@ class PostureTask(Task):
             lm_damping=lm_damping,
         )
         self.target_q = None
-        self._v_ids = get_freejoint_dims(model)[1]
+        _, v_ids = get_freejoint_dims(model)
+        self._v_ids = np.asarray(v_ids) if v_ids is not None else None
         self.k = model.nv
         self.nq = model.nq
 
@@ -72,7 +73,10 @@ class PostureTask(Task):
         """
         target_q = np.atleast_1d(target_q)
         if target_q.ndim != 1 or target_q.shape[0] != self.nq:
-            raise InvalidTarget(f"Expected target posture to have shape ({self.nq},) but got {target_q.shape}")
+            raise InvalidTarget(
+                f"Expected target posture to have shape ({self.nq},) "
+                f"but got {target_q.shape}"
+            )
         self.target_q = target_q.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
