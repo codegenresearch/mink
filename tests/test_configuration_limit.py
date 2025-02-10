@@ -1,9 +1,7 @@
 """Tests for configuration_limit.py.
 
 This module contains tests for the ConfigurationLimit class, which defines
-inequality constraints on joint configurations in a robot model. The tests
-verify the correct initialization, dimensionality, and behavior of the
-ConfigurationLimit object under various conditions.
+inequality constraints on joint configurations in a robot model.
 """
 
 import mujoco
@@ -34,7 +32,7 @@ class TestConfigurationLimit(absltest.TestCase):
         """Initialize a Configuration object and a VelocityLimit object for testing."""
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        # NOTE: These velocities are arbitrary and do not match real hardware.
+        # NOTE(kevin): These velocities are arbitrary and do not match real hardware.
         self.velocities = {
             self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
         }
@@ -58,20 +56,39 @@ class TestConfigurationLimit(absltest.TestCase):
     def test_indices(self):
         """Test that the indices of the velocity-limited joints are correct."""
         limit = ConfigurationLimit(self.model)
-        expected_indices = np.arange(6, self.model.nv)
-        self.assertTrue(np.allclose(limit.indices, expected_indices))
+        expected_joint_indices = np.arange(6, self.model.nv)
+        self.assertTrue(np.allclose(limit.indices, expected_joint_indices))
 
     def test_model_with_no_limit(self):
         """Test behavior with a model that has no velocity limits."""
-        empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
-        empty_bounded = ConfigurationLimit(empty_model)
-        self.assertEqual(len(empty_bounded.indices), 0)
-        self.assertIsNone(empty_bounded.projection_matrix)
+        xml_str = """
+        <mujoco>
+          <compiler angle="radian"/>
+          <worldbody>
+            <body>
+              <joint type="free" name="floating"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body>
+                <joint type="hinge" name="hinge" range="0 1.57"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        limit = ConfigurationLimit(model)
+        self.assertEqual(len(limit.indices), 0)
+        self.assertIsNone(limit.projection_matrix)
+        G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
+        self.assertIsNone(G)
+        self.assertIsNone(h)
 
     def test_model_with_subset_of_velocities_limited(self):
         """Test behavior with a model that has a subset of velocity-limited joints."""
         xml_str = """
         <mujoco>
+          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="hinge" name="hinge_unlimited"/>
@@ -95,6 +112,7 @@ class TestConfigurationLimit(absltest.TestCase):
         """Test that free joints are ignored in the velocity limits."""
         xml_str = """
         <mujoco>
+          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="free" name="floating"/>
