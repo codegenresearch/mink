@@ -31,18 +31,18 @@ def move_mocap_to_frame(
     if mocap_id == -1:
         raise InvalidMocapBody(mocap_name, model)
 
-    obj_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
-    if obj_id == -1:
+    frame_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
+    if frame_id == -1:
         raise ValueError(f"Frame '{frame_name}' of type '{frame_type}' not found in the model.")
 
-    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
-    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
+    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[frame_id]
+    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
 
     data.mocap_pos[mocap_id] = xpos.copy()
     mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
 
 
-def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
+def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
     """Retrieve indices of all floating joint configuration and tangent spaces.
 
     Args:
@@ -51,8 +51,8 @@ def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
     Returns:
         A (q_ids, v_ids) pair containing all floating joint indices in the configuration and tangent spaces respectively.
     """
-    q_ids: list[int] = []
-    v_ids: list[int] = []
+    q_ids: List[int] = []
+    v_ids: List[int] = []
     for j in range(model.njnt):
         if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE:
             qadr = model.jnt_qposadr[j]
@@ -91,14 +91,14 @@ def custom_configuration_vector(
         mujoco.mj_resetData(model, data)
 
     q = data.qpos.copy()
-    for name, value in kwargs.items():
-        jid = model.joint(name).id
+    for joint_name, value in kwargs.items():
+        jid = model.joint(joint_name).id
         qadr = model.jnt_qposadr[jid]
         jnt_dim = model.jnt_dof[jid]
         value_array = np.atleast_1d(value)
         if value_array.shape != (jnt_dim,):
             raise ValueError(
-                f"Joint '{name}' should have a qpos value of shape ({jnt_dim},) but got {value_array.shape}"
+                f"Joint '{joint_name}' should have a qpos value of shape ({jnt_dim},) but got {value_array.shape}"
             )
         q[qadr:qadr + jnt_dim] = value_array
     return q
@@ -197,7 +197,7 @@ def apply_gravity_compensation(
     return data.qfrc_bias.copy()
 
 
-def get_joint_limits(model: mujoco.MjModel) -> Dict[str, Tuple[float, float]]:
+def get_joint_limits(model: mujoco.MjModel) -> Dict[str, Tuple[Optional[float], Optional[float]]]:
     """Retrieve the limits for each joint in the model.
 
     Args:
@@ -212,7 +212,8 @@ def get_joint_limits(model: mujoco.MjModel) -> Dict[str, Tuple[float, float]]:
         if model.jnt_limited[j]:
             lower_limit = model.jnt_range[j, 0]
             upper_limit = model.jnt_range[j, 1]
-            joint_limits[name] = (lower_limit, upper_limit)
         else:
-            joint_limits[name] = (None, None)
+            lower_limit = None
+            upper_limit = None
+        joint_limits[name] = (lower_limit, upper_limit)
     return joint_limits
