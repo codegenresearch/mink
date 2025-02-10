@@ -19,7 +19,7 @@ CollisionPairs = Sequence[CollisionPair]
 
 
 @dataclass(frozen=True)
-class _Contact:
+class Contact:
     dist: float
     fromto: np.ndarray
     geom1: int
@@ -178,7 +178,7 @@ class CollisionAvoidanceLimit(Limit):
                 upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
-            jac = self._compute_contact_normal_jacobian(configuration.data, contact)
+            jac = self.compute_contact_normal_jacobian(configuration.data, contact)
             coefficient_matrix[idx] = -jac
         return Constraint(G=coefficient_matrix, h=upper_bound)
 
@@ -186,7 +186,7 @@ class CollisionAvoidanceLimit(Limit):
 
     def _compute_contact_with_minimum_distance(
         self, data: mujoco.MjData, geom1_id: int, geom2_id: int
-    ) -> _Contact:
+    ) -> Contact:
         """Returns the smallest signed distance between a geom pair."""
         fromto = np.empty(6)
         dist = mujoco.mj_geomDistance(
@@ -197,12 +197,12 @@ class CollisionAvoidanceLimit(Limit):
             self.collision_detection_distance,
             fromto,
         )
-        return _Contact(
+        return Contact(
             dist, fromto, geom1_id, geom2_id, self.collision_detection_distance
         )
 
-    def _compute_contact_normal_jacobian(
-        self, data: mujoco.MjData, contact: _Contact
+    def compute_contact_normal_jacobian(
+        self, data: mujoco.MjData, contact: Contact
     ) -> np.ndarray:
         """Computes the Jacobian mapping joint velocities to the normal component of
         the relative Cartesian linear velocity between the geom pair.
@@ -280,17 +280,3 @@ class CollisionAvoidanceLimit(Limit):
                 if weld_body_cond and parent_child_cond and contype_conaffinity_cond:
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
-
-    def test_collision_avoidance(self, configuration: Configuration, dt: float):
-        """Test collision avoidance by checking if the computed constraints prevent collisions."""
-        constraint = self.compute_qp_inequalities(configuration, dt)
-        G, h = constraint.G, constraint.h
-        # Simulate a small step
-        qvel = np.random.rand(self.model.nv)
-        dq = qvel * dt
-        # Check if the constraints are satisfied
-        assert np.all(G @ dq <= h), "Collision avoidance constraints are violated."
-
-    def test_se3_transformations(self, mocap_data: np.ndarray):
-        """Test SE3 transformations from mocap data."""
-        assert validate_se3_transformations(mocap_data), "SE3 transformations are invalid."
