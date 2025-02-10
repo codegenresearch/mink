@@ -85,11 +85,7 @@ def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> 
     Returns:
         True if the geoms are part of the same body or are welded together, False otherwise.
     """
-    body1 = model.geom_bodyid[geom_id1]
-    body2 = model.geom_bodyid[geom_id2]
-    weld1 = model.body_weldid[body1]
-    weld2 = model.body_weldid[body2]
-    return weld1 == weld2
+    return model.body_weldid[model.geom_bodyid[geom_id1]] == model.body_weldid[model.geom_bodyid[geom_id2]]
 
 
 def _are_geom_bodies_parent_child(
@@ -107,22 +103,9 @@ def _are_geom_bodies_parent_child(
     """
     body_id1 = model.geom_bodyid[geom_id1]
     body_id2 = model.geom_bodyid[geom_id2]
-
-    # body_weldid is the ID of the body's weld.
-    body_weldid1 = model.body_weldid[body_id1]
-    body_weldid2 = model.body_weldid[body_id2]
-
-    # weld_parent_id is the ID of the parent of the body's weld.
-    weld_parent_id1 = model.body_parentid[body_weldid1]
-    weld_parent_id2 = model.body_parentid[body_weldid2]
-
-    # weld_parent_weldid is the weld ID of the parent of the body's weld.
-    weld_parent_weldid1 = model.body_weldid[weld_parent_id1]
-    weld_parent_weldid2 = model.body_weldid[weld_parent_id2]
-
-    cond1 = body_weldid1 == weld_parent_weldid2
-    cond2 = body_weldid2 == weld_parent_weldid1
-    return cond1 or cond2
+    weld_id1 = model.body_weldid[body_id1]
+    weld_id2 = model.body_weldid[body_id2]
+    return model.body_weldid[model.body_parentid[weld_id1]] == weld_id2 or model.body_weldid[model.body_parentid[weld_id2]] == weld_id1
 
 
 def _is_pass_contype_conaffinity_check(
@@ -138,9 +121,7 @@ def _is_pass_contype_conaffinity_check(
     Returns:
         True if the geoms pass the contype/conaffinity check, False otherwise.
     """
-    cond1 = bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2])
-    cond2 = bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
-    return cond1 or cond2
+    return bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
 
 
 class CollisionAvoidanceLimit(Limit):
@@ -336,13 +317,10 @@ class CollisionAvoidanceLimit(Limit):
         geom_id_pairs = []
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
-                weld_body_cond = not _is_welded_together(self.model, geom_a, geom_b)
-                parent_child_cond = not _are_geom_bodies_parent_child(
-                    self.model, geom_a, geom_b
-                )
-                contype_conaffinity_cond = _is_pass_contype_conaffinity_check(
-                    self.model, geom_a, geom_b
-                )
-                if weld_body_cond and parent_child_cond and contype_conaffinity_cond:
+                if (
+                    not _is_welded_together(self.model, geom_a, geom_b)
+                    and not _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
+                    and _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
+                ):
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
