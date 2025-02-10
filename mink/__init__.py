@@ -1,4 +1,4 @@
-"""mink: MuJoCo inverse kinematics."""
+"""mink: MuJoCo inverse kinematics library."""
 
 from .configuration import Configuration
 from .constants import (
@@ -42,7 +42,9 @@ from .utils import (
     move_mocap_to_frame,
 )
 
-__all__ = (
+__version__ = "0.0.2"
+
+__all__ = [
     "ComTask",
     "Configuration",
     "build_ik",
@@ -72,11 +74,9 @@ __all__ = (
     "FRAME_TO_JAC_FUNC",
     "FRAME_TO_POS_ATTR",
     "FRAME_TO_XMAT_ATTR",
-    "set_mocap_pose_from_frame",
-    "pose_from_mocap",
     "custom_configuration_vector",
     "get_freejoint_dims",
     "move_mocap_to_frame",
     "get_subtree_geom_ids",
     "get_body_geom_ids",
-)
+]
