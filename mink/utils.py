@@ -120,15 +120,16 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
         A list of geom IDs in the subtree.
     """
     geom_ids = []
-    stack = [body_id]
-    while stack:
-        current_body_id = stack.pop()
-        geom_start = model.body_geomadr[current_body_id]
-        geom_end = geom_start + model.body_geomnum[current_body_id]
+
+    def gather_geoms(body_id: int) -> None:
+        geom_start = model.body_geomadr[body_id]
+        geom_end = geom_start + model.body_geomnum[body_id]
         geom_ids.extend(range(geom_start, geom_end))
-        stack.extend(
-            i for i in range(model.nbody) if model.body_parentid[i] == current_body_id
-        )
+        for child_id in range(model.nbody):
+            if model.body_parentid[child_id] == body_id:
+                gather_geoms(child_id)
+
+    gather_geoms(body_id)
     return geom_ids
 
 
@@ -158,13 +159,14 @@ def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
         A list of body IDs in the subtree.
     """
     body_ids = []
-    stack = [body_id]
-    while stack:
-        current_body_id = stack.pop()
-        body_ids.append(current_body_id)
-        stack.extend(
-            i for i in range(model.nbody) if model.body_parentid[i] == current_body_id
-        )
+
+    def gather_bodies(body_id: int) -> None:
+        body_ids.append(body_id)
+        for child_id in range(model.nbody):
+            if model.body_parentid[child_id] == body_id:
+                gather_bodies(child_id)
+
+    gather_bodies(body_id)
     return body_ids
 
 
