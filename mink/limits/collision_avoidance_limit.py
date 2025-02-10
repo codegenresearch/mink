@@ -19,6 +19,16 @@ CollisionPairs = Sequence[CollisionPair]
 
 @dataclass(frozen=True)
 class Contact:
+    """Represents a contact between two geoms.
+
+    Attributes:
+        dist: The signed distance between the two geoms.
+        fromto: The start and end points of the contact line.
+        geom1: The ID of the first geom.
+        geom2: The ID of the second geom.
+        distmax: The maximum distance at which the contact is considered.
+    """
+
     dist: float
     fromto: np.ndarray
     geom1: int
@@ -27,17 +37,18 @@ class Contact:
 
     @property
     def normal(self) -> np.ndarray:
+        """The normal vector pointing from geom1 to geom2."""
         normal = self.fromto[3:] - self.fromto[:3]
         return normal / (np.linalg.norm(normal) + 1e-9)
 
     @property
     def inactive(self) -> bool:
+        """Indicates if the contact is inactive."""
         return self.dist == self.distmax and not self.fromto.any()
 
 
 def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
-    """Returns true if the geoms are part of the same body, or if their bodies are
-    welded together."""
+    """Check if two geoms are part of the same body or are welded together."""
     body1 = model.geom_bodyid[geom_id1]
     body2 = model.geom_bodyid[geom_id2]
     weld1 = model.body_weldid[body1]
@@ -48,7 +59,7 @@ def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> 
 def _are_geom_bodies_parent_child(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
-    """Returns true if the geom bodies have a parent-child relationship."""
+    """Check if the bodies of two geoms have a parent-child relationship."""
     body_id1 = model.geom_bodyid[geom_id1]
     body_id2 = model.geom_bodyid[geom_id2]
 
@@ -72,7 +83,7 @@ def _are_geom_bodies_parent_child(
 def _is_pass_contype_conaffinity_check(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
-    """Returns true if the geoms pass the contype/conaffinity check."""
+    """Check if two geoms pass the contype/conaffinity check."""
     cond1 = bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2])
     cond2 = bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
     return cond1 or cond2
@@ -83,7 +94,7 @@ def compute_contact_normal_jacobian(
     data: mujoco.MjData,
     contact: Contact
 ) -> np.ndarray:
-    """Computes the Jacobian mapping joint velocities to the normal component of
+    """Compute the Jacobian mapping joint velocities to the normal component of
     the relative Cartesian linear velocity between the geom pair.
 
     The Jacobian-velocity relationship is given as:
@@ -95,7 +106,7 @@ def compute_contact_normal_jacobian(
     * dq is the joint velocity vector.
     * n^T is the transpose of the normal pointing from contact.geom1 to
         contact.geom2.
-    *  v_1, v_2 are the linear components of the Cartesian velocity of the two
+    * v_1, v_2 are the linear components of the Cartesian velocity of the two
         closest points in contact.geom1 and contact.geom2.
 
     Note: n^T (v_2 - v_1) is a scalar that is positive if the geoms are moving away
@@ -115,16 +126,28 @@ def compute_contact_normal_jacobian(
 class CollisionAvoidanceLimit(Limit):
     """Normal velocity limit between geom pairs.
 
+    This class computes constraints to avoid collisions between specified geom pairs
+    in a MuJoCo model. It ensures that the geoms maintain a minimum distance from
+    each other and provides a mechanism to detect and avoid collisions based on
+    specified parameters.
+
     Attributes:
-        model: MuJoCo model.
+        model: The MuJoCo model.
         geom_pairs: Set of collision pairs in which to perform active collision
-            avoidance.
+            avoidance. Each pair consists of two geom groups, and the solver will
+            attempt to avoid collisions between every geom in the first group with
+            every geom in the second group.
         gain: Gain factor in (0, 1] that determines how fast the geoms are
-            allowed to move towards each other at each iteration.
+            allowed to move towards each other at each iteration. Smaller values
+            are safer but may make the geoms move slower towards each other.
         minimum_distance_from_collisions: The minimum distance to leave between
-            any two geoms.
+            any two geoms. A negative distance allows the geoms to penetrate by
+            the specified amount.
         collision_detection_distance: The distance between two geoms at which the
-            active collision avoidance limit will be active.
+            active collision avoidance limit will be active. A large value will
+            cause collisions to be detected early, but may incur high computational
+            cost. A negative value will cause the geoms to be detected only after
+            they penetrate by the specified amount.
         bound_relaxation: An offset on the upper bound of each collision avoidance
             constraint.
     """
@@ -141,7 +164,7 @@ class CollisionAvoidanceLimit(Limit):
         """Initialize collision avoidance limit.
 
         Args:
-            model: MuJoCo model.
+            model: The MuJoCo model.
             geom_pairs: Set of collision pairs in which to perform active collision
                 avoidance.
             gain: Gain factor in (0, 1] that determines how fast the geoms are
@@ -166,6 +189,15 @@ class CollisionAvoidanceLimit(Limit):
         configuration: Configuration,
         dt: float,
     ) -> Constraint:
+        """Compute the quadratic programming inequalities for collision avoidance.
+
+        Args:
+            configuration: The current robot configuration.
+            dt: The integration timestep in seconds.
+
+        Returns:
+            A Constraint object representing the inequality constraints.
+        """
         upper_bound = np.full((self.max_num_contacts,), np.inf)
         coefficient_matrix = np.zeros((self.max_num_contacts, self.model.nv))
         for idx, (geom1_id, geom2_id) in enumerate(self.geom_id_pairs):
@@ -184,12 +216,19 @@ class CollisionAvoidanceLimit(Limit):
             coefficient_matrix[idx] = -jac
         return Constraint(G=coefficient_matrix, h=upper_bound)
 
-    # Private methods.
-
     def _compute_contact_with_minimum_distance(
         self, data: mujoco.MjData, geom1_id: int, geom2_id: int
     ) -> Contact:
-        """Returns the smallest signed distance between a geom pair."""
+        """Compute the smallest signed distance between a geom pair.
+
+        Args:
+            data: The MuJoCo data structure.
+            geom1_id: The ID of the first geom.
+            geom2_id: The ID of the second geom.
+
+        Returns:
+            A Contact object representing the contact between the two geoms.
+        """
         fromto = np.empty(6)
         dist = mujoco.mj_geomDistance(
             self.model,
@@ -204,8 +243,14 @@ class CollisionAvoidanceLimit(Limit):
         )
 
     def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
-        """Take a heterogeneous list of geoms (specified via ID or name) and return
-        a homogenous list of IDs (int)."""
+        """Convert a list of geoms (specified by ID or name) to a list of IDs.
+
+        Args:
+            geom_list: A sequence of geom IDs or names.
+
+        Returns:
+            A list of geom IDs.
+        """
         list_of_int: list[int] = []
         for g in geom_list:
             if isinstance(g, int):
@@ -215,28 +260,26 @@ class CollisionAvoidanceLimit(Limit):
                 list_of_int.append(self.model.geom(g).id)
         return list_of_int
 
-    def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
-        geom_id_pairs = []
-        for collision_pair in collision_pairs:
-            id_pair_A = self._homogenize_geom_id_list(collision_pair[0])
-            id_pair_B = self._homogenize_geom_id_list(collision_pair[1])
-            id_pair_A = list(set(id_pair_A))
-            id_pair_B = list(set(id_pair_B))
-            geom_id_pairs.append((id_pair_A, id_pair_B))
-        return geom_id_pairs
-
     def _construct_geom_id_pairs(self, geom_pairs):
-        """Returns a set of geom ID pairs for all possible geom-geom collisions.
+        """Construct a set of geom ID pairs for all possible geom-geom collisions.
 
         The contacts are added based on the following heuristics:
             1) Geoms that are part of the same body or weld are not included.
             2) Geoms where the body of one geom is a parent of the body of the other
                 geom are not included.
             3) Geoms that fail the contype-conaffinity check are ignored.
+
+        Note:
+            If two bodies are kinematically welded together (no joints between them)
+            they are considered to be the same body within this function.
         """
         geom_id_pairs = []
-        for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
-            for geom_a, geom_b in itertools.product(*id_pair):
+        for collision_pair in geom_pairs:
+            id_pair_A = self._homogenize_geom_id_list(collision_pair[0])
+            id_pair_B = self._homogenize_geom_id_list(collision_pair[1])
+            id_pair_A = list(set(id_pair_A))
+            id_pair_B = list(set(id_pair_B))
+            for geom_a, geom_b in itertools.product(id_pair_A, id_pair_B):
                 weld_body_cond = not _is_welded_together(self.model, geom_a, geom_b)
                 parent_child_cond = not _are_geom_bodies_parent_child(
                     self.model, geom_a, geom_b
