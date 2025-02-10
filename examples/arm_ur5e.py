@@ -27,9 +27,8 @@ if __name__ == "__main__":
     ]
 
     # Enable collision avoidance between the following geoms:
-    wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
-        (wrist_3_geoms, ["floor", "wall"]),
+        (["wrist_3_link"], ["floor", "wall"]),
     ]
 
     limits = [
@@ -51,36 +50,44 @@ if __name__ == "__main__":
     mid = model.body("target").mocapid[0]
 
     # Initialize to the home keyframe.
-    mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
-    configuration.update(data.qpos)
-    mujoco.mj_forward(model, data)
+    configuration.update_from_keyframe("home")
 
     # Initialize the mocap target at the end-effector site.
     mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
-    rate = RateLimiter(frequency=500.0, warn=False)
-    while viewer.is_running():
-        # Update task target.
-        T_wt = mink.SE3.from_mocap_name(model, data, "target")
-        end_effector_task.set_target(T_wt)
+    solver = "quadprog"
 
-        # Compute velocity and integrate into the next configuration.
-        vel = mink.solve_ik(
-            configuration=configuration,
-            tasks=tasks,
-            dt=rate.dt,
-            solver=solver,
-            damping=1e-3,
-            limits=limits
-        )
-        configuration.integrate_inplace(vel, rate.dt)
-        mujoco.mj_camlight(model, data)
+    with mujoco.viewer.launch_passive(
+        model=model, data=data, show_left_ui=False, show_right_ui=False
+    ) as viewer:
+        mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
-        # Note the below are optional: they are used to visualize the output of the
-        # fromto sensor which is used by the collision avoidance constraint.
-        mujoco.mj_fwdPosition(model, data)
-        mujoco.mj_sensorPos(model, data)
+        # Initialize the mocap target at the end-effector site.
+        mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
-        # Visualize at fixed FPS.
-        viewer.sync()
-        rate.sleep()
+        rate = RateLimiter(frequency=500.0, warn=False)
+        while viewer.is_running():
+            # Update task target.
+            T_wt = mink.SE3.from_mocap_name(model, data, "target")
+            end_effector_task.set_target(T_wt)
+
+            # Compute velocity and integrate into the next configuration.
+            vel = mink.solve_ik(
+                configuration=configuration,
+                tasks=tasks,
+                dt=rate.dt,
+                solver=solver,
+                damping=1e-3,
+                limits=limits
+            )
+            configuration.integrate_inplace(vel, rate.dt)
+            mujoco.mj_camlight(model, data)
+
+            # Note the below are optional: they are used to visualize the output of the
+            # fromto sensor which is used by the collision avoidance constraint.
+            mujoco.mj_fwdPosition(model, data)
+            mujoco.mj_sensorPos(model, data)
+
+            # Visualize at fixed FPS.
+            viewer.sync()
+            rate.sleep()
