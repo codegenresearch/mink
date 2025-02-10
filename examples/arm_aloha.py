@@ -49,7 +49,7 @@ def compensate_gravity(
     for subtree_id in subtree_ids:
         total_mass = model.body_subtreemass[subtree_id]
         mujoco.mj_jacSubtreeCom(model, data, jac, subtree_id)
-        qfrc_applied[:] -= model.opt.gravity * total_mass @ jac
+        qfrc_applied[:] -= model.opt.gravity * total_mass * jac
 
 
 if __name__ == "__main__":
@@ -73,15 +73,16 @@ if __name__ == "__main__":
 
     configuration = mink.Configuration(model)
 
+    # Define tasks for left and right end-effectors and posture.
     tasks = [
-        l_ee_task := mink.FrameTask(
+        left_ee_task := mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        r_ee_task := mink.FrameTask(
+        right_ee_task := mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
@@ -92,14 +93,14 @@ if __name__ == "__main__":
     ]
 
     # Enable collision avoidance between the following geoms.
-    l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
-    r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
-    l_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
-    r_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
+    left_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
+    right_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
+    left_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
+    right_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
-        (l_wrist_geoms, r_wrist_geoms),
-        (l_geoms + r_geoms, frame_geoms + ["table"]),
+        (left_wrist_geoms, right_wrist_geoms),
+        (left_geoms + right_geoms, frame_geoms + ["table"]),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
@@ -114,8 +115,8 @@ if __name__ == "__main__":
         collision_avoidance_limit,
     ]
 
-    l_mid = model.body("left/target").mocapid[0]
-    r_mid = model.body("right/target").mocapid[0]
+    left_mid = model.body("left/target").mocapid[0]
+    right_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
     pos_threshold = 5e-3
     ori_threshold = 5e-3
@@ -139,8 +140,8 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0, warn=False)
         while viewer.is_running():
             # Update task targets.
-            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
@@ -154,19 +155,19 @@ if __name__ == "__main__":
                 )
                 configuration.integrate_inplace(vel, rate.dt)
 
-                l_err = l_ee_task.compute_error(configuration)
-                l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
-                l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
+                left_err = left_ee_task.compute_error(configuration)
+                left_pos_achieved = np.linalg.norm(left_err[:3]) <= pos_threshold
+                left_ori_achieved = np.linalg.norm(left_err[3:]) <= ori_threshold
 
-                r_err = r_ee_task.compute_error(configuration)  # Corrected from l_ee_task to r_ee_task
-                r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
-                r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
+                right_err = right_ee_task.compute_error(configuration)
+                right_pos_achieved = np.linalg.norm(right_err[:3]) <= pos_threshold
+                right_ori_achieved = np.linalg.norm(right_err[3:]) <= ori_threshold
 
                 if (
-                    l_pos_achieved
-                    and l_ori_achieved
-                    and r_pos_achieved
-                    and r_ori_achieved
+                    left_pos_achieved
+                    and left_ori_achieved
+                    and right_pos_achieved
+                    and right_ori_achieved
                 ):
                     break
 
