@@ -22,9 +22,11 @@ class TestVelocityLimit(absltest.TestCase):
         """Initialize a configuration and velocity limits for testing."""
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        self.velocities = {self.model.joint(i).name: np.pi for i in range(self.model.njnt) if self.model.joint(i).type != mujoco.mjtJoint.mjJNT_FREE}
+        self.velocities = {
+            self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
+        }
 
-    def test_projection_matrix_and_indices_dimensions(self):
+    def test_dimensions(self):
         """Test dimensions of projection matrix and indices."""
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
@@ -44,11 +46,14 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_subset_of_velocity_limits(self):
         """Test behavior with a subset of velocity limits."""
-        valid_joint_names = [self.model.joint(i).name for i in range(self.model.njnt) if self.model.joint(i).type != mujoco.mjtJoint.mjJNT_FREE]
-        subset_velocities = {name: np.pi for name in valid_joint_names[:3]}
-        limit = VelocityLimit(self.model, subset_velocities)
-        nb = len(subset_velocities)
-        nv = self.configuration.nv
+        velocities = {
+            "wrist_1_joint": 3.14,
+            "wrist_2_joint": 3.14,
+            "wrist_3_joint": 3.14,
+        }
+        limit = VelocityLimit(self.model, velocities)
+        nb = 3
+        nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
 
