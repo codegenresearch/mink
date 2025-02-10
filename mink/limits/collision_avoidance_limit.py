@@ -41,9 +41,7 @@ class _Contact:
 
 def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
     """Check if two geoms are part of the same body or are welded together."""
-    body1 = model.geom_bodyid[geom_id1]
-    body2 = model.geom_bodyid[geom_id2]
-    return model.body_weldid[body1] == model.body_weldid[body2]
+    return model.body_weldid[model.geom_bodyid[geom_id1]] == model.body_weldid[model.geom_bodyid[geom_id2]]
 
 
 def _are_geom_bodies_parent_child(
@@ -52,10 +50,8 @@ def _are_geom_bodies_parent_child(
     """Check if the bodies of two geoms have a parent-child relationship."""
     body_id1 = model.geom_bodyid[geom_id1]
     body_id2 = model.geom_bodyid[geom_id2]
-
     weld_parent_id1 = model.body_parentid[model.body_weldid[body_id1]]
     weld_parent_id2 = model.body_parentid[model.body_weldid[body_id2]]
-
     return model.body_weldid[body_id1] == weld_parent_id2 or model.body_weldid[body_id2] == weld_parent_id1
 
 
@@ -63,8 +59,8 @@ def _is_pass_contype_conaffinity_check(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
     """Check if the geoms pass the contype/conaffinity check for collision detection."""
-    return (bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or
-            bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1]))
+    return (model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or \
+           (model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
 
 
 class CollisionAvoidanceLimit(Limit):
