@@ -50,10 +50,10 @@ class TestVelocityLimit(absltest.TestCase):
     def test_model_with_subset_of_velocities_limited(self):
         """Test behavior with a subset of joints having velocity limits."""
         limit_subset = {}
-        for i, (name, vel) in enumerate(self.velocities.items()):
-            if i >= 3:
+        for key, value in self.velocities.items():
+            if len(limit_subset) >= 3:
                 break
-            limit_subset[name] = vel
+            limit_subset[key] = value
         limit = VelocityLimit(self.model, limit_subset)
         nb = 3
         nv = self.model.nv
@@ -61,6 +61,9 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(len(limit.indices), nb)
         expected_limit = np.asarray([np.pi] * nb)
         np.testing.assert_allclose(limit.limit, expected_limit)
+        G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
+        self.assertEqual(G.shape, (2 * nb, nv))
+        self.assertEqual(h.shape, (2 * nb,))
 
     def test_model_with_ball_joint(self):
         """Test behavior with a model containing a ball joint."""
