@@ -13,11 +13,15 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "boston_dynamics_spot" / "scene.xml"
 
 if __name__ == "__main__":
-    # Load model and data
+    ## =================== ##
+    ## Load model and data ##
+    ## =================== ##
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Setup IK configuration
+    ## =================== ##
+    ## Setup IK configuration ##
+    ## =================== ##
     configuration = mink.Configuration(model)
 
     feet = ["FL", "FR", "HR", "HL"]
@@ -50,18 +54,24 @@ if __name__ == "__main__":
 
     tasks = [base_task, posture_task, *feet_tasks, eef_task]
 
-    # Define mocap IDs for targets
+    ## =================== ##
+    ## Define mocap IDs for targets ##
+    ## =================== ##
     base_mid = model.body("body_target").mocapid[0]
     feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
     eef_mid = model.body("EE_target").mocapid[0]
 
-    # IK settings
+    ## =================== ##
+    ## IK settings ##
+    ## =================== ##
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
     max_iters = 20
 
-    # Launch MuJoCo viewer
+    ## =================== ##
+    ## Launch MuJoCo viewer ##
+    ## =================== ##
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
@@ -79,7 +89,9 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "body_target", "body", "body")
         mink.move_mocap_to_frame(model, data, "EE_target", "EE", "site")
 
-        # Set up rate limiter for simulation loop
+        ## =================== ##
+        ## Set up rate limiter for simulation loop ##
+        ## =================== ##
         rate = RateLimiter(frequency=500.0)
         while viewer.is_running():
             # Update task targets
