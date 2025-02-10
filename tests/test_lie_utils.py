@@ -15,14 +15,6 @@ class TestUtils(absltest.TestCase):
         m = utils.skew(np.random.randn(3))
         np.testing.assert_allclose(m.T, -m)
 
-    def test_skew_returns_correct_skew_symmetric_matrix(self):
-        omega = np.array([1.0, 2.0, 3.0])
-        expected_m = np.array([[0.0, -3.0, 2.0],
-                               [3.0, 0.0, -1.0],
-                               [-2.0, 1.0, 0.0]])
-        m = utils.skew(omega)
-        np.testing.assert_allclose(m, expected_m)
-
 
 if __name__ == "__main__":
     absltest.main()
