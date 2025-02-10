@@ -103,7 +103,7 @@ if __name__ == "__main__":
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=collision_pairs,  # type: ignore
+        geom_pairs=collision_pairs,
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
@@ -157,9 +157,11 @@ if __name__ == "__main__":
                 l_err = l_ee_task.compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
+
                 r_err = r_ee_task.compute_error(configuration)  # Corrected from l_ee_task to r_ee_task
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
+
                 if (
                     l_pos_achieved
                     and l_ori_achieved
