@@ -17,9 +17,9 @@ class FrameTask(Task):
     """Regulate the pose of a specified robot frame in the world frame.
 
     Attributes:
-        frame_name: Name of the frame to regulate.
+        frame_name: Name of the frame to be regulated within the robot model.
         frame_type: Type of the frame: 'body', 'geom', or 'site'.
-        transform_target_to_world: Target pose of the frame in the world frame.
+        transform_target_to_world: Desired pose of the frame in the world frame.
     """
 
     k: int = 6
@@ -38,7 +38,7 @@ class FrameTask(Task):
         Initialize the FrameTask with the specified parameters.
 
         Args:
-            frame_name: Name of the frame to be regulated.
+            frame_name: Name of the frame to be regulated within the robot model.
             frame_type: Type of the frame ('body', 'geom', or 'site').
             position_cost: Cost associated with the position error. Can be a scalar or a
                 3-dimensional vector.
