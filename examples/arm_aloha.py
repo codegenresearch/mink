@@ -121,13 +121,13 @@ def main():
             lm_damping=1.0,
         ),
         posture_task := mink.PostureTask(
-            posture_cost=0.1,  # Adjusted to match the gold code
+            posture_cost=0.01,  # Adjusted to match the gold code
             lm_damping=1.0,
         ),
     ]
 
     # Set the posture task target from the current configuration.
-    posture_task.set_target(configuration.q)
+    posture_task.set_target_from_configuration(configuration)
 
     # Set up collision avoidance.
     collision_avoidance_limit = setup_collision_avoidance(model)
@@ -145,10 +145,10 @@ def main():
 
     # Solver and error thresholds.
     solver = "quadprog"
-    position_threshold = 1e-3  # Adjusted to match the gold code
-    orientation_threshold = 1e-3  # Adjusted to match the gold code
-    max_iterations = 10  # Adjusted to match the gold code
-    damping_value = 1e-2  # Adjusted to match the gold code
+    pos_threshold = 1e-4  # Adjusted to match the gold code
+    ori_threshold = 1e-4  # Adjusted to match the gold code
+    max_iters = 20  # Adjusted to match the gold code
+    damping = 1e-2  # Adjusted to match the gold code
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -170,28 +170,28 @@ def main():
             r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute velocity and integrate into the next configuration.
-            for _ in range(max_iterations):
-                velocity = mink.solve_ik(
+            for _ in range(max_iters):
+                vel = mink.solve_ik(
                     configuration,
                     tasks,
                     rate.dt,
                     solver,
                     limits=limits,
-                    damping=damping_value,
+                    damping=damping,
                 )
-                configuration.integrate_inplace(velocity, rate.dt)
+                configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if the tasks are achieved.
-                left_error = l_ee_task.compute_error(configuration)
-                left_position_achieved = np.linalg.norm(left_error[:3]) <= position_threshold
-                left_orientation_achieved = np.linalg.norm(left_error[3:]) <= orientation_threshold
+                l_err = l_ee_task.compute_error(configuration)
+                l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
+                l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
 
-                right_error = r_ee_task.compute_error(configuration)
-                right_position_achieved = np.linalg.norm(right_error[:3]) <= position_threshold
-                right_orientation_achieved = np.linalg.norm(right_error[3:]) <= orientation_threshold
+                r_err = r_ee_task.compute_error(configuration)
+                r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
+                r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
 
-                if (left_position_achieved and left_orientation_achieved and
-                    right_position_achieved and right_orientation_achieved):
+                if (l_pos_achieved and l_ori_achieved and
+                    r_pos_achieved and r_ori_achieved):
                     break
 
             # Apply control signals.
