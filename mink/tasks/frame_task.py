@@ -14,10 +14,10 @@ from .task import Task
 
 
 class FrameTask(Task):
-    """Regulate the pose of a specified robot frame in the world frame.
+    """Regulate the pose of a frame expressed in the world frame.
 
     Attributes:
-        frame_name: Name of the frame to be regulated within the robot model.
+        frame_name: Name of the frame to be regulated.
         frame_type: Type of the frame: 'body', 'geom', or 'site'.
         transform_target_to_world: Target pose of the frame in the world frame.
     """
@@ -38,7 +38,7 @@ class FrameTask(Task):
         Initialize the FrameTask with the specified parameters.
 
         Args:
-            frame_name: Name of the frame to be regulated within the robot model.
+            frame_name: Name of the frame to be regulated.
             frame_type: Type of the frame ('body', 'geom', or 'site').
             position_cost: Cost associated with the position error. Can be a scalar or a
                 3-dimensional vector.
@@ -70,12 +70,12 @@ class FrameTask(Task):
         position_cost = np.atleast_1d(position_cost)
         if position_cost.ndim != 1 or position_cost.shape[0] not in (1, 3):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} position cost must be a vector of shape "
+                f"{self.__class__.__name__} position cost should be a vector of shape "
                 f"(1,) (identical cost for all coordinates) or (3,). Got {position_cost.shape}"
             )
         if not np.all(position_cost >= 0.0):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} position cost must be non-negative"
+                f"{self.__class__.__name__} position cost should be non-negative"
             )
         self.cost[:3] = position_cost
 
@@ -94,12 +94,12 @@ class FrameTask(Task):
         orientation_cost = np.atleast_1d(orientation_cost)
         if orientation_cost.ndim != 1 or orientation_cost.shape[0] not in (1, 3):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} orientation cost must be a vector of shape "
+                f"{self.__class__.__name__} orientation cost should be a vector of shape "
                 f"(1,) (identical cost for all coordinates) or (3,). Got {orientation_cost.shape}"
             )
         if not np.all(orientation_cost >= 0.0):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} orientation cost must be non-negative"
+                f"{self.__class__.__name__} orientation cost should be non-negative"
             )
         self.cost[3:] = orientation_cost
 
