@@ -46,7 +46,7 @@ class Configuration:
         model: mujoco.MjModel,
         q: Optional[np.ndarray] = None,
     ):
-        """Initialize the Configuration with a model and an optional configuration vector.
+        """Constructor.
 
         Args:
             model: Mujoco model.
@@ -82,11 +82,11 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            ValueError: If no keyframe with the specified name is found in the model.
+            InvalidKeyframe: If no keyframe with the specified name is found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise ValueError(f"No keyframe named '{key_name}' found in the model.")
+            raise exceptions.InvalidKeyframe(key_name, self.model)
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
@@ -129,12 +129,20 @@ class Configuration:
     def get_frame_jacobian(self, frame_name: str, frame_type: str) -> np.ndarray:
         """Compute the Jacobian matrix of a frame velocity relative to the world frame.
 
+        Denoting our frame by :math:`B` and the world frame by :math:`W`, the
+        Jacobian matrix :math:`{}_B J_{WB}` is related to the body velocity
+        :math:`{}_B v_{WB}` by:
+
+        .. math::
+
+            {}_B v_{WB} = {}_B J_{WB} \dot{q}
+
         Args:
             frame_name: Name of the frame in the MJCF.
             frame_type: Type of frame. Can be 'geom', 'body', or 'site'.
 
         Returns:
-            Jacobian matrix of the frame velocity relative to the world frame.
+            Jacobian matrix :math:`{}_B J_{WB}` of the frame velocity relative to the world frame.
 
         Raises:
             UnsupportedFrame: If the frame type is not supported.
@@ -214,7 +222,7 @@ class Configuration:
         return q
 
     def integrate_inplace(self, velocity: np.ndarray, dt: float) -> None:
-        """Integrate a velocity and update the current configuration in place.
+        """Integrate a velocity and update the current configuration inplace.
 
         Args:
             velocity: The velocity vector in tangent space.
