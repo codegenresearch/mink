@@ -28,12 +28,18 @@ class TestVelocityLimit(absltest.TestCase):
         }
 
     def test_dimensions(self):
-        """Test dimensions of projection matrix and indices."""
+        """Test the dimensions of the projection matrix and indices."""
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
         nb = nv - len(get_freejoint_dims(self.model)[1])
         self.assertEqual(len(limit.indices), nb)
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
+
+    def test_indices(self):
+        """Test the indices of the velocity limits."""
+        limit = VelocityLimit(self.model, self.velocities)
+        expected_indices = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
+        self.assertTrue(np.allclose(limit.indices, expected_indices))
 
     def test_model_with_no_limit(self):
         """Test behavior with no velocity limits."""
@@ -53,14 +59,8 @@ class TestVelocityLimit(absltest.TestCase):
         limit = VelocityLimit(self.model, partial_velocities)
         nb = 3
         nv = self.model.nv
-        self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-
-    def test_indices(self):
-        """Test the indices of the velocity limits."""
-        limit = VelocityLimit(self.model, self.velocities)
-        expected_indices = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
-        self.assertTrue(np.allclose(limit.indices, expected_indices))
+        self.assertEqual(limit.projection_matrix.shape, (nb, nv))
 
     def test_ball_joint_velocity_limits(self):
         """Test velocity limits for a ball joint."""
