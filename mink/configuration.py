@@ -70,9 +70,8 @@ class Configuration:
         """
         if q is not None:
             self.data.qpos = q
-        # Perform forward kinematics to update frame transforms.
+        # Perform forward kinematics to update frame transforms and Jacobians.
         mujoco.mj_kinematics(self.model, self.data)
-        # Update Jacobians.
         mujoco.mj_comPos(self.model, self.data)
 
     def update_from_keyframe(self, key_name: str) -> None:
@@ -85,11 +84,11 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            ValueError: If no keyframe with the specified name is found in the model.
+            InvalidKeyframe: If no keyframe with the specified name is found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise ValueError(f"No keyframe named '{key_name}' found in the model.")
+            raise exceptions.InvalidKeyframe(key_name, self.model)
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
