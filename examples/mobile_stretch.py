@@ -55,6 +55,7 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "EE_target", "link_grasp_center", "site")
 
         rate = RateLimiter(frequency=100.0, warn=False)
+        dt = rate.period
         t = 0.0
         while viewer.is_running():
             # Update task targets
@@ -76,4 +77,4 @@ if __name__ == "__main__":
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
-            t += rate.dt
+            t += dt
