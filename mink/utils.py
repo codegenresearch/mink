@@ -31,11 +31,11 @@ def move_mocap_to_frame(
     if obj_id == -1:
         raise ValueError(f"Frame '{frame_name}' of type '{frame_type}' not found in the model.")
 
-    frame_pos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
-    frame_xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
+    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
+    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
 
-    data.mocap_pos[mocap_id] = frame_pos.copy()
-    mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], frame_xmat)
+    data.mocap_pos[mocap_id] = xpos.copy()
+    mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
 
 
 def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
@@ -84,15 +84,37 @@ def custom_configuration_vector(
 
     q = data.qpos.copy()
     for joint_name, value in kwargs.items():
-        joint = model.joint(joint_name)
-        qid = joint.qposadr
+        jid = model.joint(joint_name).id
+        qadr = model.jnt_qposadr[jid]
+        dof = model.jnt_dof[jid]
         value_array = np.atleast_1d(value)
-        if value_array.shape != (joint.dof,):
+        if value_array.shape != (dof,):
             raise ValueError(
-                f"Joint '{joint_name}' should have a qpos value of shape ({joint.dof},) but got {value_array.shape}"
+                f"Joint '{joint_name}' should have a qpos value of shape ({dof},) but got {value_array.shape}"
             )
-        q[qid:qid + joint.dof] = value_array
+        q[qadr:qadr + dof] = value_array
     return q
+
+
+def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+    """Collect all body IDs in the subtree starting from a given body.
+
+    Args:
+        model: Mujoco model.
+        body_id: ID of the starting body.
+
+    Returns:
+        List of body IDs in the subtree.
+    """
+    stack = [body_id]
+    subtree_bodies = []
+    while stack:
+        current_body_id = stack.pop()
+        subtree_bodies.append(current_body_id)
+        for child_id in range(model.nbody):
+            if model.body_parentid[child_id] == current_body_id:
+                stack.append(child_id)
+    return subtree_bodies
 
 
 def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
@@ -105,14 +127,17 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     Returns:
         List of geom IDs in the subtree.
     """
-    def gather_geoms(current_body_id: int) -> List[int]:
-        geoms = list(range(model.body_geomadr[current_body_id], model.body_geomadr[current_body_id] + model.body_geomnum[current_body_id]))
+    stack = [body_id]
+    subtree_geoms = []
+    while stack:
+        current_body_id = stack.pop()
+        geom_start = model.body_geomadr[current_body_id]
+        geom_end = geom_start + model.body_geomnum[current_body_id]
+        subtree_geoms.extend(range(geom_start, geom_end))
         for child_id in range(model.nbody):
             if model.body_parentid[child_id] == current_body_id:
-                geoms.extend(gather_geoms(child_id))
-        return geoms
-
-    return gather_geoms(body_id)
+                stack.append(child_id)
+    return subtree_geoms
 
 
 def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
@@ -128,26 +153,6 @@ def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     geom_start = model.body_geomadr[body_id]
     geom_end = geom_start + model.body_geomnum[body_id]
     return list(range(geom_start, geom_end))
-
-
-def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
-    """Collect all body IDs in the subtree starting from a given body.
-
-    Args:
-        model: Mujoco model.
-        body_id: ID of the starting body.
-
-    Returns:
-        List of body IDs in the subtree.
-    """
-    def gather_bodies(current_body_id: int) -> List[int]:
-        bodies = [current_body_id]
-        for child_id in range(model.nbody):
-            if model.body_parentid[child_id] == current_body_id:
-                bodies.extend(gather_bodies(child_id))
-        return bodies
-
-    return gather_bodies(body_id)
 
 
 def apply_gravity_compensation(
