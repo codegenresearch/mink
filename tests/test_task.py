@@ -8,7 +8,7 @@ class TestTask(absltest.TestCase):
     """Test the abstract base class for tasks."""
 
     def setUp(self):
-        """Prepare the test fixture by making Task instantiable."""
+        """Prepare test fixture."""
         Task.__abstractmethods__ = set()
 
     def test_task_throws_error_if_gain_negative(self):
