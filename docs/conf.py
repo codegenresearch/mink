@@ -2,8 +2,8 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-from pathlib import Path
 import toml
+from pathlib import Path
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -13,11 +13,11 @@ copyright = "2024, Kevin Zakka"
 author = "Kevin Zakka"
 
 # Read version from pyproject.toml
-pyproject_path: Path = Path(__file__).absolute().parent.parent / "pyproject.toml"
+pyproject_path = Path(__file__).absolute().parent.parent / "pyproject.toml"
 pyproject = toml.load(pyproject_path)
-version: str = pyproject["tool"]["poetry"]["version"]
+version = pyproject["tool"]["poetry"]["version"]
 if not version.isalpha():
-    version = f"v{version}"
+    version = "v" + version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
