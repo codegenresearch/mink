@@ -21,7 +21,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
     def setUpClass(cls):
         cls.model = load_robot_description("ur5e_mj_description")
         # Configure model options for consistent testing
-        cls.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMID
+        cls.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
         cls.model.opt.jacobian = mujoco.mjtJac.mjJAC_DENSE
         cls.model.opt.disableflags = (
             mujoco.mjtDisableBit.mjDSBL_CLAMPCTRL
@@ -84,14 +84,16 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
             bound_relaxation=bound_relaxation,
         )
 
-        # Compute the contact normal Jacobian using the limit method.
-        jac_limit = limit.compute_contact_normal_jacobian(self.configuration)
-
         # Step the simulation to ensure contacts are updated
         mujoco.mj_step(self.model, self.data)
 
-        # Compute the contact normal Jacobian using Mujoco's method.
+        # Extract contact information
         mujoco_contacts = [Contact(self.model, i) for i in range(self.data.ncon)]
+
+        # Compute the contact normal Jacobian using the limit method.
+        jac_limit = limit.compute_contact_normal_jacobian(self.configuration)
+
+        # Compute the contact normal Jacobian using Mujoco's method.
         jac_mujoco = compute_contact_normal_jacobian(self.model, mujoco_contacts)
 
         # Validate that the Jacobians match.
