@@ -10,7 +10,17 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "boston_dynamics_spot" / "scene.xml"
 
-def setup_tasks(model, feet):
+def main():
+    # Load model and data
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+    data = mujoco.MjData(model)
+
+    # Initialize configuration
+    configuration = mink.Configuration(model)
+
+    # Define feet and tasks
+    feet = ["FL", "FR", "HR", "HL"]
+
     # Initialize base task
     base_task = mink.FrameTask(
         frame_name="body",
@@ -41,17 +51,8 @@ def setup_tasks(model, feet):
         orientation_cost=1.0,
     )
 
-    return [base_task, posture_task, *feet_tasks, eef_task]
-
-def main():
-    # Load model and data
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
-    data = mujoco.MjData(model)
-
-    # Initialize configuration and tasks
-    configuration = mink.Configuration(model)
-    feet = ["FL", "FR", "HR", "HL"]
-    tasks = setup_tasks(model, feet)
+    # Combine all tasks
+    tasks = [base_task, posture_task, *feet_tasks, eef_task]
 
     # Get mocap IDs
     base_mid = model.body("body_target").mocapid[0]
@@ -91,9 +92,9 @@ def main():
         while viewer.is_running():
             # Update task targets
             base_task.set_target(mink.SE3.from_mocap_id(data, base_mid))
-            for i, task in enumerate(tasks[2:-1]):
+            for i, task in enumerate(feet_tasks):
                 task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
-            tasks[-1].set_target(mink.SE3.from_mocap_id(data, eef_mid))
+            eef_task.set_target(mink.SE3.from_mocap_id(data, eef_mid))
 
             # Compute velocity and integrate into the next configuration
             for _ in range(max_iters):
