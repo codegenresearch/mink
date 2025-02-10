@@ -153,6 +153,7 @@ class MatrixLieGroup(abc.ABC):
         """Computes the right Jacobian."""
         return cls.ljac(-other)
 
+    # Eqn. 68.
     @classmethod
     def rjacinv(cls, other: np.ndarray) -> np.ndarray:
         """Computes the inverse of the right Jacobian."""
