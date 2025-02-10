@@ -89,22 +89,24 @@ class TestConfiguration(absltest.TestCase):
         np.testing.assert_almost_equal(configuration.q, expected_qpos)
 
     def test_check_limits(self):
-        """Check that an error is raised iff a joint limit is exceeded."""
+        """Check that no error is raised when the configuration is within limits."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
         configuration.check_limits()
-        self.q_ref[0] += 1e4  # Move configuration out of bounds.
-        configuration.update(q=self.q_ref)
-        with self.assertRaises(mink.NotWithinConfigurationLimits):
-            configuration.check_limits()
 
     def test_check_limits_with_safety_break(self):
-        """Check that an error is raised iff a joint limit is exceeded with safety break."""
+        """Check that an error is raised when the configuration exceeds limits with safety break."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
-        configuration.check_limits(safety_break=True)
         self.q_ref[0] += 1e4  # Move configuration out of bounds.
         configuration.update(q=self.q_ref)
         with self.assertRaises(mink.NotWithinConfigurationLimits):
             configuration.check_limits(safety_break=True)
+
+    def test_check_limits_without_safety_break(self):
+        """Check that no error is raised when the configuration exceeds limits without safety break."""
+        configuration = mink.Configuration(self.model, q=self.q_ref)
+        self.q_ref[0] += 1e4  # Move configuration out of bounds.
+        configuration.update(q=self.q_ref)
+        configuration.check_limits(safety_break=False)
 
     def test_get_frame_jacobian_invalid_frame_name(self):
         """Raise an error when the requested frame name does not exist."""
@@ -117,6 +119,26 @@ class TestConfiguration(absltest.TestCase):
         configuration = mink.Configuration(self.model)
         with self.assertRaises(mink.UnsupportedFrame):
             configuration.get_frame_jacobian("name_does_not_matter", "joint")
+
+    def test_check_limits_free_joints(self):
+        """Check that limits are correctly handled for free joints."""
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body>
+              <joint type="free" name="floating"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body>
+                <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        configuration = mink.Configuration(model)
+        configuration.check_limits()
 
 
 if __name__ == "__main__":
