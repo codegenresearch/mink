@@ -148,10 +148,3 @@ class TestConfiguration(absltest.TestCase):
 
 if __name__ == "__main__":
     absltest.main()
-
-
-**Corrections Made:**
-1. **Corrected the Jacobian Calculation**: Replaced `get_site_jacp` with the correct method to compute the Jacobian for the site frame.
-2. **Added Additional Test Cases**: Included tests for error handling related to the Jacobian frame.
-3. **Ensured Consistent Order and Naming**: Rearranged and named test methods to align with the gold code.
-4. **Improved Documentation**: Ensured that comments and docstrings are consistent and clear.
