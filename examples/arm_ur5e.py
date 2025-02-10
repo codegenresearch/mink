@@ -13,7 +13,6 @@ _XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     configuration = mink.Configuration(model)
-    data = configuration.data
 
     tasks = [
         end_effector_task := mink.FrameTask(
@@ -49,6 +48,8 @@ if __name__ == "__main__":
     velocity_limit = mink.VelocityLimit(model, max_velocities)
     limits.append(velocity_limit)
 
+    data = configuration.data
+
     mid = model.body("target").mocapid[0]
 
     solver = "quadprog"
@@ -62,7 +63,6 @@ if __name__ == "__main__":
 
         # Initialize to the home keyframe.
         configuration.update_from_keyframe("home")
-        mujoco.mj_forward(model, data)
 
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
