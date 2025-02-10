@@ -123,10 +123,11 @@ class Task(abc.ABC):
         """
         jacobian = self.compute_jacobian(configuration)  # (k, nv)
         error = self.compute_error(configuration)  # (k,)
-        weighted_error = -self.gain * self.cost * error  # (k,)
+        minus_gain_error = -self.gain * error  # (k,)
 
         weight_matrix = np.diag(self.cost)
         weighted_jacobian = weight_matrix @ jacobian  # (k, nv)
+        weighted_error = weight_matrix @ minus_gain_error  # (k,)
 
         mu = self.lm_damping * weighted_error @ weighted_error
         eye_tg = np.eye(configuration.model.nv)
