@@ -33,7 +33,7 @@ class MatrixLieGroup(abc.ABC):
         assert isinstance(other, MatrixLieGroup)
         return self.multiply(other=other)
 
-    # Factory.
+    # Factory methods.
 
     @classmethod
     @abc.abstractmethod
@@ -53,7 +53,7 @@ class MatrixLieGroup(abc.ABC):
         """Draws a uniform sample from the group."""
         raise NotImplementedError
 
-    # Accessors.
+    # Accessor methods.
 
     @abc.abstractmethod
     def as_matrix(self) -> np.ndarray:
@@ -144,7 +144,10 @@ class MatrixLieGroup(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def ljacinv(cls, other: np.ndarray) -> np.ndarray:
-        """Computes the inverse of the left Jacobian."""
+        """Computes the inverse of the left Jacobian.
+
+        NOTE: Can just be np.linalg.inv(cls.ljac(other)).
+        """
         raise NotImplementedError
 
     # Eqn. 67.
