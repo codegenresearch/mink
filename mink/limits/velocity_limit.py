@@ -64,11 +64,13 @@ class VelocityLimit(Limit):
         self.limit = np.array(limit_list)
         self.limit.setflags(write=False)
 
-        nb = len(self.indices)
-        self.projection_matrix = np.eye(model.nv)[self.indices] if nb > 0 else None
+        dim = len(self.indices)
+        self.projection_matrix = np.eye(model.nv)[self.indices] if dim > 0 else None
 
     def compute_qp_inequalities(
-        self, configuration: Configuration, dt: float
+        self,
+        configuration: Configuration,
+        dt: float,
     ) -> Constraint:
         r"""Compute the configuration-dependent joint velocity limits.
 
@@ -78,8 +80,8 @@ class VelocityLimit(Limit):
 
             -v_{\text{max}} \cdot dt \leq \Delta q \leq v_{\text{max}} \cdot dt
 
-        where :math:`v_{max} \in {\cal T}` is the robot's velocity limit
-        vector and :math:`\Delta q \in T_q({\cal C})` is the displacement in the
+        where :math:`v_{\text{max}} \in \mathbb{R}^n` is the robot's velocity limit
+        vector and :math:`\Delta q \in \mathbb{R}^{nv}` is the displacement in the
         tangent space at :math:`q`. See the :ref:`derivations` section for
         more information.
 
@@ -89,8 +91,8 @@ class VelocityLimit(Limit):
 
         Returns:
             Pair :math:`(G, h)` representing the inequality constraint as
-            :math:`G \Delta q \leq h`, where :math:`G` has shape (2n, nv) and
-            :math:`h` has shape (2n,), or ``None`` if there is no limit.
+            :math:`G \Delta q \leq h`, where :math:`G` has shape :math:`(2n, nv)` and
+            :math:`h` has shape :math:`(2n,)`, or ``None`` if there is no limit.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
