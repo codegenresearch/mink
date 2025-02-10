@@ -64,8 +64,8 @@ def _is_pass_contype_conaffinity_check(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
     """Check if two geoms pass the contype/conaffinity check."""
-    return (model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or \
-           (model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
+    return bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or \
+           bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
 
 
 class CollisionAvoidanceLimit(Limit):
