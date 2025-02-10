@@ -49,7 +49,7 @@ def compensate_gravity(
     for subtree_id in subtree_ids:
         total_mass = model.body_subtreemass[subtree_id]
         mujoco.mj_jacSubtreeCom(model, data, jac, subtree_id)
-        qfrc_applied[:] -= model.opt.gravity * total_mass * jac
+        qfrc_applied[:] -= model.opt.gravity @ (total_mass * jac)
 
 
 if __name__ == "__main__":
@@ -57,8 +57,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Bodies for which to apply gravity compensation.
-    left_subtree_id = model.body("left/base_link").id
-    right_subtree_id = model.body("right/base_link").id
+    l_subtree_id = model.body("left/base_link").id
+    r_subtree_id = model.body("right/base_link").id
 
     # Get the dof and actuator ids for the joints we wish to control.
     joint_names: list[str] = []
@@ -75,14 +75,14 @@ if __name__ == "__main__":
 
     # Define tasks for left and right end-effectors and posture.
     tasks = [
-        left_ee_task := mink.FrameTask(
+        l_ee_task := mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        right_ee_task := mink.FrameTask(
+        r_ee_task := mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
@@ -93,14 +93,14 @@ if __name__ == "__main__":
     ]
 
     # Enable collision avoidance between the following geoms.
-    left_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
-    right_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
-    left_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
-    right_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
+    l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
+    r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
+    l_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
+    r_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
-        (left_wrist_geoms, right_wrist_geoms),
-        (left_geoms + right_geoms, frame_geoms + ["table"]),
+        (l_wrist_geoms, r_wrist_geoms),
+        (l_geoms + r_geoms, frame_geoms + ["table"]),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
@@ -115,8 +115,8 @@ if __name__ == "__main__":
         collision_avoidance_limit,
     ]
 
-    left_mid = model.body("left/target").mocapid[0]
-    right_mid = model.body("right/target").mocapid[0]
+    l_mid = model.body("left/target").mocapid[0]
+    r_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
     pos_threshold = 5e-3
     ori_threshold = 5e-3
@@ -140,8 +140,8 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0, warn=False)
         while viewer.is_running():
             # Update task targets.
-            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
@@ -155,24 +155,24 @@ if __name__ == "__main__":
                 )
                 configuration.integrate_inplace(vel, rate.dt)
 
-                left_err = left_ee_task.compute_error(configuration)
-                left_pos_achieved = np.linalg.norm(left_err[:3]) <= pos_threshold
-                left_ori_achieved = np.linalg.norm(left_err[3:]) <= ori_threshold
+                l_err = l_ee_task.compute_error(configuration)
+                l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
+                l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
 
-                right_err = right_ee_task.compute_error(configuration)
-                right_pos_achieved = np.linalg.norm(right_err[:3]) <= pos_threshold
-                right_ori_achieved = np.linalg.norm(right_err[3:]) <= ori_threshold
+                r_err = r_ee_task.compute_error(configuration)
+                r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
+                r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
 
                 if (
-                    left_pos_achieved
-                    and left_ori_achieved
-                    and right_pos_achieved
-                    and right_ori_achieved
+                    l_pos_achieved
+                    and l_ori_achieved
+                    and r_pos_achieved
+                    and r_ori_achieved
                 ):
                     break
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
-            compensate_gravity(model, data, [left_subtree_id, right_subtree_id])
+            compensate_gravity(model, data, [l_subtree_id, r_subtree_id])
             mujoco.mj_step(model, data)
 
             # Visualize at fixed FPS.
