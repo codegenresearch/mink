@@ -99,7 +99,7 @@ if __name__ == "__main__":
         t = 0.0
 
         while viewer.is_running():
-            # Update the task target.
+            # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
             end_effector_task.set_target(T_wt)
 
