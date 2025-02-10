@@ -54,8 +54,7 @@ if __name__ == "__main__":
         fingertip_task.set_target(transform_fingertip_target_to_world)
         mink.move_mocap_to_frame(model, data, "EE_target", "link_grasp_center", "site")
 
-        rate = RateLimiter(frequency=100.0, warn=False)
-        dt = rate.period
+        rate = RateLimiter(frequency=200.0, warn=True)
         t = 0.0
         while viewer.is_running():
             # Update task targets
@@ -77,4 +76,4 @@ if __name__ == "__main__":
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
-            t += dt
+            t += rate.dt
