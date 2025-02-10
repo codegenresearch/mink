@@ -22,7 +22,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.configuration.update_from_keyframe("stand")
         # NOTE(kevin): These velocities are arbitrary and do not match real hardware.
         self.velocities = {
-            self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)
+            self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
         }
 
     def test_dimensions(self):
@@ -53,14 +53,14 @@ class TestVelocityLimit(absltest.TestCase):
             if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE
         ]
         partial_velocities = {}
-        for joint_name in valid_joint_names[:3]:
-            partial_velocities[joint_name] = np.pi
+        for i in range(min(3, len(valid_joint_names))):
+            partial_velocities[valid_joint_names[i]] = 3.14
         limit = VelocityLimit(self.model, partial_velocities)
         nb = len(partial_velocities)
         nv = self.configuration.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        expected_limit = np.asarray([np.pi] * nb)
+        expected_limit = np.array([3.14] * nb)
         np.testing.assert_allclose(limit.limit, expected_limit)
 
     def test_model_with_ball_joint(self):
