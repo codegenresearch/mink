@@ -61,6 +61,7 @@ if __name__ == "__main__":
 
     configuration = mink.Configuration(model)
 
+    # Define tasks for end-effector and fingers
     end_effector_task = mink.FrameTask(
         frame_name="attachment_site",
         frame_type="site",
@@ -90,12 +91,12 @@ if __name__ == "__main__":
         mink.ConfigurationLimit(model=model),
     ]
 
-    # IK settings.
+    # IK settings
     solver = "quadprog"
     model = configuration.model
     data = configuration.data
 
-    # Initialize the rate limiter with a consistent frequency.
+    # Initialize the rate limiter with a consistent frequency
     frequency = 200.0
     rate = RateLimiter(frequency=frequency, warn=False)
 
@@ -104,11 +105,12 @@ if __name__ == "__main__":
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
+        # Reset the simulation to the home keyframe
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
         posture_task.set_target_from_configuration(configuration)
 
-        # Initialize the mocap target at the end-effector site.
+        # Initialize mocap targets at the end-effector and finger sites
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
         for finger in fingers:
             mink.move_mocap_to_frame(
@@ -120,17 +122,18 @@ if __name__ == "__main__":
         )
 
         while viewer.is_running():
-            # Update kuka end-effector task.
+            # Update the end-effector task target
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
-            # Update finger tasks.
+            # Update finger tasks
             for finger, task in zip(fingers, finger_tasks):
                 T_pm = configuration.get_transform(
                     f"{finger}_target", "body", "leap_right/palm_lower", "body"
                 )
                 task.set_target(T_pm)
 
+            # Update mocap positions for fingers
             for finger in fingers:
                 T_eef = configuration.get_transform_frame_to_world(
                     "attachment_site", "site"
@@ -145,15 +148,16 @@ if __name__ == "__main__":
                     T_w_mocap_new.rotation().wxyz
                 )
 
-            # Compute velocity and integrate into the next configuration.
+            # Solve inverse kinematics and integrate the velocity
             vel = mink.solve_ik(
                 configuration, tasks, rate.dt, solver, 1e-3, limits=limits
             )
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
+            # Update the previous end-effector transform
             T_eef_prev = T_eef.copy()
 
-            # Visualize at fixed FPS.
+            # Visualize at fixed FPS
             viewer.sync()
             rate.sleep()
