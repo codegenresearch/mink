@@ -30,47 +30,52 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names: list[str] = [f"{prefix}/{n}" for prefix in ["left", "right"] for n in _JOINT_NAMES]
-    velocity_limits: dict[str, float] = {name: _VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
-    dof_ids: np.ndarray = np.array([model.joint(name).id for name in joint_names])
-    actuator_ids: np.ndarray = np.array([model.actuator(name).id for name in joint_names])
+    joint_names = []
+    velocity_limits = {}
+    for prefix in ["left", "right"]:
+        for n in _JOINT_NAMES:
+            name = f"{prefix}/{n}"
+            joint_names.append(name)
+            velocity_limits[name] = _VELOCITY_LIMITS[n]
+    dof_ids = np.array([model.joint(name).id for name in joint_names])
+    actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
     configuration = mink.Configuration(model)
 
     # Initialize tasks
-    l_ee_task = mink.FrameTask(
-        frame_name="left/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    r_ee_task = mink.FrameTask(
-        frame_name="right/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    posture_task = mink.PostureTask(
-        joint_names=joint_names,
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-
-    tasks = [l_ee_task, r_ee_task, posture_task]
+    tasks = [
+        l_ee_task := mink.FrameTask(
+            frame_name="left/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+        r_ee_task := mink.FrameTask(
+            frame_name="right/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+        posture_task := mink.PostureTask(
+            joint_names=joint_names,
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+    ]
 
     # Enable collision avoidance between the following geoms:
-    # geoms starting at subtree "right upper_arm" - "table",
-    # geoms starting at subtree "left upper_arm"  - "table",
-    # geoms starting at subtree "right upper_arm" - geoms starting at subtree "left upper_arm".
-    l_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
-    r_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
+    # geoms starting at subtree "right wrist" - "table",
+    # geoms starting at subtree "left wrist"  - "table",
+    # geoms starting at subtree "right wrist" - geoms starting at subtree "left wrist".
+    l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
+    r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
-        (l_upper_arm_geoms, r_upper_arm_geoms),
-        (l_upper_arm_geoms + r_upper_arm_geoms, frame_geoms + ["table"]),
+        (l_wrist_geoms, r_wrist_geoms),
+        (l_wrist_geoms + r_wrist_geoms, frame_geoms + ["table"]),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
@@ -107,7 +112,7 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "right/target", "right/gripper", "site")
 
         # Set posture task target
-        posture_task.set_target(configuration.q)
+        posture_task.set_target_from_configuration(configuration)
 
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
