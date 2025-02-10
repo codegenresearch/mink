@@ -52,7 +52,7 @@ class ComTask(Task):
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"(aka identical cost for all coordinates) or ({self.k},). Got {cost.shape}"
+                f"(identical cost for all coordinates) or ({self.k},). Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
             raise TaskDefinitionError(f"{self.__class__.__name__} cost must be >= 0")
@@ -89,9 +89,9 @@ class ComTask(Task):
 
         .. math::
 
-            e(q) = c^* - c
+            e(q) = c - c^*
 
-        where :math:`c^*` is the target CoM position and :math:`c` is the current CoM position.
+        where :math:`c` is the current CoM position and :math:`c^*` is the target CoM position.
 
         Args:
             configuration: Robot configuration :math:`q`.
@@ -104,7 +104,7 @@ class ComTask(Task):
         """
         if self.target_com is None:
             raise TargetNotSet(self.__class__.__name__)
-        return self.target_com - configuration.data.subtree_com[1]
+        return configuration.data.subtree_com[1] - self.target_com
 
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the CoM task Jacobian.
