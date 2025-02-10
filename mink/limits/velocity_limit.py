@@ -53,12 +53,12 @@ class VelocityLimit(Limit):
             max_vel = np.atleast_1d(max_vel)
             if jnt_type == mujoco.mjtJoint.mjJNT_BALL and max_vel.shape != (3,):
                 raise LimitDefinitionError(
-                    f"Ball joint '{joint_name}' must have a limit of shape (3,). "
+                    f"Joint {joint_name} must have a limit of shape (3,). "
                     f"Got: {max_vel.shape}"
                 )
             elif max_vel.shape != (vdim,):
                 raise LimitDefinitionError(
-                    f"Joint '{joint_name}' must have a limit of shape ({vdim},). "
+                    f"Joint {joint_name} must have a limit of shape ({vdim},). "
                     f"Got: {max_vel.shape}"
                 )
             index_list.extend(range(vadr, vadr + vdim))
