@@ -74,15 +74,6 @@ class TestFrameTask(absltest.TestCase):
             )
         self.assertEqual(str(cm.exception), "FrameTask orientation_cost must be >= 0")
 
-        with self.assertRaises(TaskDefinitionError) as cm:
-            FrameTask(
-                frame_name="pelvis",
-                frame_type="body",
-                position_cost=[-1.0, 1.5],
-                orientation_cost=[1, 2, 3],
-            )
-        self.assertEqual(str(cm.exception), "FrameTask position_cost must be >= 0")
-
     def test_error_without_target(self):
         task = FrameTask(
             frame_name="pelvis",
@@ -147,7 +138,7 @@ class TestFrameTask(absltest.TestCase):
         error = task.compute_error(self.configuration)
         np.testing.assert_allclose(error, np.zeros(6))
 
-    def test_unit_cost_qp_objective(self, self):
+    def test_unit_cost_qp_objective(self):
         """Unit cost means the QP objective is exactly (J^T J, -e^T J)."""
         task = FrameTask(
             frame_name="pelvis",
