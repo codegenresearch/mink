@@ -155,14 +155,14 @@ class CollisionAvoidanceLimit(Limit):
             )
             if contact.inactive:
                 continue
-            hi_bound_dist = contact.dist
-            if hi_bound_dist > self.minimum_distance_from_collisions:
-                dist = hi_bound_dist - self.minimum_distance_from_collisions
-                upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
+            distance = contact.dist
+            if distance > self.minimum_distance_from_collisions:
+                dist_diff = distance - self.minimum_distance_from_collisions
+                upper_bound[idx] = (self.gain * dist_diff / dt) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
-            jac = self._compute_contact_normal_jacobian(configuration.data, contact)
-            coefficient_matrix[idx] = -jac
+            jacobian = self._compute_contact_normal_jacobian(configuration.data, contact)
+            coefficient_matrix[idx] = -jacobian
         return Constraint(G=coefficient_matrix, h=upper_bound)
 
     # Private methods.
@@ -181,7 +181,7 @@ class CollisionAvoidanceLimit(Limit):
             _Contact: Contact information between the two geoms.
         """
         fromto = np.empty(6)
-        dist = mujoco.mj_geomDistance(
+        distance = mujoco.mj_geomDistance(
             self.model,
             data,
             geom1_id,
@@ -189,7 +189,7 @@ class CollisionAvoidanceLimit(Limit):
             self.collision_detection_distance,
             fromto,
         )
-        return _Contact(dist, fromto, geom1_id, geom2_id, self.collision_detection_distance)
+        return _Contact(distance, fromto, geom1_id, geom2_id, self.collision_detection_distance)
 
     def _compute_contact_normal_jacobian(
         self, data: mujoco.MjData, contact: _Contact
@@ -197,7 +197,16 @@ class CollisionAvoidanceLimit(Limit):
         """Compute the Jacobian matrix for the normal component of the relative velocity.
 
         The Jacobian relates joint velocities to the normal component of the relative
-        Cartesian linear velocity between the two geoms.
+        Cartesian linear velocity between the two geoms. The relationship is given by:
+
+            J dq = n^T (v_2 - v_1)
+
+        where:
+        * J is the Jacobian matrix.
+        * dq is the joint velocity vector.
+        * n^T is the transpose of the normal vector pointing from contact.geom1 to contact.geom2.
+        * v_1, v_2 are the linear components of the Cartesian velocity of the two closest points
+          in contact.geom1 and contact.geom2.
 
         Args:
             data: MuJoCo data instance.
