@@ -65,14 +65,15 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         )
 
         # Configure model options for contact dimensionality and disable unnecessary constraints
-        self.model.opt.contact = mujoco.mjtDisableBit.mjDSBL_CONSTRAINT
-        self.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMID
+        self.model.opt.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
+        self.model.opt.disableflags |= mujoco.mjtDisableBit.mjDSBL_CONSTRAINT
+
+        data = mujoco.MjData(self.model)
+        mujoco.mj_forward(self.model, data)
 
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
 
         # Compute contact normal Jacobian using MuJoCo
-        data = mujoco.MjData(self.model)
-        mujoco.mj_forward(self.model, data)
         mujoco_contacts = data.contact
 
         if len(mujoco_contacts) == 0:
@@ -92,8 +93,8 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
             G = np.zeros((0, self.model.nv))
 
         # Check that the computed G and h match MuJoCo's implementation
-        self.assertTrue(np.allclose(G, mujoco_G))
-        self.assertTrue(np.allclose(h, mujoco_h))
+        np.testing.assert_allclose(G, mujoco_G)
+        np.testing.assert_allclose(h, mujoco_h)
 
 
 if __name__ == "__main__":
