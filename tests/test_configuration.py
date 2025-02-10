@@ -117,7 +117,7 @@ class TestConfiguration(absltest.TestCase):
         model = mujoco.MjModel.from_xml_string(xml_str)
         configuration = mink.Configuration(model)
         configuration.check_limits()
-        configuration.q[0] += 1e4  # Move configuration out of bounds.
+        configuration.q[7] += 1e4  # Move hinge joint out of bounds.
         with self.assertRaises(mink.NotWithinConfigurationLimits):
             configuration.check_limits()
 
