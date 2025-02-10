@@ -130,33 +130,28 @@ if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    joint_names = []
-    velocity_limits = {}
-    for prefix in ["left", "right"]:
-        for n in _JOINT_NAMES:
-            name = f"{prefix}/{n}"
-            joint_names.append(name)
-            velocity_limits[name] = _VELOCITY_LIMITS[n]
+    joint_names = [f"{prefix}/{n}" for prefix in ["left", "right"] for n in _JOINT_NAMES]
+    velocity_limits = {name: _VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
 
     dof_ids, actuator_ids = get_joint_and_actuator_ids(model, joint_names)
 
     configuration = mink.Configuration(model)
     tasks = [
-        l_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        r_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        posture_task := mink.PostureTask(model, cost=1e-4),
+        mink.PostureTask(model, cost=1e-4),
     ]
 
     collision_avoidance_limit = setup_collision_avoidance(model)
@@ -175,13 +170,13 @@ if __name__ == "__main__":
         mujoco.mj_resetDataKeyframe(model, data, model.key("neutral_pose").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
-        posture_task.set_target_from_configuration(configuration)
+        tasks[-1].set_target_from_configuration(configuration)
 
         initialize_mocap_targets(model, data)
 
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
-            update_task_targets(model, data, l_ee_task, r_ee_task)
+            update_task_targets(model, data, tasks[0], tasks[1])
 
             if compute_velocity_and_integrate(
                 configuration, tasks, rate, solver, limits, 1e-5, _POSITION_THRESHOLD, _ORIENTATION_THRESHOLD, max_iters
