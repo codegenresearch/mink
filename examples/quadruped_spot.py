@@ -90,9 +90,22 @@ if __name__ == "__main__":
                 vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
 
+                # Check if the position and orientation are achieved.
                 pos_achieved = True
                 ori_achieved = True
-                for task in tasks:
+
+                # Check eef_task error
+                err = eef_task.compute_error(configuration)
+                pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
+                ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
+
+                # Check base_task error
+                err = base_task.compute_error(configuration)
+                pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
+                ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
+
+                # Check feet_tasks errors
+                for task in feet_tasks:
                     err = task.compute_error(configuration)
                     pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
                     ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
