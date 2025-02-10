@@ -27,7 +27,7 @@ if __name__ == "__main__":
         orientation_cost=10.0,
     )
 
-    posture_task = mink.PostureTask(model, cost=1.0)
+    posture_task = mink.PostureTask(model, cost=1e-5)
 
     # Create tasks for each foot.
     feet_tasks = []
@@ -60,7 +60,7 @@ if __name__ == "__main__":
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
         # Initialize to the home keyframe.
-        configuration.update_from_keyframe("stand")
+        configuration.update_from_keyframe("home")
         posture_task.set_target_from_configuration(configuration)
         base_task.set_target_from_configuration(configuration)
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "trunk_target", "trunk", "body")
 
         # Set up the rate limiter.
-        rate = RateLimiter(frequency=200.0, warn=False)
+        rate = RateLimiter(frequency=500.0, warn=False)
 
         # Main loop.
         while viewer.is_running():
@@ -80,7 +80,7 @@ if __name__ == "__main__":
                 task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
 
             # Compute velocity, integrate, and set control signal.
-            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-1)
+            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-5)
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
