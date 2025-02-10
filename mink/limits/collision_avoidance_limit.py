@@ -102,7 +102,6 @@ class CollisionAvoidanceLimit(Limit):
         bound_relaxation: Offset applied to the upper bound of collision avoidance constraints.
         geom_id_pairs: List of geom ID pairs for collision avoidance.
         max_contacts: Maximum number of contacts to consider.
-        max_num_contacts: Alias for max_contacts, used for compatibility with tests.
     """
 
     def __init__(
@@ -131,7 +130,6 @@ class CollisionAvoidanceLimit(Limit):
         self.bound_relaxation = bound_relaxation
         self.geom_id_pairs = self._construct_geom_id_pairs(geom_pairs)
         self.max_contacts = len(self.geom_id_pairs)
-        self.max_num_contacts = self.max_contacts  # Alias for compatibility with tests
 
     def compute_qp_inequalities(
         self,
@@ -155,9 +153,9 @@ class CollisionAvoidanceLimit(Limit):
             )
             if contact.inactive:
                 continue
-            distance = contact.dist
-            if distance > self.minimum_distance_from_collisions:
-                dist_diff = distance - self.minimum_distance_from_collisions
+            hi_bound_dist = contact.dist
+            if hi_bound_dist > self.minimum_distance_from_collisions:
+                dist_diff = hi_bound_dist - self.minimum_distance_from_collisions
                 upper_bound[idx] = (self.gain * dist_diff / dt) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
