@@ -58,17 +58,17 @@ class SO3(MatrixLieGroup):
     @classmethod
     def from_x_radians(cls, theta: float) -> SO3:
         """Create an SO3 instance from a rotation around the x-axis by theta radians."""
-        return SO3.exp(np.array([theta, 0.0, 0.0], dtype=np.float64))
+        return cls.exp(np.array([theta, 0.0, 0.0], dtype=np.float64))
 
     @classmethod
     def from_y_radians(cls, theta: float) -> SO3:
         """Create an SO3 instance from a rotation around the y-axis by theta radians."""
-        return SO3.exp(np.array([0.0, theta, 0.0], dtype=np.float64))
+        return cls.exp(np.array([0.0, theta, 0.0], dtype=np.float64))
 
     @classmethod
     def from_z_radians(cls, theta: float) -> SO3:
         """Create an SO3 instance from a rotation around the z-axis by theta radians."""
-        return SO3.exp(np.array([0.0, 0.0, theta], dtype=np.float64))
+        return cls.exp(np.array([0.0, 0.0, theta], dtype=np.float64))
 
     @classmethod
     def from_rpy_radians(cls, roll: float, pitch: float, yaw: float) -> SO3:
@@ -82,8 +82,8 @@ class SO3(MatrixLieGroup):
     @classmethod
     def from_matrix(cls, matrix: np.ndarray) -> SO3:
         """Create an SO3 instance from a 3x3 rotation matrix."""
-        assert matrix.shape == (cls.matrix_dim, cls.matrix_dim)
-        wxyz = np.zeros(cls.parameters_dim, dtype=np.float64)
+        assert matrix.shape == (SO3.matrix_dim, SO3.matrix_dim)
+        wxyz = np.zeros(SO3.parameters_dim, dtype=np.float64)
         mujoco.mju_mat2Quat(wxyz, matrix.ravel())
         return cls(wxyz=wxyz)
 
