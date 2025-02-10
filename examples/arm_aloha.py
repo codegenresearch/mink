@@ -22,8 +22,16 @@ _JOINT_NAMES = [
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
 _VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
 
-def get_subtree_body_ids(model, body_name):
-    """Retrieve all body IDs in the subtree starting from the given body name."""
+def get_subtree_body_ids(model: mujoco.MjModel, body_name: str) -> list[int]:
+    """Retrieve all body IDs in the subtree starting from the given body name.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        body_name (str): The name of the body to start the subtree from.
+
+    Returns:
+        list[int]: A list of body IDs in the subtree.
+    """
     body_id = model.body(body_name).id
     subtree_ids = [body_id]
     for i in range(body_id + 1, model.nbody):
@@ -31,13 +39,38 @@ def get_subtree_body_ids(model, body_name):
             subtree_ids.extend(get_subtree_body_ids(model, model.body(i).name))
     return subtree_ids
 
-def get_subtree_geom_ids(model, body_name):
-    """Retrieve all geom IDs in the subtree starting from the given body name."""
+def get_subtree_geom_ids(model: mujoco.MjModel, body_name: str) -> list[int]:
+    """Retrieve all geom IDs in the subtree starting from the given body name.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        body_name (str): The name of the body to start the subtree from.
+
+    Returns:
+        list[int]: A list of geom IDs in the subtree.
+    """
     body_ids = get_subtree_body_ids(model, body_name)
     geom_ids = []
     for body_id in body_ids:
         geom_ids.extend(model.body_geomadr[body_id] + np.arange(model.body_geomnum[body_id]))
     return geom_ids
+
+def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, subtree_ids: list[int]) -> np.ndarray:
+    """Compute forces to counteract gravity for the specified subtrees.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        data (mujoco.MjData): The MuJoCo data.
+        subtree_ids (list[int]): A list of body IDs for which to compute gravity compensation.
+
+    Returns:
+        np.ndarray: The gravity compensation forces.
+    """
+    gravity_compensation = np.zeros(model.nv)
+    for body_id in subtree_ids:
+        mujoco.mj_rneUnconstrained(model, data, gravity_compensation)
+        gravity_compensation += data.qfrc_gravity
+    return gravity_compensation
 
 def test_get_subtree_body_ids():
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
@@ -119,9 +152,9 @@ if __name__ == "__main__":
     l_mid = model.body("left/target").mocapid[0]
     r_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
-    pos_threshold = 1e-2
-    ori_threshold = 1e-2
-    max_iters = 2
+    pos_threshold = 5e-3  # Updated threshold value
+    ori_threshold = 5e-3  # Updated threshold value
+    max_iters = 5  # Updated maximum number of iterations
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -159,7 +192,7 @@ if __name__ == "__main__":
                 l_err = l_ee_task.compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = r_ee_task.compute_error(configuration)  # Corrected from l_ee_task to r_ee_task
+                r_err = r_ee_task.compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
                 if (
@@ -169,6 +202,12 @@ if __name__ == "__main__":
                     and r_ori_achieved
                 ):
                     break
+
+            # Apply gravity compensation
+            left_subtree_ids = get_subtree_body_ids(model, "left/wrist_link")
+            right_subtree_ids = get_subtree_body_ids(model, "right/wrist_link")
+            gravity_compensation = compensate_gravity(model, data, left_subtree_ids + right_subtree_ids)
+            data.qfrc_applied[dof_ids] += gravity_compensation[dof_ids]
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
             mujoco.mj_step(model, data)
