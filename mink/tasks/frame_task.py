@@ -21,9 +21,9 @@ class FrameTask(Task):
     matrix from the frame to the world.
 
     Attributes:
-        frame_name: The name of the frame to be regulated.
-        frame_type: The type of the frame, which can be 'body', 'geom', or 'site'.
-        transform_target_to_world: The desired pose of the frame in the world frame, represented
+        frame_name: Name of the frame to regulate.
+        frame_type: Type of the frame, which can be 'body', 'geom', or 'site'.
+        transform_target_to_world: Target pose of the frame in the world frame, represented
             as an SE3 transformation.
     """
 
@@ -43,14 +43,14 @@ class FrameTask(Task):
         Initialize the FrameTask with the specified parameters.
 
         Args:
-            frame_name: The name of the frame to be regulated.
-            frame_type: The type of the frame ('body', 'geom', or 'site').
-            position_cost: The cost associated with the position error. It can be a scalar or a
+            frame_name: Name of the frame to be regulated.
+            frame_type: Type of the frame ('body', 'geom', or 'site').
+            position_cost: Cost associated with the position error. It can be a scalar or a
                 3-dimensional vector.
-            orientation_cost: The cost associated with the orientation error. It can be a scalar or a
+            orientation_cost: Cost associated with the orientation error. It can be a scalar or a
                 3-dimensional vector.
-            gain: The gain for the task.
-            lm_damping: The Levenberg-Marquardt damping parameter.
+            gain: Gain for the task.
+            lm_damping: Levenberg-Marquardt damping parameter.
         """
         super().__init__(cost=np.zeros((self.k,)), gain=gain, lm_damping=lm_damping)
         self.frame_name = frame_name
@@ -67,7 +67,7 @@ class FrameTask(Task):
         Set the cost associated with the position error.
 
         Args:
-            position_cost: The cost for the position error, which can be a scalar or a 3-dimensional
+            position_cost: Cost for the position error, which can be a scalar or a 3-dimensional
                 vector.
 
         Raises:
@@ -77,13 +77,12 @@ class FrameTask(Task):
         position_cost = np.atleast_1d(position_cost)
         if position_cost.ndim != 1 or position_cost.shape[0] not in (1, 3):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} position cost should be a vector of shape "
-                "1 (identical cost for all coordinates) or (3,) but got "
-                f"{position_cost.shape}"
+                f"{self.__class__.__name__} position cost must be a vector of shape "
+                f"(1,) (identical cost for all coordinates) or (3,). Got {position_cost.shape}"
             )
         if not np.all(position_cost >= 0.0):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} position cost should be >= 0"
+                f"{self.__class__.__name__} position cost must be >= 0"
             )
         self.cost[:3] = position_cost
 
@@ -92,7 +91,7 @@ class FrameTask(Task):
         Set the cost associated with the orientation error.
 
         Args:
-            orientation_cost: The cost for the orientation error, which can be a scalar or a
+            orientation_cost: Cost for the orientation error, which can be a scalar or a
                 3-dimensional vector.
 
         Raises:
@@ -102,13 +101,12 @@ class FrameTask(Task):
         orientation_cost = np.atleast_1d(orientation_cost)
         if orientation_cost.ndim != 1 or orientation_cost.shape[0] not in (1, 3):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} orientation cost should be a vector of "
-                "shape 1 (identical cost for all coordinates) or (3,) but got "
-                f"{orientation_cost.shape}"
+                f"{self.__class__.__name__} orientation cost must be a vector of shape "
+                f"(1,) (identical cost for all coordinates) or (3,). Got {orientation_cost.shape}"
             )
         if not np.all(orientation_cost >= 0.0):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} orientation cost should be >= 0"
+                f"{self.__class__.__name__} orientation cost must be >= 0"
             )
         self.cost[3:] = orientation_cost
 
@@ -117,7 +115,7 @@ class FrameTask(Task):
         Set the target pose in the world frame.
 
         Args:
-            transform_target_to_world: The desired pose of the frame in the world frame, represented
+            transform_target_to_world: Desired pose of the frame in the world frame, represented
                 as an SE3 transformation.
         """
         self.transform_target_to_world = transform_target_to_world.copy()
@@ -127,7 +125,7 @@ class FrameTask(Task):
         Set the target pose from a given robot configuration.
 
         Args:
-            configuration: The robot configuration from which to extract the target pose.
+            configuration: Robot configuration from which to extract the target pose.
         """
         self.set_target(
             configuration.get_transform_frame_to_world(self.frame_name, self.frame_type)
@@ -150,10 +148,10 @@ class FrameTask(Task):
         inertial frame.
 
         Args:
-            configuration: The robot configuration from which to compute the error.
+            configuration: Robot configuration from which to compute the error.
 
         Returns:
-            The frame task error vector :math:`e(q)`.
+            Frame task error vector :math:`e(q)`.
 
         Raises:
             TargetNotSet: If the target pose has not been set.
@@ -174,10 +172,10 @@ class FrameTask(Task):
         the sensitivity of the task error to changes in the robot configuration.
 
         Args:
-            configuration: The robot configuration from which to compute the Jacobian.
+            configuration: Robot configuration from which to compute the Jacobian.
 
         Returns:
-            The frame task Jacobian :math:`J(q)`.
+            Frame task Jacobian :math:`J(q)`.
 
         Raises:
             TargetNotSet: If the target pose has not been set.
