@@ -18,6 +18,10 @@ def main():
     # Initialize configuration
     configuration = mink.Configuration(model)
 
+    # =================== #
+    # Setup IK.
+    # =================== #
+
     # Define feet and tasks
     feet = ["FL", "FR", "HR", "HL"]
 
@@ -33,15 +37,15 @@ def main():
     posture_task = mink.PostureTask(model, cost=1e-5)
 
     # Initialize feet tasks
-    feet_tasks = []
-    for foot in feet:
-        task = mink.FrameTask(
+    feet_tasks = [
+        mink.FrameTask(
             frame_name=foot,
             frame_type="geom",
             position_cost=1.0,
             orientation_cost=0.0,
         )
-        feet_tasks.append(task)
+        for foot in feet
+    ]
 
     # Initialize end-effector task
     eef_task = mink.FrameTask(
