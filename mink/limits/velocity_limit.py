@@ -46,10 +46,10 @@ class VelocityLimit(Limit):
         for joint_name, max_vel in velocities.items():
             jid = model.joint(joint_name).id
             jnt_type = model.jnt_type[jid]
-            vadr = model.jnt_dofadr[jid]
-            vdim = dof_width(jnt_type)
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
                 raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
+            vadr = model.jnt_dofadr[jid]
+            vdim = dof_width(jnt_type)
             max_vel = np.atleast_1d(max_vel)
             if max_vel.shape != (vdim,):
                 raise LimitDefinitionError(
@@ -94,7 +94,8 @@ class VelocityLimit(Limit):
             :math:`G \Delta q \leq h`, where :math:`G` has shape :math:`(2n, nv)` and
             :math:`h` has shape :math:`(2n,)`, or ``None`` if there is no limit.
         """
-        del configuration  # Unused.
+        # Unused.
+        del configuration
         if self.projection_matrix is None:
             return Constraint()
         G = np.vstack([self.projection_matrix, -self.projection_matrix])
