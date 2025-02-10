@@ -20,7 +20,7 @@ class TestVelocityLimit(absltest.TestCase):
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        # NOTE: These velocities are arbitrary and do not match real hardware.
+        # NOTE(kevin): These velocities are arbitrary and do not match real hardware.
         self.velocities = {
             self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)
         }
@@ -112,7 +112,7 @@ class TestVelocityLimit(absltest.TestCase):
         expected_error_message = "Joint ball must have a limit of shape (3,). Got: (2,)"
         self.assertEqual(str(cm.exception), expected_error_message)
 
-    def test_free_joint_raises_error(self):
+    def test_that_freejoint_raises_error(self):
         xml_str = """
         <mujoco>
           <worldbody>
