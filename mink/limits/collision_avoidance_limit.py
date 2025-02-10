@@ -103,9 +103,7 @@ def _are_geom_bodies_parent_child(
     """
     body_id1 = model.geom_bodyid[geom_id1]
     body_id2 = model.geom_bodyid[geom_id2]
-    weld_id1 = model.body_weldid[body_id1]
-    weld_id2 = model.body_weldid[body_id2]
-    return model.body_weldid[model.body_parentid[weld_id1]] == weld_id2 or model.body_weldid[model.body_parentid[weld_id2]] == weld_id1
+    return model.body_parentid[body_id1] == body_id2 or model.body_parentid[body_id2] == body_id1
 
 
 def _is_pass_contype_conaffinity_check(
@@ -260,7 +258,7 @@ class CollisionAvoidanceLimit(Limit):
             elif isinstance(g, str):
                 list_of_int.append(self.model.geom(g).id)
             else:
-                assert False, f"Geom must be int or str, got {type(g)}"
+                raise ValueError(f"Geom must be int or str, got {type(g)}")
         return list_of_int
 
     def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
