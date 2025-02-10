@@ -37,20 +37,23 @@ class TestFrameTask(absltest.TestCase):
         np.testing.assert_array_equal(task.cost, np.array([1, 2, 3, 5, 6, 7]))
 
     def test_task_raises_error_if_cost_dim_invalid(self):
-        with self.assertRaises(TaskDefinitionError):
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=[1.0, 2.0],
                 orientation_cost=2.0,
             )
-        with self.assertRaises(TaskDefinitionError):
+        self.assertEqual(str(cm.exception), "FrameTask position_cost must be a vector of shape (1,) or (3,)")
+
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=7.0,
                 orientation_cost=[2.0, 5.0],
             )
+        self.assertEqual(str(cm.exception), "FrameTask orientation_cost must be a vector of shape (1,) or (3,)")
 
     def test_task_raises_error_if_cost_negative(self):
         with self.assertRaises(TaskDefinitionError) as cm:
@@ -144,7 +147,7 @@ class TestFrameTask(absltest.TestCase):
         error = task.compute_error(self.configuration)
         np.testing.assert_allclose(error, np.zeros(6))
 
-    def test_unit_cost_qp_objective(self):
+    def test_unit_cost_qp_objective(self, self):
         """Unit cost means the QP objective is exactly (J^T J, -e^T J)."""
         task = FrameTask(
             frame_name="pelvis",
