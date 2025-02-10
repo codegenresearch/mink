@@ -175,6 +175,16 @@ class TestGroupSpecificOperations(absltest.TestCase):
         with self.assertRaises(ValueError):
             SO3.from_matrix(np.eye(2))  # Invalid matrix shape
 
+    def test_se3_invalid_matrix(self):
+        """Test invalid matrix for SE3."""
+        with self.assertRaises(ValueError):
+            SE3.from_matrix(np.random.rand(4, 4))  # Invalid SE3 matrix
+
+    def test_so3_invalid_matrix(self):
+        """Test invalid matrix for SO3."""
+        with self.assertRaises(ValueError):
+            SO3.from_matrix(np.random.rand(3, 3))  # Invalid SO3 matrix
+
 
 if __name__ == "__main__":
     absltest.main()
