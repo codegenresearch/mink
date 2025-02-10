@@ -1,9 +1,4 @@
-"""mink: MuJoCo inverse kinematics.
-
-This module provides tools for performing inverse kinematics on MuJoCo models,
-including tasks for different frames, configuration limits, and utilities for
-manipulating the model and its components.
-"""
+"""mink: MuJoCo inverse kinematics."""
 
 from .configuration import Configuration
 from .constants import (
