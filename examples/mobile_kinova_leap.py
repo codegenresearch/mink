@@ -14,7 +14,7 @@ _HERE = Path(__file__).parent
 _ARM_XML = _HERE / "stanford_tidybot" / "scene_mobile_kinova.xml"
 _HAND_XML = _HERE / "leap_hand" / "right_hand.xml"
 
-FINGERS = ["tip_1", "tip_2", "tip_3", "th_tip"]
+fingers = ["tip_1", "tip_2", "tip_3", "th_tip"]
 
 # fmt: off
 HOME_QPOS = [
@@ -45,7 +45,7 @@ def construct_model():
 
     arm_mjcf.keyframe.add("key", name="home", qpos=HOME_QPOS)
 
-    for finger in FINGERS:
+    for finger in fingers:
         body = arm_mjcf.worldbody.add("body", name=f"{finger}_target", mocap=True)
         body.add(
             "geom",
@@ -93,8 +93,9 @@ def create_tasks(model, configuration):
     immobile_base_cost[2] = 1e-3
     damping_task = mink.DampingTask(model, immobile_base_cost)
 
-    finger_tasks = [
-        mink.RelativeFrameTask(
+    finger_tasks = []
+    for finger in fingers:
+        task = mink.RelativeFrameTask(
             frame_name=f"leap_right/{finger}",
             frame_type="site",
             root_name="leap_right/palm_lower",
@@ -103,8 +104,7 @@ def create_tasks(model, configuration):
             orientation_cost=0.0,
             lm_damping=1e-3,
         )
-        for finger in FINGERS
-    ]
+        finger_tasks.append(task)
 
     return end_effector_task, posture_task, damping_task, finger_tasks
 
@@ -115,8 +115,15 @@ if __name__ == "__main__":
 
     end_effector_task, posture_task, damping_task, finger_tasks = create_tasks(model, configuration)
 
-    tasks = [end_effector_task, posture_task, *finger_tasks]
-    limits = [mink.ConfigurationLimit(model)]
+    tasks = [
+        end_effector_task,
+        posture_task,
+        *finger_tasks,
+    ]
+
+    limits = [
+        mink.ConfigurationLimit(model),
+    ]
 
     solver = "quadprog"
     pos_threshold = 1e-4
@@ -139,7 +146,7 @@ if __name__ == "__main__":
         mujoco.mj_forward(model, configuration.data)
 
         mink.move_mocap_to_frame(model, configuration.data, "pinch_site_target", "pinch_site", "site")
-        for finger in FINGERS:
+        for finger in fingers:
             mink.move_mocap_to_frame(model, configuration.data, f"{finger}_target", f"leap_right/{finger}", "site")
 
         T_eef_prev = configuration.get_transform_frame_to_world("pinch_site", "site")
@@ -151,11 +158,11 @@ if __name__ == "__main__":
             T_wt = mink.SE3.from_mocap_name(model, configuration.data, "pinch_site_target")
             end_effector_task.set_target(T_wt)
 
-            for finger, task in zip(FINGERS, finger_tasks):
+            for finger, task in zip(fingers, finger_tasks):
                 T_pm = configuration.get_transform(f"{finger}_target", "body", "leap_right/palm_lower", "body")
                 task.set_target(T_pm)
 
-            for finger in FINGERS:
+            for finger in fingers:
                 T_eef = configuration.get_transform_frame_to_world("pinch_site", "site")
                 T = T_eef @ T_eef_prev.inverse()
                 T_w_mocap = mink.SE3.from_mocap_name(model, configuration.data, f"{finger}_target")
@@ -163,8 +170,12 @@ if __name__ == "__main__":
                 configuration.data.mocap_pos[model.body(f"{finger}_target").mocapid[0]] = T_w_mocap_new.translation()
                 configuration.data.mocap_quat[model.body(f"{finger}_target").mocapid[0]] = T_w_mocap_new.rotation().wxyz
 
+            if key_callback.fix_base:
+                tasks_to_solve = [*tasks, damping_task]
+            else:
+                tasks_to_solve = tasks
+
             for _ in range(max_iters):
-                tasks_to_solve = [*tasks, damping_task] if key_callback.fix_base else tasks
                 vel = mink.solve_ik(configuration, tasks_to_solve, dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, dt)
 
