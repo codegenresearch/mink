@@ -1,4 +1,4 @@
-"""Tests for utility functions in utils.py."""
+"""Tests for utility functions."""
 
 import numpy as np
 from absl.testing import absltest
@@ -11,7 +11,7 @@ class TestUtils(absltest.TestCase):
         with self.assertRaises(AssertionError):
             utils.skew(np.zeros((5,)))
 
-    def test_skew_matrix_transpose_is_negative(self):
+    def test_skew_matrix_transpose_equals_negative(self):
         m = utils.skew(np.random.randn(3))
         np.testing.assert_allclose(m.T, -m)
 
