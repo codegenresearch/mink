@@ -54,7 +54,7 @@ if __name__ == "__main__":
     feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
     eef_mid = model.body("EE_target").mocapid[0]
 
-    # IK settings
+    # IK settings.
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
@@ -77,31 +77,31 @@ if __name__ == "__main__":
 
         rate = RateLimiter(frequency=500.0, warn=False)
         while viewer.is_running():
-            # Update task targets
+            # Update task targets.
             base_task.set_target(mink.SE3.from_mocap_id(data, base_mid))
             for i, task in enumerate(feet_tasks):
                 task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
             eef_task.set_target(mink.SE3.from_mocap_id(data, eef_mid))
 
-            # Compute velocity and integrate into the next configuration
+            # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
                 vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
 
-                # Check if position and orientation are achieved
+                # Check if position and orientation are achieved.
                 pos_achieved = True
                 ori_achieved = True
-                for task in tasks:
+                for task in [eef_task, base_task, *feet_tasks]:
                     err = task.compute_error(configuration)
                     pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
                     ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
                 if pos_achieved and ori_achieved:
                     break
 
-            # Set control signal and step simulation
+            # Set control signal and step simulation.
             data.ctrl = configuration.q[7:]
             mujoco.mj_step(model, data)
 
-            # Visualize at fixed FPS
+            # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
