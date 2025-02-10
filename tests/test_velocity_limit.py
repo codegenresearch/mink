@@ -20,16 +20,22 @@ class TestVelocityLimit(absltest.TestCase):
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
+        # NOTE: These velocities are arbitrary and do not match real hardware.
         self.velocities = {
-            self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
+            self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)
         }
 
-    def test_projection_matrix_and_indices_dimensions(self):
+    def test_dimensions(self):
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
         nb = nv - len(get_freejoint_dims(self.model)[1])
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+
+    def test_indices(self):
+        limit = VelocityLimit(self.model, self.velocities)
+        expected_indices = np.array([i for i in range(1, self.model.njnt) if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE])
+        self.assertTrue(np.allclose(limit.indices, expected_indices))
 
     def test_no_velocity_limits(self):
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
@@ -41,16 +47,16 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(h)
 
     def test_subset_of_joints_with_velocity_limits(self):
-        velocities = {
-            "wrist_1_joint": 3.14,
-            "wrist_2_joint": 3.14,
-            "wrist_3_joint": 3.14,
-        }
+        # Use valid joint names from the model
+        valid_joint_names = [self.model.joint(i).name for i in range(1, self.model.njnt) if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE]
+        velocities = {joint_name: np.pi for joint_name in valid_joint_names[:3]}
         limit = VelocityLimit(self.model, velocities)
-        nb = 3
-        nv = self.model.nv
+        nb = len(velocities)
+        nv = self.configuration.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+        expected_limits = np.array([np.pi] * nb)
+        np.testing.assert_allclose(limit.limit, expected_limits)
 
     def test_ball_joint_with_velocity_limits(self):
         xml_str = """
@@ -69,7 +75,7 @@ class TestVelocityLimit(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         velocities = {
-            "ball": (3.14, 3.14 / 2, 3.14 / 4),
+            "ball": (np.pi, np.pi / 2, np.pi / 4),
             "hinge": (0.5,),
         }
         limit = VelocityLimit(model, velocities)
@@ -94,7 +100,7 @@ class TestVelocityLimit(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         velocities = {
-            "ball": (3.14, 3.14 / 2),
+            "ball": (np.pi, np.pi / 2),
         }
         with self.assertRaises(LimitDefinitionError) as cm:
             VelocityLimit(model, velocities)
@@ -118,8 +124,8 @@ class TestVelocityLimit(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         velocities = {
-            "floating": 3.14,
-            "hinge": 3.14,
+            "floating": np.pi,
+            "hinge": np.pi,
         }
         with self.assertRaises(LimitDefinitionError) as cm:
             VelocityLimit(model, velocities)
