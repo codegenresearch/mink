@@ -36,6 +36,7 @@ class TestConfiguration(absltest.TestCase):
         np.testing.assert_array_equal(configuration.q, self.q_ref)
 
     def test_site_transform_world_frame(self):
+        """Test that the world frame transformation for a site is correct."""
         site_name = "attachment_site"
         configuration = mink.Configuration(self.model)
 
@@ -53,6 +54,18 @@ class TestConfiguration(absltest.TestCase):
         np.testing.assert_almost_equal(
             world_T_site.rotation().as_matrix(), expected_xmat
         )
+
+    def test_site_transform_raises_error_if_frame_name_is_invalid(self):
+        """Raise an error when the requested frame does not exist."""
+        configuration = mink.Configuration(self.model)
+        with self.assertRaises(mink.InvalidFrame):
+            configuration.get_transform_frame_to_world("invalid_name", "site")
+
+    def test_site_transform_raises_error_if_frame_type_is_invalid(self):
+        """Raise an error when the requested frame type is invalid."""
+        configuration = mink.Configuration(self.model)
+        with self.assertRaises(mink.UnsupportedFrame):
+            configuration.get_transform_frame_to_world("name_does_not_matter", "joint")
 
     def test_site_jacobian_raises_error_if_frame_name_is_invalid(self):
         """Raise an error when the requested frame does not exist."""
@@ -73,6 +86,7 @@ class TestConfiguration(absltest.TestCase):
             configuration.update_from_keyframe("invalid_keyframe")
 
     def test_inplace_integration(self):
+        """Test that inplace integration updates the configuration correctly."""
         configuration = mink.Configuration(self.model, self.q_ref)
 
         dt = 1e-3
