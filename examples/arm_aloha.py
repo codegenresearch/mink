@@ -103,7 +103,7 @@ if __name__ == "__main__":
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=collision_pairs,
+        geom_pairs=collision_pairs,  # type: ignore
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
