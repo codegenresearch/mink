@@ -36,12 +36,10 @@ from .tasks import (
     Task,
 )
 from .utils import (
-    build_ik,
     custom_configuration_vector,
     get_body_geom_ids,
     get_freejoint_dims,
     get_subtree_body_ids,
-    get_subtree_geom_ids,
     move_mocap_to_frame,
     set_mocap_pose_from_frame,
     pose_from_mocap,
@@ -86,6 +84,3 @@ __all__ = (
     "get_subtree_body_ids",
     "get_body_geom_ids",
 )
-
-
-**Note:** There was a duplicate entry for `get_subtree_body_ids` in the `utils` import list. I have corrected this in the revised code snippet.
