@@ -46,7 +46,7 @@ def compensate_gravity(
     for subtree_id in subtree_ids:
         total_mass = model.body_subtreemass[subtree_id]
         mujoco.mj_jacSubtreeCom(model, data, jac, subtree_id)
-        qfrc_applied[:] -= model.opt.gravity * total_mass * jac
+        qfrc_applied[:] -= model.opt.gravity @ (total_mass * jac)
 
 
 if __name__ == "__main__":
@@ -58,8 +58,8 @@ if __name__ == "__main__":
     right_subtree_id = model.body("right/base_link").id
 
     # Collect joint and actuator IDs for both arms.
-    joint_names = []
-    velocity_limits = {}
+    joint_names: list[str] = []
+    velocity_limits: dict[str, float] = {}
     for prefix in ["left", "right"]:
         for joint in _JOINT_NAMES:
             name = f"{prefix}/{joint}"
@@ -71,23 +71,23 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
 
     # Define tasks for both arms and posture.
-    l_ee_task = mink.FrameTask(
-        frame_name="left/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    r_ee_task = mink.FrameTask(
-        frame_name="right/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    posture_task = mink.PostureTask(model, cost=1e-4)
-
-    tasks = [l_ee_task, r_ee_task, posture_task]
+    tasks = [
+        (l_ee_task := mink.FrameTask(
+            frame_name="left/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        )),
+        (r_ee_task := mink.FrameTask(
+            frame_name="right/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        )),
+        (posture_task := mink.PostureTask(model, cost=1e-4)),
+    ]
 
     # Set up collision avoidance for specified geometries.
     left_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
