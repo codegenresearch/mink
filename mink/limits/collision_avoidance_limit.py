@@ -68,24 +68,6 @@ def _is_pass_contype_conaffinity_check(
            (model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
 
 
-def _compute_contact_normal_jacobian(
-    model: mujoco.MjModel,
-    data: mujoco.MjData,
-    contact: Contact
-) -> np.ndarray:
-    """Compute the Jacobian mapping joint velocities to the normal component of
-    the relative Cartesian linear velocity between the geom pair."""
-    geom1_body = model.geom_bodyid[contact.geom1]
-    geom2_body = model.geom_bodyid[contact.geom2]
-    geom1_contact_pos = contact.fromto[:3]
-    geom2_contact_pos = contact.fromto[3:]
-    jac2 = np.empty((3, model.nv))
-    mujoco.mj_jac(model, data, jac2, None, geom2_contact_pos, geom2_body)
-    jac1 = np.empty((3, model.nv))
-    mujoco.mj_jac(model, data, jac1, None, geom1_contact_pos, geom1_body)
-    return contact.normal @ (jac2 - jac1)
-
-
 class CollisionAvoidanceLimit(Limit):
     """Normal velocity limit between geom pairs.
 
@@ -133,7 +115,7 @@ class CollisionAvoidanceLimit(Limit):
             dt: Integration timestep in [s].
 
         Returns:
-            Pair (G, h) representing the inequality constraint as G * dq <= h.
+            Constraint object representing the inequality constraint.
         """
         upper_bound = np.full((self.max_num_contacts,), np.inf)
         coefficient_matrix = np.zeros((self.max_num_contacts, self.model.nv))
@@ -149,9 +131,32 @@ class CollisionAvoidanceLimit(Limit):
                 upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
-            jac = _compute_contact_normal_jacobian(self.model, configuration.data, contact)
+            jac = self.compute_contact_normal_jacobian(configuration.data, contact)
             coefficient_matrix[idx] = -jac
         return Constraint(G=coefficient_matrix, h=upper_bound)
+
+    def compute_contact_normal_jacobian(
+        self, data: mujoco.MjData, contact: Contact
+    ) -> np.ndarray:
+        """Compute the Jacobian mapping joint velocities to the normal component of
+        the relative Cartesian linear velocity between the geom pair.
+
+        Args:
+            data: MuJoCo data.
+            contact: Contact object representing the contact between two geoms.
+
+        Returns:
+            Jacobian matrix.
+        """
+        geom1_body = self.model.geom_bodyid[contact.geom1]
+        geom2_body = self.model.geom_bodyid[contact.geom2]
+        geom1_contact_pos = contact.fromto[:3]
+        geom2_contact_pos = contact.fromto[3:]
+        jac2 = np.empty((3, self.model.nv))
+        mujoco.mj_jac(self.model, data, jac2, None, geom2_contact_pos, geom2_body)
+        jac1 = np.empty((3, self.model.nv))
+        mujoco.mj_jac(self.model, data, jac1, None, geom1_contact_pos, geom1_body)
+        return contact.normal @ (jac2 - jac1)
 
     def _compute_contact_with_minimum_distance(
         self, data: mujoco.MjData, geom1_id: int, geom2_id: int
