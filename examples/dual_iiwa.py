@@ -147,10 +147,8 @@ if __name__ == "__main__":
             data.mocap_pos[right_mid] = r_y_des
 
             # Update task targets
-            T_wt_left = mink.SE3.from_mocap_name(model, data, "l_target")
-            left_ee_task.set_target(T_wt_left)
-            T_wt_right = mink.SE3.from_mocap_name(model, data, "r_target")
-            right_ee_task.set_target(T_wt_right)
+            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "l_target"))
+            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "r_target"))
 
             # Solve inverse kinematics and integrate the solution
             vel = mink.solve_ik(
