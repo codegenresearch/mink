@@ -16,15 +16,10 @@ from .task import Task
 class FrameTask(Task):
     """Regulate the pose of a specified robot frame in the world frame.
 
-    This task aims to align a specific frame of the robot (identified by its name and type)
-    with a desired pose in the world frame. The pose is represented using a transformation
-    matrix from the frame to the world.
-
     Attributes:
         frame_name: Name of the frame to regulate.
-        frame_type: Type of the frame, which can be 'body', 'geom', or 'site'.
-        transform_target_to_world: Target pose of the frame in the world frame, represented
-            as an SE3 transformation.
+        frame_type: Type of the frame ('body', 'geom', or 'site').
+        transform_target_to_world: Target pose of the frame in the world frame.
     """
 
     k: int = 6
@@ -45,9 +40,9 @@ class FrameTask(Task):
         Args:
             frame_name: Name of the frame to be regulated.
             frame_type: Type of the frame ('body', 'geom', or 'site').
-            position_cost: Cost associated with the position error. It can be a scalar or a
+            position_cost: Cost associated with the position error. Can be a scalar or a
                 3-dimensional vector.
-            orientation_cost: Cost associated with the orientation error. It can be a scalar or a
+            orientation_cost: Cost associated with the orientation error. Can be a scalar or a
                 3-dimensional vector.
             gain: Gain for the task.
             lm_damping: Levenberg-Marquardt damping parameter.
@@ -55,8 +50,6 @@ class FrameTask(Task):
         super().__init__(cost=np.zeros((self.k,)), gain=gain, lm_damping=lm_damping)
         self.frame_name = frame_name
         self.frame_type = frame_type
-        self.position_cost = position_cost
-        self.orientation_cost = orientation_cost
         self.transform_target_to_world = None
 
         self.set_position_cost(position_cost)
@@ -115,8 +108,7 @@ class FrameTask(Task):
         Set the target pose in the world frame.
 
         Args:
-            transform_target_to_world: Desired pose of the frame in the world frame, represented
-                as an SE3 transformation.
+            transform_target_to_world: Desired pose of the frame in the world frame.
         """
         self.transform_target_to_world = transform_target_to_world.copy()
 
@@ -167,9 +159,6 @@ class FrameTask(Task):
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""
         Compute the frame task Jacobian.
-
-        The Jacobian is computed using the current frame pose and the target pose. It represents
-        the sensitivity of the task error to changes in the robot configuration.
 
         Args:
             configuration: Robot configuration from which to compute the Jacobian.
