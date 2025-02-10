@@ -40,14 +40,32 @@ class _Contact:
 
 
 def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
-    """Check if two geoms are part of the same body or are welded together."""
+    """Check if two geoms are part of the same body or are welded together.
+
+    Args:
+        model: MuJoCo model instance.
+        geom_id1: ID of the first geom.
+        geom_id2: ID of the second geom.
+
+    Returns:
+        bool: True if the geoms are welded together, False otherwise.
+    """
     return model.body_weldid[model.geom_bodyid[geom_id1]] == model.body_weldid[model.geom_bodyid[geom_id2]]
 
 
 def _are_geom_bodies_parent_child(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
-    """Check if the bodies of two geoms have a parent-child relationship."""
+    """Check if the bodies of two geoms have a parent-child relationship.
+
+    Args:
+        model: MuJoCo model instance.
+        geom_id1: ID of the first geom.
+        geom_id2: ID of the second geom.
+
+    Returns:
+        bool: True if the bodies have a parent-child relationship, False otherwise.
+    """
     body_id1 = model.geom_bodyid[geom_id1]
     body_id2 = model.geom_bodyid[geom_id2]
     weld_parent_id1 = model.body_parentid[model.body_weldid[body_id1]]
@@ -58,7 +76,16 @@ def _are_geom_bodies_parent_child(
 def _is_pass_contype_conaffinity_check(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
-    """Check if the geoms pass the contype/conaffinity check for collision detection."""
+    """Check if the geoms pass the contype/conaffinity check for collision detection.
+
+    Args:
+        model: MuJoCo model instance.
+        geom_id1: ID of the first geom.
+        geom_id2: ID of the second geom.
+
+    Returns:
+        bool: True if the geoms pass the check, False otherwise.
+    """
     return (model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or \
            (model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
 
@@ -73,6 +100,8 @@ class CollisionAvoidanceLimit(Limit):
         minimum_distance_from_collisions: Minimum distance to maintain between geoms.
         collision_detection_distance: Distance at which collision detection becomes active.
         bound_relaxation: Offset applied to the upper bound of collision avoidance constraints.
+        geom_id_pairs: List of geom ID pairs for collision avoidance.
+        max_num_contacts: Maximum number of contacts to consider.
     """
 
     def __init__(
@@ -196,14 +225,14 @@ class CollisionAvoidanceLimit(Limit):
         """
         return [g if isinstance(g, int) else self.model.geom(g).id for g in geom_list]
 
-    def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
+    def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs) -> List[tuple[List[int], List[int]]]:
         """Convert collision pairs of geom names into pairs of geom IDs.
 
         Args:
             collision_pairs: List of collision pairs, where each pair consists of two geom groups.
 
         Returns:
-            List of geom ID pairs.
+            List[tuple[List[int], List[int]]]: List of geom ID pairs.
         """
         geom_id_pairs = []
         for collision_pair in collision_pairs:
@@ -212,20 +241,21 @@ class CollisionAvoidanceLimit(Limit):
             geom_id_pairs.append((list(set(id_pair_A)), list(set(id_pair_B))))
         return geom_id_pairs
 
-    def _construct_geom_id_pairs(self, geom_pairs):
+    def _construct_geom_id_pairs(self, geom_pairs: CollisionPairs) -> List[tuple[int, int]]:
         """Generate all possible geom-geom collision pairs based on specified criteria.
 
         Args:
             geom_pairs: List of collision pairs, where each pair consists of two geom groups.
 
         Returns:
-            List of geom ID pairs for collision avoidance.
+            List[tuple[int, int]]: List of geom ID pairs for collision avoidance.
         """
         geom_id_pairs = []
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
-                if (not _is_welded_together(self.model, geom_a, geom_b) and
-                    not _are_geom_bodies_parent_child(self.model, geom_a, geom_b) and
-                    _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)):
+                is_welded = _is_welded_together(self.model, geom_a, geom_b)
+                is_parent_child = _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
+                passes_contype_conaffinity = _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
+                if not is_welded and not is_parent_child and passes_contype_conaffinity:
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
