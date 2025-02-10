@@ -18,7 +18,7 @@ class FrameTask(Task):
 
     Attributes:
         frame_name: Name of the frame to regulate.
-        frame_type: Type of the frame ('body', 'geom', or 'site').
+        frame_type: Type of the frame: 'body', 'geom', or 'site'.
         transform_target_to_world: Target pose of the frame in the world frame.
     """
 
