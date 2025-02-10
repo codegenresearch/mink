@@ -54,7 +54,8 @@ class ConfigurationLimit(Limit):
                 continue  # Skip free joints and joints without limits.
             lower[padr : padr + qpos_dim] = jnt_range[0] + min_distance_from_limits
             upper[padr : padr + qpos_dim] = jnt_range[1] - min_distance_from_limits
-            index_list.extend(range(model.jnt_dofadr[jnt], model.jnt_dofadr[jnt] + jnt_dim))
+            jnt_id = model.jnt_dofadr[jnt]
+            index_list.extend(range(jnt_id, jnt_id + jnt_dim))
 
         self.indices = np.array(index_list)
         self.indices.setflags(write=False)
