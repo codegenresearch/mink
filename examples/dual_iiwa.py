@@ -111,12 +111,15 @@ if __name__ == "__main__":
     data = configuration.data
     solver = "osqp"
 
-    l_y_des = np.array([0.392, -0.392, 0.6])  # Desired position for left arm
-    r_y_des = np.array([0.392, 0.392, 0.6])  # Desired position for right arm
+    # Desired positions for the left and right targets
+    l_y_des = np.array([0.392, -0.392, 0.6])
+    r_y_des = np.array([0.392, 0.392, 0.6])
     A = l_y_des.copy()
     B = r_y_des.copy()
-    l_dy_des = np.zeros(3)  # Desired velocity for left arm
-    r_dy_des = np.zeros(3)  # Desired velocity for right arm
+
+    # Desired velocities for the left and right targets
+    l_dy_des = np.zeros(3)
+    r_dy_des = np.zeros(3)
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -124,6 +127,7 @@ if __name__ == "__main__":
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
         viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
 
+        # Initialize mocap targets at the end-effector site
         mink.move_mocap_to_frame(
             model, data, "l_target", "l_iiwa/attachment_site", "site"
         )
@@ -144,13 +148,13 @@ if __name__ == "__main__":
             data.mocap_pos[left_mid] = l_y_des
             data.mocap_pos[right_mid] = r_y_des
 
-            # Update task targets.
+            # Update task targets
             T_wt_left = mink.SE3.from_mocap_name(model, data, "l_target")
             left_ee_task.set_target(T_wt_left)
             T_wt_right = mink.SE3.from_mocap_name(model, data, "r_target")
             right_ee_task.set_target(T_wt_right)
 
-            # Solve inverse kinematics with specified parameters.
+            # Solve inverse kinematics with specified parameters
             vel = mink.solve_ik(
                 configuration,
                 tasks,
