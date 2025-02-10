@@ -24,7 +24,6 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("home")
-        self.data = mujoco.MjData(self.model)
 
         # Configure model options for consistent testing
         self.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
@@ -85,11 +84,14 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
             bound_relaxation=bound_relaxation,
         )
 
+        # Initialize MjData object for this test
+        data = mujoco.MjData(self.model)
+
         # Step the simulation to ensure contacts are updated
-        mujoco.mj_step(self.model, self.data)
+        mujoco.mj_step(self.model, data)
 
         # Extract contact information
-        mujoco_contacts = [Contact(self.model, i) for i in range(self.data.ncon)]
+        mujoco_contacts = [Contact(self.model, i) for i in range(data.ncon)]
 
         # Compute the contact normal Jacobian using the limit method.
         jac_limit = limit.compute_contact_normal_jacobian(self.configuration)
