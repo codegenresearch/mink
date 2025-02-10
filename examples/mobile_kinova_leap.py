@@ -132,6 +132,8 @@ if __name__ == "__main__":
     key_callback = KeyCallback()
 
     rate = RateLimiter(frequency=50.0, warn=False)
+    dt = rate.period
+    t = 0.0
 
     with mujoco.viewer.launch_passive(
         model=model,
@@ -210,3 +212,4 @@ if __name__ == "__main__":
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
+            t += dt
