@@ -33,7 +33,7 @@ class MatrixLieGroup(abc.ABC):
         assert isinstance(other, MatrixLieGroup)
         return self.multiply(other=other)
 
-    # Factory.
+    # Factory methods.
 
     @classmethod
     @abc.abstractmethod
@@ -53,7 +53,7 @@ class MatrixLieGroup(abc.ABC):
         """Draws a random sample from the group."""
         raise NotImplementedError
 
-    # Accessors.
+    # Accessor methods.
 
     @abc.abstractmethod
     def as_matrix(self) -> np.ndarray:
@@ -105,22 +105,18 @@ class MatrixLieGroup(abc.ABC):
 
     # Right and left plus and minus.
 
-    # Eqn. 25.
     def rplus(self, other: np.ndarray) -> Self:
         """Applies a tangent vector using the right plus operator."""
         return self @ self.exp(other)
 
-    # Eqn. 26.
     def rminus(self, other: Self) -> np.ndarray:
         """Computes the difference using the right minus operator."""
         return (other.inverse() @ self).log()
 
-    # Eqn. 27.
     def lplus(self, other: np.ndarray) -> Self:
         """Applies a tangent vector using the left plus operator."""
         return self.exp(other) @ self
 
-    # Eqn. 28.
     def lminus(self, other: Self) -> np.ndarray:
         """Computes the difference using the left minus operator."""
         return (self @ other.inverse()).log()
@@ -147,19 +143,14 @@ class MatrixLieGroup(abc.ABC):
         """Computes the inverse of the left Jacobian."""
         raise NotImplementedError
 
-    # Eqn. 67.
-    @classmethod
-    def rjac(cls, other: np.ndarray) -> np.ndarray:
+    def rjac(self, other: np.ndarray) -> np.ndarray:
         """Computes the right Jacobian."""
-        return cls.ljac(-other)
+        return self.ljac(-other)
 
-    # Eqn. 68.
-    @classmethod
-    def rjacinv(cls, other: np.ndarray) -> np.ndarray:
+    def rjacinv(self, other: np.ndarray) -> np.ndarray:
         """Computes the inverse of the right Jacobian."""
-        return cls.ljacinv(-other)
+        return self.ljacinv(-other)
 
-    # Eqn. 79.
     def jlog(self) -> np.ndarray:
         """Computes the Jacobian of the logarithmic map."""
         return self.rjacinv(self.log())
