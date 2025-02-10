@@ -21,8 +21,7 @@ _JOINT_NAMES = [
     "wrist_rotate",
 ]
 
-# Velocity limits for each joint, sourced from:
-# https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
+# Velocity limits for each joint.
 _JOINT_VELOCITY_LIMITS = {joint: np.pi for joint in _JOINT_NAMES}
 
 
@@ -58,13 +57,8 @@ if __name__ == "__main__":
     right_subtree_id = model.body("right/base_link").id
 
     # Collect joint and actuator IDs for both arms.
-    joint_names: list[str] = []
-    velocity_limits: dict[str, float] = {}
-    for prefix in ["left", "right"]:
-        for joint in _JOINT_NAMES:
-            name = f"{prefix}/{joint}"
-            joint_names.append(name)
-            velocity_limits[name] = _JOINT_VELOCITY_LIMITS[joint]
+    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
+    velocity_limits = {name: _JOINT_VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -117,9 +111,9 @@ if __name__ == "__main__":
 
     # IK solver settings.
     solver = "quadprog"
-    position_threshold = 5e-3
-    orientation_threshold = 5e-3
-    max_iterations = 5
+    pos_threshold = 5e-3
+    ori_threshold = 5e-3
+    max_iters = 5
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -136,32 +130,32 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "left/target", "left/gripper", "site")
         mink.move_mocap_to_frame(model, data, "right/target", "right/gripper", "site")
 
-        rate_limiter = RateLimiter(frequency=200.0, warn=False)
+        rate = RateLimiter(frequency=200.0, warn=False)
         while viewer.is_running():
             # Update task targets.
             l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
             r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Solve IK and integrate the solution.
-            for _ in range(max_iterations):
-                velocity = mink.solve_ik(
+            for _ in range(max_iters):
+                vel = mink.solve_ik(
                     configuration,
                     tasks,
-                    rate_limiter.dt,
+                    rate.dt,
                     solver,
                     limits=limits,
                     damping=1e-5,
                 )
-                configuration.integrate_inplace(velocity, rate_limiter.dt)
+                configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if both arms have reached their targets.
-                left_error = l_ee_task.compute_error(configuration)
-                left_position_achieved = np.linalg.norm(left_error[:3]) <= position_threshold
-                left_orientation_achieved = np.linalg.norm(left_error[3:]) <= orientation_threshold
-                right_error = r_ee_task.compute_error(configuration)
-                right_position_achieved = np.linalg.norm(right_error[:3]) <= position_threshold
-                right_orientation_achieved = np.linalg.norm(right_error[3:]) <= orientation_threshold
-                if left_position_achieved and left_orientation_achieved and right_position_achieved and right_orientation_achieved:
+                l_err = l_ee_task.compute_error(configuration)
+                l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
+                l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
+                r_err = r_ee_task.compute_error(configuration)
+                r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
+                r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
+                if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
                     break
 
             # Apply computed joint positions and gravity compensation.
@@ -171,4 +165,4 @@ if __name__ == "__main__":
 
             # Update the viewer and sleep to maintain the desired rate.
             viewer.sync()
-            rate_limiter.sleep()
+            rate.sleep()
