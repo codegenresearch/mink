@@ -89,25 +89,14 @@ class TestConfiguration(absltest.TestCase):
         configuration.integrate_inplace(qvel, dt)
         np.testing.assert_almost_equal(configuration.q, expected_qpos)
 
-    def test_check_limits_within_limits(self):
-        """Check that no error is raised when the configuration is within limits."""
+    def test_check_limits(self):
+        """Check that an error is raised iff a joint limit is exceeded."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
         configuration.check_limits()
-
-    def test_check_limits_exceeds_limits_with_safety_break(self):
-        """Check that an error is raised when the configuration exceeds limits with safety break."""
-        configuration = mink.Configuration(self.model, q=self.q_ref)
         self.q_ref[0] += 1e4  # Move configuration out of bounds.
         configuration.update(q=self.q_ref)
         with self.assertRaises(mink.NotWithinConfigurationLimits):
-            configuration.check_limits(safety_break=True)
-
-    def test_check_limits_exceeds_limits_without_safety_break(self):
-        """Check that no error is raised when the configuration exceeds limits without safety break."""
-        configuration = mink.Configuration(self.model, q=self.q_ref)
-        self.q_ref[0] += 1e4  # Move configuration out of bounds.
-        configuration.update(q=self.q_ref)
-        configuration.check_limits(safety_break=False)
+            configuration.check_limits()
 
     def test_check_limits_free_joints(self):
         """Check that limits are correctly handled for free joints."""
@@ -128,6 +117,21 @@ class TestConfiguration(absltest.TestCase):
         model = mujoco.MjModel.from_xml_string(xml_str)
         configuration = mink.Configuration(model)
         configuration.check_limits()
+
+    def test_get_frame_jacobian(self):
+        """Test that the Jacobian for a site frame is computed correctly."""
+        site_name = "attachment_site"
+        configuration = mink.Configuration(self.model)
+
+        # Randomly sample a joint configuration.
+        np.random.seed(12345)
+        configuration.data.qpos = np.random.uniform(*configuration.model.jnt_range.T)
+        configuration.update()
+
+        jacobian = configuration.get_frame_jacobian(site_name, "site")
+
+        expected_jacobian = configuration.data.get_site_jacp(site_name)
+        np.testing.assert_almost_equal(jacobian, expected_jacobian)
 
 
 if __name__ == "__main__":
