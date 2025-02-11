@@ -73,6 +73,9 @@ class Configuration:
     def update_from_keyframe(self, key_name: str) -> None:
         """Update the configuration from a keyframe.
 
+        Args:
+            key_name: The name of the keyframe.
+
         Raises:
             InvalidKeyframe: If no key named `key_name` is found in the model.
         """
