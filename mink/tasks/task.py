@@ -145,16 +145,16 @@ class Task(abc.ABC):
             :math:`(n_v, n_v)` and the linear vector :math:`c(q)` has shape :math:`(n_v,)`.
         """
         jacobian = self.compute_jacobian(configuration)  # (k, nv)
-        minus_gain_error = -self.gain * self.compute_error(configuration)  # (k,)
+        error = self.compute_error(configuration)  # (k,)
+        weighted_error = -self.gain * self.cost * error  # (k,)
 
-        weight = np.diag(self.cost)
-        weighted_jacobian = weight @ jacobian
-        weighted_error = weight @ minus_gain_error
+        weight_matrix = np.diag(self.cost)
+        weighted_jacobian = weight_matrix @ jacobian  # (k, nv)
 
-        mu = self.lm_damping * weighted_error @ weighted_error
-        eye_tg = np.eye(configuration.model.nv)
+        lm_term = self.lm_damping * weighted_error @ weighted_error
+        identity_matrix = np.eye(configuration.model.nv)
 
-        H = weighted_jacobian.T @ weighted_jacobian + mu * eye_tg  # (nv, nv)
-        c = -weighted_error.T @ weighted_jacobian  # (nv,)
+        H = weighted_jacobian.T @ weighted_jacobian + lm_term * identity_matrix  # (nv, nv)
+        c = weighted_error.T @ weighted_jacobian  # (nv,)
 
         return Objective(H, c)
