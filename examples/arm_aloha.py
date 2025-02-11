@@ -4,7 +4,6 @@ import mujoco.viewer
 import numpy as np
 from loop_rate_limiters import RateLimiter
 import mink
-from typing import Optional, Sequence
 
 _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
@@ -58,12 +57,11 @@ def compensate_gravity(
     if qfrc_applied is None:
         qfrc_applied = data.qfrc_applied.copy()
 
-    # Initialize Jacobian and COM position arrays
+    # Initialize Jacobian matrix
     jac = np.zeros((3, model.nv))
-    com_pos = np.zeros(3)
 
     # Compute the Jacobian and COM position for the subtree
-    mujoco.mj_jacSubtreeCom(model, data, jac, None, com_pos, subtree_ids[0])
+    mujoco.mj_jacSubtreeCom(model, data, jac, None, None, subtree_ids[0])
 
     # Compute the gravity compensation force using the subtree mass
     subtree_mass = model.body_subtreemass[subtree_ids[0]]
@@ -74,22 +72,6 @@ def compensate_gravity(
 
     # Update the data.qfrc_applied array
     data.qfrc_applied[:] = qfrc_applied
-
-def test_get_subtree_body_ids():
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
-    left_wrist_body_ids = get_subtree_body_ids(model, "left/wrist_link")
-    right_wrist_body_ids = get_subtree_body_ids(model, "right/wrist_link")
-    assert len(left_wrist_body_ids) > 0
-    assert len(right_wrist_body_ids) > 0
-    assert set(left_wrist_body_ids).isdisjoint(right_wrist_body_ids)
-
-def test_get_subtree_geom_ids():
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
-    left_wrist_geom_ids = get_subtree_geom_ids(model, "left/wrist_link")
-    right_wrist_geom_ids = get_subtree_geom_ids(model, "right/wrist_link")
-    assert len(left_wrist_geom_ids) > 0
-    assert len(right_wrist_geom_ids) > 0
-    assert set(left_wrist_geom_ids).isdisjoint(right_wrist_geom_ids)
 
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
@@ -109,21 +91,21 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
 
     tasks = [
-        l_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        r_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        posture_task := mink.PostureTask(model, cost=1e-4),
+        mink.PostureTask(model, cost=1e-4),
     ]
 
     # Enable collision avoidance between the following geoms:
@@ -168,7 +150,7 @@ if __name__ == "__main__":
         mujoco.mj_resetDataKeyframe(model, data, model.key("neutral_pose").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
-        posture_task.set_target_from_configuration(configuration)
+        tasks[-1].set_target_from_configuration(configuration)
 
         # Initialize mocap targets at the end-effector site.
         mink.move_mocap_to_frame(model, data, "left/target", "left/gripper", "site")
@@ -177,8 +159,8 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
-            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
@@ -192,10 +174,10 @@ if __name__ == "__main__":
                 )
                 configuration.integrate_inplace(vel, rate.dt)
 
-                l_err = l_ee_task.compute_error(configuration)
+                l_err = tasks[0].compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = r_ee_task.compute_error(configuration)
+                r_err = tasks[1].compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
                 if (
