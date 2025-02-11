@@ -89,7 +89,14 @@ def custom_configuration_vector(
     for joint_name, value in kwargs.items():
         joint = model.joint(joint_name)
         qid = joint.qposadr
-        q[qid:qid + joint.dof] = np.atleast_1d(value)[:joint.dof]
+        qdim = joint.dof if hasattr(joint, 'dof') else 1  # Fallback for joints without dof attribute
+        value = np.atleast_1d(value)
+        if value.shape != (qdim,):
+            raise ValueError(
+                f"Joint {joint_name} should have a qpos value of {qdim} but "
+                f"got {value.shape}"
+            )
+        q[qid:qid + qdim] = value
     return q
 
 
@@ -103,18 +110,15 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     Returns:
         A list containing all subtree geom ids.
     """
-
-    def gather_geoms(current_body_id: int) -> List[int]:
-        geoms: List[int] = []
+    geom_ids = []
+    stack = [body_id]
+    while stack:
+        current_body_id = stack.pop()
         geom_start = model.body_geomadr[current_body_id]
         geom_end = geom_start + model.body_geomnum[current_body_id]
-        geoms.extend(range(geom_start, geom_end))
-        children = [i for i in range(model.nbody) if model.body_parentid[i] == current_body_id]
-        for child_id in children:
-            geoms.extend(gather_geoms(child_id))
-        return geoms
-
-    return gather_geoms(body_id)
+        geom_ids.extend(range(geom_start, geom_end))
+        stack.extend([i for i in range(model.nbody) if model.body_parentid[i] == current_body_id])
+    return geom_ids
 
 
 def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
@@ -142,15 +146,13 @@ def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     Returns:
         A list containing all body IDs in the subtree.
     """
-
-    def gather_bodies(current_body_id: int) -> List[int]:
-        bodies: List[int] = [current_body_id]
-        children = [i for i in range(model.nbody) if model.body_parentid[i] == current_body_id]
-        for child_id in children:
-            bodies.extend(gather_bodies(child_id))
-        return bodies
-
-    return gather_bodies(body_id)
+    body_ids = []
+    stack = [body_id]
+    while stack:
+        current_body_id = stack.pop()
+        body_ids.append(current_body_id)
+        stack.extend([i for i in range(model.nbody) if model.body_parentid[i] == current_body_id])
+    return body_ids
 
 
 def apply_gravity_compensation(
