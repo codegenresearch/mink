@@ -4,12 +4,12 @@ import mujoco
 import numpy as np
 
 from ..configuration import Configuration
-from ..constants import qpos_width
+from ..constants import dof_width, qpos_width
 from .exceptions import LimitDefinitionError
 from .limit import Constraint, Limit
 
 
-class JointPositionLimit(Limit):
+class ConfigurationLimit(Limit):
     """Inequality constraint on joint positions in a robot model.
 
     Floating base joints are ignored.
@@ -21,7 +21,7 @@ class JointPositionLimit(Limit):
         gain: float = 0.95,
         min_distance_from_limits: float = 0.0,
     ):
-        """Initialize joint position limits.
+        """Initialize configuration limits.
 
         Args:
             model: MuJoCo model.
@@ -39,8 +39,8 @@ class JointPositionLimit(Limit):
             )
 
         index_list: list[int] = []  # DoF indices that are limited.
-        lower = np.full(model.nq, -np.inf)
-        upper = np.full(model.nq, np.inf)
+        lower = np.full(model.nq, -mujoco.mjMAXVAL)
+        upper = np.full(model.nq, mujoco.mjMAXVAL)
         for jnt in range(model.njnt):
             jnt_type = model.jnt_type[jnt]
             qpos_dim = qpos_width(jnt_type)
@@ -50,7 +50,9 @@ class JointPositionLimit(Limit):
                 continue
             lower[padr : padr + qpos_dim] = jnt_range[0] + min_distance_from_limits
             upper[padr : padr + qpos_dim] = jnt_range[1] - min_distance_from_limits
-            index_list.append(model.jnt_dofadr[jnt])
+            jnt_dim = dof_width(jnt_type)
+            jnt_id = model.jnt_dofadr[jnt]
+            index_list.extend(range(jnt_id, jnt_id + jnt_dim))
 
         self.indices = np.array(index_list)
         self.indices.setflags(write=False)
@@ -90,8 +92,11 @@ class JointPositionLimit(Limit):
         """
         del dt  # Unused.
 
+        if self.projection_matrix is None:
+            return Constraint()
+
         # Upper.
-        delta_q_max = np.zeros(self.model.nv)
+        delta_q_max = np.zeros((self.model.nv,))
         mujoco.mj_differentiatePos(
             m=self.model,
             qvel=delta_q_max,
@@ -101,7 +106,7 @@ class JointPositionLimit(Limit):
         )
 
         # Lower.
-        delta_q_min = np.zeros(self.model.nv)
+        delta_q_min = np.zeros((self.model.nv,))
         mujoco.mj_differentiatePos(
             m=self.model,
             qvel=delta_q_min,
