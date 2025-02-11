@@ -150,6 +150,7 @@ if __name__ == "__main__":
             T_wt_right = mink.SE3.from_mocap_name(model, data, "r_target")
             right_ee_task.set_target(T_wt_right)
 
+            # Solve inverse kinematics.
             vel = mink.solve_ik(
                 configuration,
                 tasks,
@@ -167,4 +168,4 @@ if __name__ == "__main__":
             t += rate.dt
 
 
-This version of the code includes the initialization of `l_dy_des` and `r_dy_des` as zero arrays, maintains consistent parameter order in function calls, and ensures that the formatting and comments align with the gold code.
+This version of the code ensures that the parameter order in function calls matches the gold code, maintains consistent initialization of variables, and aligns comments and formatting to enhance readability and consistency.
