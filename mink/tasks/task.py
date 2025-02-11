@@ -25,9 +25,25 @@ class Objective(NamedTuple):
 class Task(abc.ABC):
     """Abstract base class for kinematic tasks.
 
-    Subclasses must implement the `compute_error` and `compute_jacobian` methods.
-    These methods are used to compute the error and Jacobian necessary for inverse
-    kinematics.
+    This class defines the structure for kinematic tasks, which are used to compute
+    the error and Jacobian necessary for inverse kinematics. Subclasses must implement
+    the `compute_error` and `compute_jacobian` methods.
+
+    The task dynamics are defined by the equation:
+
+    .. math::
+
+        J(q) \Delta q = -\alpha e(q)
+
+    where :math:`J(q)` is the task Jacobian, :math:`\Delta q` is the configuration
+    displacement, :math:`\alpha` is the task gain, and :math:`e(q)` is the task error.
+    The Jacobian :math:`J(q)` is the derivative of the task error with respect to the
+    configuration :math:`q`.
+
+    The task gain :math:`\alpha` is a parameter in the range [0, 1] that can be used
+    for additional low-pass filtering. A gain of 1.0 corresponds to dead-beat control,
+    which aims to converge as fast as possible, but might be unstable. Lower values
+    cause the task to converge more slowly, similar to low-pass filtering.
     """
 
     def __init__(
