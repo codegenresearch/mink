@@ -10,7 +10,16 @@ from .limit import Constraint, Limit
 
 
 class ConfigurationLimit(Limit):
-    """Inequality constraint on joint positions in a robot model, ignoring floating base joints."""
+    """Inequality constraint on joint positions in a robot model, ignoring floating base joints.
+
+    Attributes:
+        indices: Indices of the degrees of freedom that are limited.
+        lower: Lower position limits for the limited joints.
+        upper: Upper position limits for the limited joints.
+        projection_matrix: Projection matrix from the full tangent space to the subspace of limited joints.
+        model: MuJoCo model.
+        gain: Gain factor for the position limits.
+    """
 
     def __init__(
         self,
@@ -38,14 +47,14 @@ class ConfigurationLimit(Limit):
         upper = np.full(model.nq, mujoco.mjMAXVAL)
         for jnt in range(model.njnt):
             jnt_type = model.jnt_type[jnt]
-            jnt_dim = qpos_width(jnt_type)
+            qpos_dim = qpos_width(jnt_type)
             jnt_range = model.jnt_range[jnt]
             padr = model.jnt_qposadr[jnt]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE or not model.jnt_limited[jnt]:
-                continue
-            lower[padr : padr + jnt_dim] = jnt_range[0] + min_distance_from_limits
-            upper[padr : padr + jnt_dim] = jnt_range[1] - min_distance_from_limits
-            index_list.extend(range(model.jnt_dofadr[jnt], model.jnt_dofadr[jnt] + jnt_dim))
+                continue  # Skip free joints and joints without limits.
+            lower[padr : padr + qpos_dim] = jnt_range[0] + min_distance_from_limits
+            upper[padr : padr + qpos_dim] = jnt_range[1] - min_distance_from_limits
+            index_list.extend(range(model.jnt_dofadr[jnt], model.jnt_dofadr[jnt] + qpos_dim))
 
         self.indices = np.array(index_list)
         self.indices.setflags(write=False)
