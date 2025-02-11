@@ -181,10 +181,10 @@ if __name__ == "__main__":
 
 ### Key Changes:
 1. **Removed Invalid Comment**: Removed the invalid comment that was causing the `SyntaxError`.
-2. **Consolidated RPY Bijective Tests**: Ensured that the RPY bijective tests are specific to `SO3` and properly parameterized.
-3. **Error Handling**: Used `self.assertRaises` for error handling tests to maintain consistency.
-4. **Class Structure**: Ensured that `TestGroupSpecificOperations` inherits from `parameterized.TestCase` and properly uses parameterization.
-5. **Documentation**: Updated docstrings to be more concise and directly related to the test being performed.
+2. **Class Structure**: Ensured that `TestOperations` handles general operations and `TestGroupSpecificOperations` handles group-specific tests.
+3. **Error Handling**: Used `self.assertRaises` consistently for error handling tests.
+4. **Assertions**: Used `self.assertEqual` for checking shapes where appropriate.
+5. **Documentation**: Updated docstrings to be concise and directly related to the tests being performed.
 6. **Edge Cases**: Included edge cases for RPY conversion within the `test_so3_rpy_bijective` method.
 7. **Assertions**: Used `np.testing.assert_allclose` consistently for numerical comparisons.
 8. **Specificity in Tests**: Ensured that tests for `SO3` and `SE3` are specific and parameterized appropriately.
