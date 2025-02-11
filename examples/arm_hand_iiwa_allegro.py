@@ -60,8 +60,9 @@ if __name__ == "__main__":
     # Construct the model
     model = construct_model()
 
-    # Initialize configuration and data
+    # Initialize configuration
     configuration = mink.Configuration(model)
+    model = configuration.model
     data = configuration.data
 
     # IK settings
