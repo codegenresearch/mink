@@ -47,7 +47,7 @@ class Configuration:
         Args:
             model: Mujoco model.
             q: Configuration to initialize from. If None, the configuration
-                is initialized to the reference configuration `qpos0`.
+                is initialized to the default configuration `qpos0`.
         """
         self.model = model
         self.data = mujoco.MjData(model)
@@ -61,6 +61,7 @@ class Configuration:
         """
         if q is not None:
             self.data.qpos = q
+        # Update frame transforms and Jacobians.
         mujoco.mj_kinematics(self.model, self.data)
         mujoco.mj_comPos(self.model, self.data)
 
