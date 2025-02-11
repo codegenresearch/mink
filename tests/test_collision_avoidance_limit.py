@@ -50,9 +50,9 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
 
         # Validate the upper bound and constraint dimensions.
-        self.assertTrue(np.all(h >= bound_relaxation), "All elements of h should be greater than or equal to the bound relaxation.")
-        self.assertEqual(G.shape, (expected_max_num_contacts, self.model.nv), "G matrix shape should match the expected number of contacts and degrees of freedom.")
-        self.assertEqual(h.shape, (expected_max_num_contacts,), "h vector shape should match the expected number of contacts.")
+        self.assertTrue(np.all(h >= bound_relaxation), "All elements of h should be >= bound relaxation.")
+        self.assertEqual(G.shape, (expected_max_num_contacts, self.model.nv), "G matrix shape mismatch.")
+        self.assertEqual(h.shape, (expected_max_num_contacts,), "h vector shape mismatch.")
 
     def test_contact_normal_jacobian_matches_mujoco(self):
         """Ensure computed contact normal Jacobian matches MuJoCo's output."""
@@ -78,7 +78,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
             contact = data.contact[i]
             start_idx = contact.efc_address * nv
             end_idx = start_idx + nv
-            mujoco_jacobian = data.efc_J[start_idx:end_idx]
+            efc_J = data.efc_J[start_idx:end_idx]
 
             # Manually compute the contact Jacobian.
             normal = contact.frame[:3]
@@ -96,7 +96,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
             computed_jacobian = compute_contact_normal_jacobian(model, data, contact_info)
 
             # Compare the computed Jacobian with MuJoCo's.
-            np.testing.assert_allclose(computed_jacobian, mujoco_jacobian, atol=1e-7, err_msg="Computed Jacobian does not match MuJoCo's Jacobian.")
+            np.testing.assert_allclose(computed_jacobian, efc_J, atol=1e-7, err_msg="Computed Jacobian does not match MuJoCo's Jacobian.")
 
 
 if __name__ == "__main__":
