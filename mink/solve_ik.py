@@ -99,8 +99,7 @@ def solve_ik(
     configuration.check_limits(safety_break=safety_break)
     problem = build_ik(configuration, tasks, dt, damping, limits)
     result = qpsolvers.solve_problem(problem, solver=solver, **kwargs)
-    if result is None:
-        raise RuntimeError("QP solver failed to find a solution.")
+    assert result is not None, "QP solver failed to find a solution."
     dq = result.x
     v: np.ndarray = dq / dt
     return v
