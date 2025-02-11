@@ -15,9 +15,9 @@ class FrameTask(Task):
     """Regulate the pose of a robot frame in the world frame.
 
     Attributes:
-        frame_name (str): Name of the frame to regulate.
-        frame_type (str): The frame type: `body`, `geom`, or `site`.
-        transform_target_to_world (Optional[SE3]): Target pose of the frame.
+        frame_name (str): Typically the name of a body, geom, or site in the robot model.
+        frame_type (str): The type of frame: `body`, `geom`, or `site`.
+        transform_target_to_world (Optional[SE3]): Target pose of the frame in the world frame.
     """
 
     k: int = 6
@@ -36,10 +36,12 @@ class FrameTask(Task):
         Initialize the FrameTask.
 
         Args:
-            frame_name (str): Name of the frame to regulate.
-            frame_type (str): The frame type: `body`, `geom`, or `site`.
-            position_cost (npt.ArrayLike): Cost for the position error.
-            orientation_cost (npt.ArrayLike): Cost for the orientation error.
+            frame_name (str): Typically the name of a body, geom, or site in the robot model.
+            frame_type (str): The type of frame: `body`, `geom`, or `site`.
+            position_cost (npt.ArrayLike): Cost for the position error. Should be a vector of shape
+                (1,) (aka identical cost for all coordinates) or (3,).
+            orientation_cost (npt.ArrayLike): Cost for the orientation error. Should be a vector of shape
+                (1,) (aka identical cost for all coordinates) or (3,).
             gain (float): Gain for the task.
             lm_damping (float): Damping for the Levenberg-Marquardt algorithm.
         """
@@ -58,7 +60,8 @@ class FrameTask(Task):
         Set the cost for the position error.
 
         Args:
-            position_cost (npt.ArrayLike): Cost for the position error.
+            position_cost (npt.ArrayLike): Cost for the position error. Should be a vector of shape
+                (1,) (aka identical cost for all coordinates) or (3,).
 
         Raises:
             TaskDefinitionError: If the position cost is not a vector of shape (1,) or (3,)
@@ -68,7 +71,7 @@ class FrameTask(Task):
         if position_cost.ndim != 1 or position_cost.shape[0] not in (1, 3):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} position cost should be a vector of shape "
-                "1 (identical cost for all coordinates) or (3,) but got "
+                "(1,) (aka identical cost for all coordinates) or (3,) but got "
                 f"{position_cost.shape}"
             )
         if not np.all(position_cost >= 0.0):
@@ -82,7 +85,8 @@ class FrameTask(Task):
         Set the cost for the orientation error.
 
         Args:
-            orientation_cost (npt.ArrayLike): Cost for the orientation error.
+            orientation_cost (npt.ArrayLike): Cost for the orientation error. Should be a vector of shape
+                (1,) (aka identical cost for all coordinates) or (3,).
 
         Raises:
             TaskDefinitionError: If the orientation cost is not a vector of shape (1,) or (3,)
@@ -91,8 +95,8 @@ class FrameTask(Task):
         orientation_cost = np.atleast_1d(orientation_cost)
         if orientation_cost.ndim != 1 or orientation_cost.shape[0] not in (1, 3):
             raise TaskDefinitionError(
-                f"{self.__class__.__name__} orientation cost should be a vector of "
-                "shape 1 (identical cost for all coordinates) or (3,) but got "
+                f"{self.__class__.__name__} orientation cost should be a vector of shape "
+                "(1,) (aka identical cost for all coordinates) or (3,) but got "
                 f"{orientation_cost.shape}"
             )
         if not np.all(orientation_cost >= 0.0):
@@ -106,8 +110,7 @@ class FrameTask(Task):
         Set the target pose in the world frame.
 
         Args:
-            transform_target_to_world (SE3): Transform from the task target frame to the
-                world frame.
+            transform_target_to_world (SE3): Transform from the task target frame to the world frame.
         """
         self.transform_target_to_world = transform_target_to_world.copy()
 
@@ -163,7 +166,7 @@ class FrameTask(Task):
             configuration (Configuration): Robot configuration :math:`q`.
 
         Returns:
-            np.ndarray: Frame task jacobian :math:`J(q)`.
+            np.ndarray: Frame task Jacobian :math:`J(q)`.
 
         Raises:
             TargetNotSet: If the target pose is not set.
