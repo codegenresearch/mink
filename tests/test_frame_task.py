@@ -57,14 +57,14 @@ class TestFrameTask(absltest.TestCase):
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
-                position_cost=1.0,
-                orientation_cost=-1.0,
+                position_cost=-1.0,
+                orientation_cost=1.0,
             )
         with self.assertRaises(TaskDefinitionError):
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
-                position_cost=[-1.0, 1.5],
+                position_cost=[-1.0, 1.5, 2.0],
                 orientation_cost=[1, 2, 3],
             )
 
@@ -188,7 +188,7 @@ class TestFrameTask(absltest.TestCase):
     def test_additional_configurations(self):
         # Test with different frame types and names
         frame_names = ["pelvis", "end_effector"]  # Use valid frame names
-        frame_types = ["body", "geometric"]
+        frame_types = ["body", "geom"]  # Use supported frame types
         for frame_name in frame_names:
             for frame_type in frame_types:
                 task = FrameTask(
