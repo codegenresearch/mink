@@ -9,9 +9,6 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "shadow_hand" / "scene_left.xml"
 
-RATE_LIMITER_FREQUENCY = 500.0
-RATE_LIMITER_WARN = False
-
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
 
@@ -45,6 +42,7 @@ if __name__ == "__main__":
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
+        # Initialize to the home keyframe.
         configuration.update_from_keyframe("grasp hard")
 
         # Initialize mocap bodies at their respective sites.
@@ -52,11 +50,11 @@ if __name__ == "__main__":
         for finger in fingers:
             mink.move_mocap_to_frame(model, data, f"{finger}_target", finger, "site")
 
-        rate = RateLimiter(frequency=RATE_LIMITER_FREQUENCY, warn=RATE_LIMITER_WARN)
+        rate = RateLimiter(frequency=500.0, warn=False)
         dt = rate.dt
         t = 0
         while viewer.is_running():
-            # Update task target.
+            # Update task targets.
             for finger, task in zip(fingers, finger_tasks):
                 task.set_target(
                     mink.SE3.from_mocap_name(model, data, f"{finger}_target")
