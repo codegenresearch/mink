@@ -56,10 +56,12 @@ def construct_model():
         arm_mjcf.to_xml_string(), arm_mjcf.get_assets()
     )
 
-def create_tasks(model):
-    """Creates and returns the list of tasks for the IK solver."""
-    tasks = []
+if __name__ == "__main__":
+    model = construct_model()
+    configuration = mink.Configuration(model)
+    data = configuration.data
 
+    # Initialize tasks
     end_effector_task = mink.FrameTask(
         frame_name="attachment_site",
         frame_type="site",
@@ -67,11 +69,10 @@ def create_tasks(model):
         orientation_cost=1.0,
         lm_damping=1.0,
     )
-    tasks.append(end_effector_task)
 
     posture_task = mink.PostureTask(model=model, cost=5e-2)
-    tasks.append(posture_task)
 
+    finger_tasks = []
     for finger in fingers:
         task = mink.RelativeFrameTask(
             frame_name=f"allegro_left/{finger}",
@@ -82,45 +83,38 @@ def create_tasks(model):
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        tasks.append(task)
+        finger_tasks.append(task)
 
-    return tasks
+    tasks = [end_effector_task, posture_task, *finger_tasks]
 
-def initialize_mocap_targets(model, data):
-    """Initializes the mocap targets at their respective sites."""
+    limits = [mink.ConfigurationLimit(model=model)]
+    solver = "quadprog"
+
+    # Initialize mocap targets
     mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
     for finger in fingers:
         mink.move_mocap_to_frame(
             model, data, f"{finger}_target", f"allegro_left/{finger}", "site"
         )
 
-if __name__ == "__main__":
-    model = construct_model()
-    configuration = mink.Configuration(model)
-    tasks = create_tasks(model)
-    limits = [mink.ConfigurationLimit(model=model)]
-    solver = "quadprog"
+    T_eef_prev = configuration.get_transform_frame_to_world("attachment_site", "site")
+    rate = RateLimiter(frequency=100.0, warn=False)
 
     with mujoco.viewer.launch_passive(
-        model=model, data=configuration.data, show_left_ui=False, show_right_ui=False
+        model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
-        mujoco.mj_resetDataKeyframe(model, configuration.data, model.key("home").id)
-        configuration.update(configuration.data.qpos)
-        posture_task = tasks[1]
+        mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
+        configuration.update(data.qpos)
         posture_task.set_target_from_configuration(configuration)
-        initialize_mocap_targets(model, configuration.data)
-
-        T_eef_prev = configuration.get_transform_frame_to_world("attachment_site", "site")
-        rate = RateLimiter(frequency=100.0, warn=False)
 
         while viewer.is_running():
             # Update end-effector task
-            T_wt = mink.SE3.from_mocap_name(model, configuration.data, "target")
-            tasks[0].set_target(T_wt)
+            T_wt = mink.SE3.from_mocap_name(model, data, "target")
+            end_effector_task.set_target(T_wt)
 
             # Update finger tasks
-            for finger, task in zip(fingers, tasks[2:]):
+            for finger, task in zip(fingers, finger_tasks):
                 T_pm = configuration.get_transform(f"{finger}_target", "body", "allegro_left/palm", "body")
                 task.set_target(T_pm)
 
@@ -128,16 +122,16 @@ if __name__ == "__main__":
             T_eef = configuration.get_transform_frame_to_world("attachment_site", "site")
             T = T_eef @ T_eef_prev.inverse()
             for finger in fingers:
-                T_w_mocap = mink.SE3.from_mocap_name(model, configuration.data, f"{finger}_target")
+                T_w_mocap = mink.SE3.from_mocap_name(model, data, f"{finger}_target")
                 T_w_mocap_new = T @ T_w_mocap
                 body = model.body(f"{finger}_target")
-                configuration.data.mocap_pos[body.mocapid[0]] = T_w_mocap_new.translation()
-                configuration.data.mocap_quat[body.mocapid[0]] = T_w_mocap_new.rotation().wxyz
+                data.mocap_pos[body.mocapid[0]] = T_w_mocap_new.translation()
+                data.mocap_quat[body.mocapid[0]] = T_w_mocap_new.rotation().wxyz
 
             # Solve IK and integrate velocity
             vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3, limits=limits)
             configuration.integrate_inplace(vel, rate.dt)
-            mujoco.mj_camlight(model, configuration.data)
+            mujoco.mj_camlight(model, data)
 
             T_eef_prev = T_eef.copy()
             viewer.sync()
