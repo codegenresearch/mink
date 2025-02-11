@@ -43,7 +43,8 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_name: str) -> list[int]:
 def compensate_gravity(
     model: mujoco.MjModel,
     data: mujoco.MjData,
-    subtree_ids: Sequence[int]
+    subtree_ids: Sequence[int],
+    qfrc_applied: Optional[np.ndarray] = None
 ) -> None:
     """
     Compute and apply forces to counteract gravity for the specified subtree.
@@ -52,7 +53,11 @@ def compensate_gravity(
     - model (mujoco.MjModel): The MuJoCo model.
     - data (mujoco.MjData): The MuJoCo data.
     - subtree_ids (Sequence[int]): List of body IDs in the subtree.
+    - qfrc_applied (Optional[np.ndarray]): Array to store applied forces. Defaults to None.
     """
+    if qfrc_applied is None:
+        qfrc_applied = np.zeros(model.nv)
+
     # Initialize Jacobian and COM position arrays
     jacp = np.zeros((3, model.nv))
     jacr = np.zeros((3, model.nv))
@@ -61,11 +66,17 @@ def compensate_gravity(
     # Compute the Jacobian and COM position for the subtree
     mujoco.mj_jacSubtreeCom(model, data, jacp, jacr, com_pos, subtree_ids[0])
 
+    # Compute the total mass of the subtree
+    total_mass = sum(model.body_mass[id] for id in subtree_ids)
+
     # Compute the gravity compensation force
-    gravity_compensation = -model.opt.gravity[2] * data.mass[subtree_ids[0]] * jacp[:, :3]
+    gravity_compensation = -model.opt.gravity[2] * total_mass * jacp[:, :3]
 
     # Apply the gravity compensation force to qfrc_applied
-    data.qfrc_applied += gravity_compensation.flatten()
+    qfrc_applied += gravity_compensation.flatten()
+
+    # Update the data.qfrc_applied array
+    data.qfrc_applied[:] = qfrc_applied
 
 def test_get_subtree_body_ids():
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
@@ -126,7 +137,7 @@ if __name__ == "__main__":
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     l_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
     r_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
-    frame_geoms = mink.get_subtree_geom_ids(model, model.body("metal_frame").id)
+    frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),
         (l_geoms + r_geoms, frame_geoms + ["table"]),
