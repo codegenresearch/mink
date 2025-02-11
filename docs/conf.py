@@ -1,20 +1,16 @@
 # Configuration file for the Sphinx documentation builder.
 #
-# This file configures the Sphinx documentation generator to build the documentation for the mink project.
-# For a comprehensive list of configuration options, refer to the official Sphinx documentation:
+# This file configures the Sphinx documentation generator for the mink project.
+# For more information, see the Sphinx documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # -- Project Information -----------------------------------------------------
-# This section contains metadata about the project, which is used in various parts of the generated documentation.
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "mink"
 copyright = "2024, Kevin Zakka"
 author = "Kevin Zakka"
 
 # -- General Configuration ---------------------------------------------------
-# This section configures general settings for the Sphinx documentation builder.
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 # List of Sphinx extensions to enable
 extensions = [
@@ -48,14 +44,17 @@ autodoc_default_options = {
     "members": True,
     "undoc-members": True,
     "show-inheritance": True,
+    "member-order": "bysource",
+    "inherited-members": True,
+    "exclude-members": "__weakref__",
 }
 
 # Type aliases for autodoc
-autodoc_type_aliases = {}
+autodoc_type_aliases = {
+    "ArrayLike": "npt.ArrayLike",
+}
 
 # -- Options for HTML Output -------------------------------------------------
-# This section configures the HTML output options for the Sphinx documentation builder.
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 # Theme to use for HTML and HTML Help pages
 html_theme = "sphinx_rtd_theme"
