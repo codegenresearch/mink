@@ -80,12 +80,12 @@ class MatrixLieGroup(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def exp(cls, tangent: np.ndarray) -> Self:
-        """Computes the exponential map."""
+        """Computes expm(wedge(tangent))."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def log(self) -> np.ndarray:
-        """Computes the logarithmic map."""
+        """Computes vee(logm(transformation matrix))."""
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -126,11 +126,11 @@ class MatrixLieGroup(abc.ABC):
         return (self @ other.inverse()).log()
 
     def plus(self, other: np.ndarray) -> Self:
-        """Alias for the right plus operator."""
+        """Alias for rplus."""
         return self.rplus(other)
 
     def minus(self, other: Self) -> np.ndarray:
-        """Alias for the right minus operator."""
+        """Alias for rminus."""
         return self.rminus(other)
 
     # Jacobians
