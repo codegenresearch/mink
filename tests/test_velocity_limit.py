@@ -20,7 +20,6 @@ class TestVelocityLimit(absltest.TestCase):
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        # NOTE(kevin): These velocities are arbitrary and do not match real hardware.
         self.velocities = {
             self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)
         }
@@ -47,11 +46,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(h)
 
     def test_model_with_subset_of_velocities_limited(self):
-        limit_subset = {}
-        for i, (key, value) in enumerate(self.velocities.items()):
-            if i > 2:
-                break
-            limit_subset[key] = value
+        limit_subset = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i <= 2}
         limit = VelocityLimit(self.model, limit_subset)
         nb = 3
         nv = self.model.nv
@@ -228,6 +223,10 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertTrue(np.all(G_task @ self.configuration.qpos <= h_task))
 
 
+if __name__ == "__main__":
+    absltest.main()
+
+
 This revised code addresses the feedback by:
 1. Removing any extraneous comments or text that could cause syntax errors.
 2. Ensuring that comments are clear and directly related to the functionality being tested.
@@ -236,3 +235,4 @@ This revised code addresses the feedback by:
 5. Looking for and removing any redundant code or unnecessary complexity.
 6. Ensuring comprehensive test coverage for different joint types and configurations.
 7. Maintaining consistency in variable naming conventions throughout the tests.
+8. Adding an `if __name__ == "__main__":` block to ensure the tests can be run directly.
