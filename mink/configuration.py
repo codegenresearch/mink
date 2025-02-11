@@ -70,6 +70,9 @@ class Configuration:
 
         Args:
             key_name: The name of the keyframe.
+
+        Raises:
+            InvalidKeyframe: If no key named `key_name` is found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
@@ -82,6 +85,10 @@ class Configuration:
         Args:
             tol: Tolerance in [rad].
             safety_break: If True, raise an exception if the configuration is outside limits.
+                          If False, print a warning and continue execution.
+
+        Raises:
+            NotWithinConfigurationLimits: If the configuration is outside limits and `safety_break` is True.
         """
         for jnt in range(self.model.njnt):
             jnt_type = self.model.jnt_type[jnt]
@@ -113,19 +120,23 @@ class Configuration:
         r"""Compute the Jacobian matrix of a frame velocity.
 
         Denoting our frame by :math:`B` and the world frame by :math:`W`, the
-        Jacobian matrix :math:`{}_B J_{WB}` is related to the body velocity
-        :math:`{}_B v_{WB}` by:
+        Jacobian matrix :math:`{}^B J_{WB}` is related to the body velocity
+        :math:`{}^B v_{WB}` by:
 
         .. math::
 
-            {}_B v_{WB} = {}_B J_{WB} \dot{q}
+            {}^B v_{WB} = {}^B J_{WB} \dot{q}
 
         Args:
             frame_name: Name of the frame in the MJCF.
             frame_type: Type of frame. Can be a geom, a body, or a site.
 
         Returns:
-            Jacobian :math:`{}_B J_{WB}` of the frame.
+            Jacobian :math:`{}^B J_{WB}` of the frame.
+
+        Raises:
+            UnsupportedFrame: If the frame type is not supported.
+            InvalidFrame: If the frame name is not found in the model.
         """
         if frame_type not in consts.SUPPORTED_FRAMES:
             raise exceptions.UnsupportedFrame(frame_type, consts.SUPPORTED_FRAMES)
@@ -160,6 +171,10 @@ class Configuration:
 
         Returns:
             The pose of the frame in the world frame.
+
+        Raises:
+            UnsupportedFrame: If the frame type is not supported.
+            InvalidFrame: If the frame name is not found in the model.
         """
         if frame_type not in consts.SUPPORTED_FRAMES:
             raise exceptions.UnsupportedFrame(frame_type, consts.SUPPORTED_FRAMES)
@@ -196,7 +211,7 @@ class Configuration:
         return q
 
     def integrate_inplace(self, velocity: np.ndarray, dt: float) -> None:
-        """Integrate a velocity and update the current configuration inplace.
+        """Integrate a velocity and update the current configuration in place.
 
         Args:
             velocity: The velocity in tangent space.
