@@ -15,8 +15,8 @@ _XML = _HERE / "universal_robots_ur5e" / "ur5e.xml"
 def construct_model():
     root = mjcf.RootElement()
     root.statistic.meansize = 0.08
-    getattr(root.visual, "global").azimuth = -120
-    getattr(root.visual, "global").elevation = -20
+    root.visual.global_.azimuth = -120
+    root.visual.global_.elevation = -20
 
     root.worldbody.add("light", pos="0 0 1.5", directional="true")
 
@@ -85,23 +85,22 @@ def construct_model():
 
 if __name__ == "__main__":
     model = construct_model()
-
     configuration = mink.Configuration(model)
 
     tasks = [
-        base_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="base",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
         ),
-        left_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="l_ur5e/attachment_site",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
         ),
-        right_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="r_ur5e/attachment_site",
             frame_type="site",
             position_cost=1.0,
@@ -109,15 +108,16 @@ if __name__ == "__main__":
         ),
     ]
 
-    base_mid = model.body("base_target").mocapid[0]
-    left_mid = model.body("l_target").mocapid[0]
-    right_mid = model.body("r_target").mocapid[0]
-    model = configuration.model
-    data = configuration.data
+    mocap_ids = {
+        "base_target": model.body("base_target").mocapid[0],
+        "l_target": model.body("l_target").mocapid[0],
+        "r_target": model.body("r_target").mocapid[0],
+    }
+
     solver = "quadprog"
 
     with mujoco.viewer.launch_passive(
-        model=model, data=data, show_left_ui=False, show_right_ui=False
+        model=model, data=configuration.data, show_left_ui=False, show_right_ui=False
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
         viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
@@ -126,25 +126,25 @@ if __name__ == "__main__":
             ["base_target", "l_target", "r_target"],
             ["base", "l_ur5e/attachment_site", "r_ur5e/attachment_site"],
         ):
-            mink.move_mocap_to_frame(model, data, mocap, frame, "site")
+            mink.move_mocap_to_frame(model, configuration.data, mocap, frame, "site")
 
-        rate = RateLimiter(frequency=200.0, warn=False)
+        rate = RateLimiter(frequency=200.0)
         t = 0.0
         while viewer.is_running():
-            data.mocap_pos[base_mid][2] = 0.3 * np.sin(2.0 * t)
-            base_task.set_target(mink.SE3.from_mocap_name(model, data, "base_target"))
+            configuration.data.mocap_pos[mocap_ids["base_target"]][2] = 0.3 * np.sin(2.0 * t)
+            tasks[0].set_target(mink.SE3.from_mocap_name(model, configuration.data, "base_target"))
 
-            data.mocap_pos[left_mid][1] = 0.5 + 0.2 * np.sin(2.0 * t)
-            data.mocap_pos[left_mid][2] = 0.2
-            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "l_target"))
+            configuration.data.mocap_pos[mocap_ids["l_target"]][1] = 0.5 + 0.2 * np.sin(2.0 * t)
+            configuration.data.mocap_pos[mocap_ids["l_target"]][2] = 0.2
+            tasks[1].set_target(mink.SE3.from_mocap_name(model, configuration.data, "l_target"))
 
-            data.mocap_pos[right_mid][1] = 0.5 + 0.2 * np.sin(2.0 * t)
-            data.mocap_pos[right_mid][2] = 0.2
-            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "r_target"))
+            configuration.data.mocap_pos[mocap_ids["r_target"]][1] = 0.5 + 0.2 * np.sin(2.0 * t)
+            configuration.data.mocap_pos[mocap_ids["r_target"]][2] = 0.2
+            tasks[2].set_target(mink.SE3.from_mocap_name(model, configuration.data, "r_target"))
 
             vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-2)
             configuration.integrate_inplace(vel, rate.dt)
-            mujoco.mj_camlight(model, data)
+            mujoco.mj_camlight(model, configuration.data)
 
             viewer.sync()
             rate.sleep()
