@@ -6,9 +6,9 @@
 # -- Project Information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project_name = "mink"
-project_copyright = "2024, Kevin Zakka"
-project_author = "Kevin Zakka"
+project = "mink"
+copyright = "2024, Kevin Zakka"
+author = "Kevin Zakka"
 
 # -- General Configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -21,19 +21,31 @@ extensions = [
     "sphinx_favicon",
 ]
 
-template_paths = ["_templates"]
-excluded_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+templates_path = ["_templates"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
-source_suffix_mapping = {".rst": "restructuredtext"}
+source_suffix = {".rst": "restructuredtext"}
 
-pygments_style_name = "sphinx"
+pygments_style = "sphinx"
 
-napoleon_use_numpy_docstring = False
-napoleon_include_return_type = False
+napoleon_numpy_docstring = False
+napoleon_use_rtype = False
+
+# Autodoc configuration
+autodoc_typehints = "description"
+autodoc_class_signature = "separated"
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "show-inheritance": True,
+}
+
+# Autodoc type aliases
+autodoc_type_aliases = {}
 
 # -- Options for HTML Output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme_name = "sphinx_rtd_theme"
+html_theme = "sphinx_rtd_theme"
 
-html_help_basename = "mink_documentation"
+htmlhelp_basename = "mink_documentation"
