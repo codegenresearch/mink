@@ -15,16 +15,24 @@ def main():
 
     # Define fingers and initialize tasks
     fingers = ["thumb", "first", "middle", "ring", "little"]
-    tasks = [
-        mink.PostureTask(model, cost=1e-2),
-        *(mink.FrameTask(
+
+    # Initialize posture task
+    posture_task = mink.PostureTask(model, cost=1e-2)
+
+    # Initialize finger tasks
+    finger_tasks = []
+    for finger in fingers:
+        task = mink.FrameTask(
             frame_name=finger,
             frame_type="site",
             position_cost=1.0,
             orientation_cost=0.0,
             lm_damping=1.0,
-        ) for finger in fingers)
-    ]
+        )
+        finger_tasks.append(task)
+
+    # Combine tasks
+    tasks = [posture_task, *finger_tasks]
 
     model = configuration.model
     data = configuration.data
@@ -37,7 +45,6 @@ def main():
 
         # Initialize to the home keyframe.
         configuration.update_from_keyframe("grasp hard")
-        posture_task = tasks[0]
         posture_task.set_target_from_configuration(configuration)
 
         # Initialize mocap bodies at their respective sites.
@@ -50,7 +57,7 @@ def main():
 
         while viewer.is_running():
             # Update task targets.
-            for finger, task in zip(fingers, tasks[1:]):
+            for finger, task in zip(fingers, finger_tasks):
                 task.set_target(mink.SE3.from_mocap_name(model, data, f"{finger}_target"))
 
             # Solve inverse kinematics and integrate velocity.
