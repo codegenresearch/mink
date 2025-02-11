@@ -5,6 +5,7 @@ This module contains tests for the ConfigurationLimit class.
 
 import mujoco
 import numpy as np
+import numpy.testing as npt
 from absl.testing import absltest
 from robot_descriptions.loaders.mujoco import load_robot_description
 
@@ -51,7 +52,7 @@ class TestConfigurationLimit(absltest.TestCase):
         """Test that the indices of the velocity-limited joints are correct."""
         limit = ConfigurationLimit(self.model)
         expected = np.arange(6, self.model.nv)
-        self.assertTrue(np.allclose(limit.indices, expected))
+        npt.assert_allclose(limit.indices, expected)
 
     def test_model_with_no_limit(self):
         """Test behavior with a model that has no velocity limits."""
@@ -86,10 +87,12 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        self.assertTrue(np.allclose(limit.lower, np.full(nv, -np.inf)))
-        self.assertTrue(np.allclose(limit.upper, np.full(nv, np.inf)))
-        self.assertTrue(np.allclose(limit.lower[limit.indices], 0.0))
-        self.assertTrue(np.allclose(limit.upper[limit.indices], 1.57))
+        expected_lower = np.full(nv, -mujoco.mjMAXVAL)
+        expected_upper = np.full(nv, mujoco.mjMAXVAL)
+        expected_lower[limit.indices] = 0.0
+        expected_upper[limit.indices] = 1.57
+        npt.assert_allclose(limit.lower, expected_lower)
+        npt.assert_allclose(limit.upper, expected_upper)
 
     def test_freejoint_ignored(self):
         """Test that free joints are ignored in the velocity limits."""
@@ -114,10 +117,12 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        self.assertTrue(np.allclose(limit.lower, np.full(nv, -np.inf)))
-        self.assertTrue(np.allclose(limit.upper, np.full(nv, np.inf)))
-        self.assertTrue(np.allclose(limit.lower[limit.indices], 0.0))
-        self.assertTrue(np.allclose(limit.upper[limit.indices], 1.57))
+        expected_lower = np.full(nv, -mujoco.mjMAXVAL)
+        expected_upper = np.full(nv, mujoco.mjMAXVAL)
+        expected_lower[limit.indices] = 0.0
+        expected_upper[limit.indices] = 1.57
+        npt.assert_allclose(limit.lower, expected_lower)
+        npt.assert_allclose(limit.upper, expected_upper)
 
     def test_far_from_limit(self, tol=1e-10):
         """Test that the limit has no effect when the configuration is far away."""
