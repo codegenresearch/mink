@@ -23,14 +23,15 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
 
     # Define the end-effector task
-    end_effector_task = mink.FrameTask(
-        frame_name="attachment_site",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    tasks = [end_effector_task]
+    tasks = [
+        end_effector_task := mink.FrameTask(
+            frame_name="attachment_site",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+    ]
 
     # Define collision pairs for collision avoidance
     wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
@@ -39,32 +40,21 @@ if __name__ == "__main__":
     ]
 
     # Define limits for IK
-    configuration_limit = mink.ConfigurationLimit(model=configuration.model)
-    collision_avoidance_limit = mink.CollisionAvoidanceLimit(
-        model=configuration.model,
-        geom_pairs=collision_pairs,
-    )
-
-    # Validate collision pairs
-    if not collision_avoidance_limit.validate():
-        raise ValueError("Invalid collision pairs provided for collision avoidance.")
-
-    # Define velocity limits
-    max_velocities = {
-        "shoulder_pan": np.pi,
-        "shoulder_lift": np.pi,
-        "elbow": np.pi,
-        "wrist_1": np.pi,
-        "wrist_2": np.pi,
-        "wrist_3": np.pi,
-    }
-    velocity_limit = mink.VelocityLimit(model, max_velocities)
-
-    # Validate velocity limits
-    if not velocity_limit.validate():
-        raise ValueError("Invalid velocity limits provided.")
-
-    limits = [configuration_limit, collision_avoidance_limit, velocity_limit]
+    limits = [
+        mink.ConfigurationLimit(model=configuration.model),
+        mink.CollisionAvoidanceLimit(
+            model=configuration.model,
+            geom_pairs=collision_pairs,
+        ),
+        mink.VelocityLimit(model, {
+            "shoulder_pan": np.pi,
+            "shoulder_lift": np.pi,
+            "elbow": np.pi,
+            "wrist_1": np.pi,
+            "wrist_2": np.pi,
+            "wrist_3": np.pi,
+        }),
+    ]
 
     # IK settings
     solver = "quadprog"
@@ -105,7 +95,6 @@ if __name__ == "__main__":
                 pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
                 ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
-                    print(f"Exiting after {i} iterations.")
                     break
 
             # Update control signals
