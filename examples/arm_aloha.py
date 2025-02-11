@@ -4,13 +4,13 @@ import mujoco.viewer
 import numpy as np
 from loop_rate_limiters import RateLimiter
 import mink
-from typing import Optional, Sequence
+from typing import Optional, Sequence, List, Dict
 
 _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
 # Single arm joint names.
-_JOINT_NAMES = [
+_JOINT_NAMES: List[str] = [
     "waist",
     "shoulder",
     "elbow",
@@ -21,7 +21,7 @@ _JOINT_NAMES = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
+_VELOCITY_LIMITS: Dict[str, float] = {k: np.pi for k in _JOINT_NAMES}
 
 
 def compensate_gravity(
@@ -30,9 +30,17 @@ def compensate_gravity(
     subtree_ids: Sequence[int],
     qfrc_applied: Optional[np.ndarray] = None,
 ) -> None:
-    """Compensate for gravity by setting the control to the gravity forces for specified subtrees."""
+    """Compensate for gravity by setting the control to the gravity forces for specified subtrees.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        data (mujoco.MjData): The MuJoCo data.
+        subtree_ids (Sequence[int]): List of subtree IDs for which to compensate gravity.
+        qfrc_applied (Optional[np.ndarray]): Optional array to store the applied forces. If None, `data.qfrc_applied` is used.
+    """
     if qfrc_applied is None:
-        qfrc_applied = np.zeros(model.nv)
+        qfrc_applied = data.qfrc_applied.copy()
+    qfrc_applied.fill(0.0)
     mujoco.mj_rneUnconstrained(model, data, qfrc_applied)
     for subtree_id in subtree_ids:
         start_idx = model.body(subtree_id).dofadr
@@ -60,8 +68,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = []
-    velocity_limits = {}
+    joint_names: List[str] = []
+    velocity_limits: Dict[str, float] = {}
     for prefix in ["left", "right"]:
         for n in _JOINT_NAMES:
             name = f"{prefix}/{n}"
@@ -105,7 +113,7 @@ if __name__ == "__main__":
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=collision_pairs,
+        geom_pairs=set(collision_pairs),  # Use set for comparison
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
@@ -122,11 +130,6 @@ if __name__ == "__main__":
     pos_threshold = 5e-3
     ori_threshold = 5e-3
     max_iters = 5
-
-    # Define subtree IDs for gravity compensation
-    left_subtree_id = model.body("left/base_link").id
-    right_subtree_id = model.body("right/base_link").id
-    subtree_ids = [left_subtree_id, right_subtree_id]
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -176,7 +179,7 @@ if __name__ == "__main__":
                     break
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
-            compensate_gravity(model, data, subtree_ids)
+            compensate_gravity(model, data, [model.body("left/base_link").id, model.body("right/base_link").id])
 
             mujoco.mj_step(model, data)
 
