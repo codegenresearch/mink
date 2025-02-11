@@ -17,21 +17,43 @@ if __name__ == "__main__":
     hands = ["right_wrist", "left_wrist"]
 
     tasks = [
-        pelvis_orientation_task := mink.FrameTask(frame_name="pelvis", frame_type="body", position_cost=0.0, orientation_cost=10.0),
-        posture_task := mink.PostureTask(model, cost=1.0),
-        com_task := mink.ComTask(cost=200.0),
+        pelvis_orientation_task := mink.FrameTask(
+            frame_name="pelvis",
+            frame_type="body",
+            position_cost=0.0,
+            orientation_cost=10.0,
+        ),
+        posture_task := mink.PostureTask(
+            model,
+            cost=1.0,
+        ),
+        com_task := mink.ComTask(
+            cost=200.0,
+        ),
     ]
 
     feet_tasks = []
     for foot in feet:
-        foot_task = mink.FrameTask(frame_name=foot, frame_type="site", position_cost=200.0, orientation_cost=10.0, lm_damping=1.0)
-        feet_tasks.append(foot_task)
+        task = mink.FrameTask(
+            frame_name=foot,
+            frame_type="site",
+            position_cost=200.0,
+            orientation_cost=10.0,
+            lm_damping=1.0,
+        )
+        feet_tasks.append(task)
     tasks.extend(feet_tasks)
 
     hand_tasks = []
     for hand in hands:
-        hand_task = mink.FrameTask(frame_name=hand, frame_type="site", position_cost=200.0, orientation_cost=0.0, lm_damping=1.0)
-        hand_tasks.append(hand_task)
+        task = mink.FrameTask(
+            frame_name=hand,
+            frame_type="site",
+            position_cost=200.0,
+            orientation_cost=0.0,
+            lm_damping=1.0,
+        )
+        hand_tasks.append(task)
     tasks.extend(hand_tasks)
 
     com_mid = model.body("com_target").mocapid[0]
@@ -42,7 +64,12 @@ if __name__ == "__main__":
     data = configuration.data
     solver = "quadprog"
 
-    with mujoco.viewer.launch_passive(model=model, data=data, show_left_ui=False, show_right_ui=False) as viewer:
+    with mujoco.viewer.launch_passive(
+        model=model,
+        data=data,
+        show_left_ui=False,
+        show_right_ui=False,
+    ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
         # Initialize to the home keyframe.
