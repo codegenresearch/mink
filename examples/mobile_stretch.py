@@ -15,13 +15,13 @@ def construct_model(xml_path):
 
 def initialize_tasks(model):
     return [
-        mink.FrameTask(
+        base_task := mink.FrameTask(
             frame_name="base_link",
             frame_type="body",
             position_cost=0.1,
             orientation_cost=1.0,
         ),
-        mink.FrameTask(
+        fingertip_task := mink.FrameTask(
             frame_name="link_grasp_center",
             frame_type="site",
             position_cost=1.0,
@@ -36,10 +36,11 @@ def main():
 
     solver = "quadprog"
     circle_radius = 0.5
-    base_target_mocapid = model.body("base_target").mocapid[0]
+    mid = model.body("base_target").mocapid[0]
+    data = configuration.data
 
     with mujoco.viewer.launch_passive(
-        model=model, data=configuration.data, show_left_ui=False, show_right_ui=False
+        model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
@@ -49,34 +50,34 @@ def main():
         base_task.set_target_from_configuration(configuration)
         assert base_task.transform_target_to_world is not None
 
-        fingertip_transform = configuration.get_transform_frame_to_world("link_grasp_center", "site")
-        center_translation = fingertip_transform.translation()[:2]
-        fingertip_task.set_target(fingertip_transform)
-        mink.move_mocap_to_frame(model, configuration.data, "EE_target", "link_grasp_center", "site")
+        transform_fingertip_target_to_world = configuration.get_transform_frame_to_world("link_grasp_center", "site")
+        center_translation = transform_fingertip_target_to_world.translation()[:2]
+        fingertip_task.set_target(transform_fingertip_target_to_world)
+        mink.move_mocap_to_frame(model, data, "EE_target", "link_grasp_center", "site")
 
-        rate_limiter = RateLimiter(frequency=100.0, warn=True)
+        rate = RateLimiter(frequency=100.0, warn=False)
         t = 0.0
         while viewer.is_running():
             # Update task targets
             u = np.array([np.cos(t / 2), np.sin(t / 2)])
-            base_transform = base_task.transform_target_to_world.copy()
-            base_translation = base_transform.translation()
-            base_translation[:2] = center_translation + circle_radius * u
-            configuration.data.mocap_pos[base_target_mocapid] = base_translation
-            configuration.data.mocap_quat[base_target_mocapid] = mink.SO3.from_rpy_radians(
+            T = base_task.transform_target_to_world.copy()
+            translation = T.translation()
+            translation[:2] = center_translation + circle_radius * u
+            data.mocap_pos[mid] = translation
+            data.mocap_quat[mid] = mink.SO3.from_rpy_radians(
                 0.0, 0.0, 0.5 * np.pi * t
             ).wxyz
-            base_task.set_target(mink.SE3.from_mocap_id(configuration.data, base_target_mocapid))
+            base_task.set_target(mink.SE3.from_mocap_id(data, mid))
 
             # Compute velocity and integrate into the next configuration.
-            velocity = mink.solve_ik(configuration, tasks, rate_limiter.dt, solver, 1e-3)
-            configuration.integrate_inplace(velocity, rate_limiter.dt)
-            mujoco.mj_camlight(model, configuration.data)
+            vel = mink.solve_ik(configuration, tasks, rate.period, solver, 1e-3)
+            configuration.integrate_inplace(vel, rate.period)
+            mujoco.mj_camlight(model, data)
 
             # Visualize at fixed FPS.
             viewer.sync()
-            rate_limiter.sleep()
-            t += rate_limiter.dt
+            rate.sleep()
+            t += rate.period
 
 if __name__ == "__main__":
     main()
