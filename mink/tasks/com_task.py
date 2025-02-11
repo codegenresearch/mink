@@ -16,11 +16,8 @@ from .task import Task
 class ComTask(Task):
     """Regulate the center-of-mass (CoM) position of a robot.
 
-    This task aims to align the robot's center of mass with a specified target position
-    in the world frame.
-
     Attributes:
-        target_com: Target position of the CoM in the world frame.
+        target_com: Desired center-of-mass position in the world frame.
     """
 
     k: int = 3  # Dimension of the CoM position (x, y, z)
@@ -90,8 +87,7 @@ class ComTask(Task):
     def compute_error(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the CoM task error.
 
-        The error is defined as the difference between the target CoM position and the
-        current CoM position:
+        The error is defined as:
 
         .. math::
 
@@ -115,14 +111,13 @@ class ComTask(Task):
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the CoM task Jacobian.
 
-        The task Jacobian is the derivative of the CoM position with respect to the
-        current configuration:
+        The task Jacobian is defined as:
 
         .. math::
 
             J(q) \in \mathbb{R}^{3 \times n_v}
 
-        where :math:`J(q)` is the Jacobian matrix, :math:`n_v` is the number of degrees of freedom.
+        where :math:`J(q)` is the Jacobian matrix and :math:`n_v` is the number of degrees of freedom.
 
         Args:
             configuration: Robot configuration :math:`q`.
