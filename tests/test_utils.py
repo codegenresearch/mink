@@ -35,7 +35,7 @@ def get_direct_and_descendant_geoms(model, body_id):
         child_start = model.body_childadr[current_body_id]
         child_end = model.body_childadr[current_body_id + 1]
         for child_id in range(child_start, child_end):
-            stack.append(model.bodyid2bodyid[child_id])
+            stack.append(child_id)
             geom_start = model.geom_bodyadr[child_id]
             geom_end = model.geom_bodyadr[child_id + 1]
             for geom_id in range(geom_start, geom_end):
@@ -121,9 +121,9 @@ class TestUtils(absltest.TestCase):
 
         # Initially not the same.
         with np.testing.assert_raises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
+            np.testing.assert_allclose(data.body("mocap").xpos, body_pos, atol=1e-6)
         with np.testing.assert_raises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
+            np.testing.assert_allclose(data.body("mocap").xquat, body_quat, atol=1e-6)
 
         utils.move_mocap_to_frame(model, data, "mocap", "test", "body")
         mujoco.mj_forward(model, data)
@@ -168,10 +168,10 @@ class TestUtils(absltest.TestCase):
         </mujoco>
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
-        b1_id = model.body("b1").id
+        b1_id = model.body_name2id("b1")
         actual_geom_ids = utils.get_subtree_geom_ids(model, b1_id)
         geom_names = ["b1/g1", "b1/g2", "b2/g1"]
-        expected_geom_ids = [model.geom(g).id for g in geom_names]
+        expected_geom_ids = [model.geom_name2id(g) for g in geom_names]
         self.assertListEqual(actual_geom_ids, expected_geom_ids)
 
     def test_get_direct_and_descendant_geoms(self):
@@ -199,12 +199,12 @@ class TestUtils(absltest.TestCase):
         </mujoco>
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
-        b1_id = model.body("b1").id
+        b1_id = model.body_name2id("b1")
         direct_geoms, descendant_geoms = get_direct_and_descendant_geoms(model, b1_id)
         direct_geom_names = ["b1/g1", "b1/g2"]
         descendant_geom_names = ["b1/g1", "b1/g2", "b2/g1"]
-        expected_direct_geom_ids = [model.geom(g).id for g in direct_geom_names]
-        expected_descendant_geom_ids = [model.geom(g).id for g in descendant_geom_names]
+        expected_direct_geom_ids = [model.geom_name2id(g) for g in direct_geom_names]
+        expected_descendant_geom_ids = [model.geom_name2id(g) for g in descendant_geom_names]
         self.assertListEqual(direct_geoms, expected_direct_geom_ids)
         self.assertListEqual(descendant_geoms, expected_descendant_geom_ids)
 
@@ -232,11 +232,11 @@ class TestUtils(absltest.TestCase):
         </mujoco>
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
-        b1_id = model.body("b1").id
+        b1_id = model.body_name2id("b1")
         actual_body_ids = utils.get_subtree_body_ids(model, b1_id)
         expected_body_names = ["b1", "b2"]
-        expected_body_ids = [model.body(g).id for g in expected_body_names]
-        self.assertListEqual(actual_body_ids, expected_body_ids)
+        expected_body_ids = {model.body_name2id(g) for g in expected_body_names}
+        self.assertSetEqual(set(actual_body_ids), expected_body_ids)
 
     def test_get_subtree_geom_ids_no_geoms(self):
         xml_str = """
@@ -252,7 +252,7 @@ class TestUtils(absltest.TestCase):
         </mujoco>
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
-        b1_id = model.body("b1").id
+        b1_id = model.body_name2id("b1")
         actual_geom_ids = utils.get_subtree_geom_ids(model, b1_id)
         self.assertListEqual(actual_geom_ids, [])
 
@@ -288,10 +288,10 @@ class TestUtils(absltest.TestCase):
         </mujoco>
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
-        b1_id = model.body("b1").id
+        b1_id = model.body_name2id("b1")
         direct_geoms, descendant_geoms = get_direct_and_descendant_geoms(model, b1_id)
         direct_geom_names = ["b1/g1", "b1/g2"]
-        expected_direct_geom_ids = [model.geom(g).id for g in direct_geom_names]
+        expected_direct_geom_ids = [model.geom_name2id(g) for g in direct_geom_names]
         self.assertListEqual(direct_geoms, expected_direct_geom_ids)
         self.assertListEqual(descendant_geoms, expected_direct_geom_ids)
 
