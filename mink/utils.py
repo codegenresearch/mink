@@ -35,7 +35,7 @@ def move_mocap_to_frame(
     mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
 
 
-def get_freejoint_dims(model: mujoco.MjModel) -> tuple[List[int], List[int]]:
+def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
     """Get all floating joint configuration and tangent indices.
 
     Args:
@@ -45,8 +45,8 @@ def get_freejoint_dims(model: mujoco.MjModel) -> tuple[List[int], List[int]]:
         A (q_ids, v_ids) pair containing all floating joint indices in the
         configuration and tangent spaces respectively.
     """
-    q_ids: List[int] = []
-    v_ids: List[int] = []
+    q_ids: list[int] = []
+    v_ids: list[int] = []
     for j in range(model.njnt):
         if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE:
             qadr = model.jnt_qposadr[j]
@@ -97,7 +97,7 @@ def custom_configuration_vector(
     return q
 
 
-def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
     """Get all geoms belonging to subtree starting at a given body.
 
     Args:
@@ -107,21 +107,29 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     Returns:
         A list containing all subtree geom ids.
     """
+    geom_ids: list[int] = []
+    stack = [body_id]
+    visited = set()
 
-    def gather_geoms(body_id: int) -> List[int]:
-        geoms: List[int] = []
-        geom_start = model.body_geomadr[body_id]
-        geom_end = geom_start + model.body_geomnum[body_id]
-        geoms.extend(range(geom_start, geom_end))
-        children = [i for i in range(model.nbody) if model.body_parentid[i] == body_id]
-        for child_id in children:
-            geoms.extend(gather_geoms(child_id))
-        return geoms
+    while stack:
+        current_body_id = stack.pop()
+        if current_body_id in visited:
+            continue
+        visited.add(current_body_id)
 
-    return gather_geoms(body_id)
+        geom_start = model.body_geomadr[current_body_id]
+        geom_end = geom_start + model.body_geomnum[current_body_id]
+        geom_ids.extend(range(geom_start, geom_end))
+
+        children = [
+            i for i in range(model.nbody) if model.body_parentid[i] == current_body_id
+        ]
+        stack.extend(children)
+
+    return geom_ids
 
 
-def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
     """Get all geoms belonging to a given body.
 
     Args:
@@ -148,7 +156,7 @@ def check_empty_geoms(model: mujoco.MjModel) -> bool:
     return model.ngeom == 0
 
 
-def get_multiple_body_geom_ids(model: mujoco.MjModel, body_ids: Set[int]) -> List[int]:
+def get_multiple_body_geom_ids(model: mujoco.MjModel, body_ids: set[int]) -> list[int]:
     """Get all geoms belonging to multiple bodies.
 
     Args:
@@ -158,7 +166,7 @@ def get_multiple_body_geom_ids(model: mujoco.MjModel, body_ids: Set[int]) -> Lis
     Returns:
         A list containing all geom ids for the specified bodies.
     """
-    geom_ids: List[int] = []
+    geom_ids: list[int] = []
     for body_id in body_ids:
         geom_ids.extend(get_body_geom_ids(model, body_id))
     return geom_ids
@@ -176,7 +184,7 @@ def apply_gravity_compensation(model: mujoco.MjModel, data: mujoco.MjData) -> No
     mujoco.mj_step2(model, data)
 
 
-def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
     """Get all body IDs belonging to subtree starting at a given body.
 
     Args:
@@ -186,12 +194,35 @@ def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     Returns:
         A list containing all subtree body ids.
     """
+    body_ids: list[int] = []
+    stack = [body_id]
+    visited = set()
 
-    def gather_bodies(body_id: int) -> List[int]:
-        bodies: List[int] = [body_id]
-        children = [i for i in range(model.nbody) if model.body_parentid[i] == body_id]
-        for child_id in children:
-            bodies.extend(gather_bodies(child_id))
-        return bodies
+    while stack:
+        current_body_id = stack.pop()
+        if current_body_id in visited:
+            continue
+        visited.add(current_body_id)
+        body_ids.append(current_body_id)
 
-    return gather_bodies(body_id)
+        children = [
+            i for i in range(model.nbody) if model.body_parentid[i] == current_body_id
+        ]
+        stack.extend(children)
+
+    return body_ids
+
+
+def get_body_body_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
+    """Get all immediate child body IDs of a given body.
+
+    Args:
+        model: Mujoco model.
+        body_id: ID of body.
+
+    Returns:
+        A list containing all immediate child body ids.
+    """
+    return [
+        i for i in range(model.nbody) if model.body_parentid[i] == body_id and i != body_id
+    ]
