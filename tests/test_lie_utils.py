@@ -7,11 +7,11 @@ from mink.lie import utils
 
 
 class TestUtils(absltest.TestCase):
-    def test_skew_raises_error_for_invalid_shape(self):
+    def test_skew_raises_error_for_non_3d_input(self):
         with self.assertRaises(AssertionError):
             utils.skew(np.zeros((5,)))
 
-    def test_skew_matrix_transpose_is_negative(self):
+    def test_skew_matrix_transpose_equals_negative(self):
         m = utils.skew(np.random.randn(3))
         np.testing.assert_allclose(m.T, -m)
 
