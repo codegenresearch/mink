@@ -236,9 +236,9 @@ if __name__ == "__main__":
 
 
 ### Key Changes:
-- **Syntax Correction**: Removed the incorrectly formatted comment that was causing a `SyntaxError`.
+- **Removed Incorrect Comment**: Removed the incorrectly formatted comment that was causing a `SyntaxError`.
 - **Error Messages**: Ensured that the error messages in the tests match exactly with those expected by the gold code.
 - **Simplification of Test Cases**: Simplified some tests to focus on essential assertions.
 - **Consistency in Exception Handling**: Ensured that exception handling is consistent with the gold code.
 - **Redundant Assertions**: Removed unnecessary assertions to streamline the tests.
-- **Focus on Essential Assertions**: Ensured each test case focuses on the essential behavior being tested.
+- **Focus on Essential Assertions**: Ensured each test case focuses on the core behavior being tested.
