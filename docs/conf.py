@@ -31,10 +31,9 @@ autodoc_typehints = "both"
 autodoc_class_signature = "separated"
 autodoc_default_options = {
     "members": True,
-    "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": None,
+    "inherited-members": True,
     "exclude-members": "__init__, __weakref__",
 }
 
