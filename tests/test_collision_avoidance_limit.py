@@ -1,4 +1,4 @@
-"""Tests for collision_avoidance_limit.py."""
+"""Tests for configuration_limit.py."""
 
 import itertools
 
@@ -21,15 +21,15 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.model = load_robot_description("ur5e_mj_description")
+        cls.model = load_robot_description("panda_mj_description")
 
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("home")
 
     def test_dimensions(self):
-        g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
-        g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
+        g1 = get_body_geom_ids(self.model, self.model.body("panda_hand").id)
+        g2 = get_body_geom_ids(self.model, self.model.body("table").id)
 
         bound_relaxation = -1e-3
         limit = CollisionAvoidanceLimit(
@@ -63,7 +63,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         self.assertEqual(h.shape, (expected_max_num_contacts,))
 
     def test_contact_normal_jac_matches_mujoco(self):
-        model = load_robot_description("ur5e_mj_description")
+        model = load_robot_description("panda_mj_description")
         nv = model.nv
 
         # Options necessary to obtain separation normal + dense matrices.
@@ -81,7 +81,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         data = mujoco.MjData(model)
 
         # Handcrafted qpos with multiple contacts.
-        qpos_coll = np.asarray([-1.5708, -1.5708, 3.01632, -1.5708, -1.5708, 0])
+        qpos_coll = np.asarray([0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785])
         data.qpos = qpos_coll
         mujoco.mj_forward(model, data)
         self.assertGreater(data.ncon, 1)
