@@ -61,30 +61,30 @@ if __name__ == "__main__":
     right_subtree_id = model.body("right/base_link").id
 
     # Collect joint and actuator IDs for both arms.
-    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
-    dof_ids = np.array([model.joint(name).id for name in joint_names])
-    actuator_ids = np.array([model.actuator(name).id for name in joint_names])
+    joint_ids = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
+    dof_ids = np.array([model.joint(name).id for name in joint_ids])
+    actuator_ids = np.array([model.actuator(name).id for name in joint_ids])
 
     configuration = mink.Configuration(model)
 
     # Define tasks for both arms and posture.
-    l_ee_task = mink.FrameTask(
-        frame_name="left/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    r_ee_task = mink.FrameTask(
-        frame_name="right/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    posture_task = mink.PostureTask(model, cost=1e-4)
-
-    tasks = [l_ee_task, r_ee_task, posture_task]
+    tasks = [
+        l_ee_task := mink.FrameTask(
+            frame_name="left/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+        r_ee_task := mink.FrameTask(
+            frame_name="right/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+        posture_task := mink.PostureTask(model, cost=1e-4),
+    ]
 
     # Set up collision avoidance for specified geometries.
     left_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "left/target", "left/gripper", "site")
         mink.move_mocap_to_frame(model, data, "right/target", "right/gripper", "site")
 
-        rate_limiter = RateLimiter(frequency=200.0)
+        rate_limiter = RateLimiter(frequency=200.0, warn=False)
         while viewer.is_running():
             # Update task targets.
             l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
