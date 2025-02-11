@@ -1,4 +1,4 @@
-"""Collision avoidance limit."""
+"""Collision avoidance limit with posture tasks and simplified velocity handling."""
 
 import itertools
 from dataclasses import dataclass
@@ -19,23 +19,6 @@ CollisionPairs = Sequence[CollisionPair]
 
 @dataclass(frozen=True)
 class Contact:
-    """Struct to store contact information between two geoms.
-
-    Attributes:
-        dist: Smallest signed distance between geom1 and geom2. If no collision of
-            distance smaller than distmax is found, this value is equal to distmax [1].
-        fromto: Segment connecting the closest points on geom1 and geom2. The first
-            three elements are the coordinates of the closest point on geom1, and the
-            last three elements are the coordinates of the closest point on geom2.
-        geom1: ID of geom1.
-        geom2: ID of geom2.
-        distmax: Maximum distance between geom1 and geom2.
-
-    References:
-        [1] MuJoCo API documentation. `mj_geomDistance` function.
-            https://mujoco.readthedocs.io/en/latest/APIreference/APIfunctions.html
-    """
-
     dist: float
     fromto: np.ndarray
     geom1: int
@@ -44,16 +27,12 @@ class Contact:
 
     @property
     def normal(self) -> np.ndarray:
-        """Contact normal pointing from geom1 to geom2."""
         normal = self.fromto[3:] - self.fromto[:3]
-        mujoco.mju_normalize3(normal)
-        return normal
+        return normal / (np.linalg.norm(normal) + 1e-9)
 
     @property
     def inactive(self) -> bool:
-        """Returns True if no distance smaller than distmax is detected between geom1
-        and geom2."""
-        return self.dist == self.distmax
+        return self.dist == self.distmax and not self.fromto.any()
 
 
 def compute_contact_normal_jacobian(
@@ -116,13 +95,13 @@ def _is_pass_contype_conaffinity_check(
 
 
 class CollisionAvoidanceLimit(Limit):
-    """Normal velocity limit between geom pairs.
+    """Normal velocity limit between geom pairs with posture tasks and simplified velocity handling.
 
     Attributes:
         model: MuJoCo model.
         geom_pairs: Set of collision pairs in which to perform active collision
             avoidance. A collision pair is defined as a pair of geom groups. A geom
-            group is a set of geom names. For each geom pair, the solver will
+            group is a set of geom names. For each collision pair, the solver will
             attempt to compute joint velocities that avoid collisions between every
             geom in the first geom group with every geom in the second geom group.
             Self collision is achieved by adding a collision pair with the same
@@ -176,6 +155,9 @@ class CollisionAvoidanceLimit(Limit):
             bound_relaxation: An offset on the upper bound of each collision avoidance
                 constraint.
         """
+        if not 0.0 < gain <= 1.0:
+            raise ValueError(f"Gain must be in the range (0, 1], got {gain}")
+
         self.model = model
         self.gain = gain
         self.minimum_distance_from_collisions = minimum_distance_from_collisions
@@ -200,7 +182,7 @@ class CollisionAvoidanceLimit(Limit):
             hi_bound_dist = contact.dist
             if hi_bound_dist > self.minimum_distance_from_collisions:
                 dist = hi_bound_dist - self.minimum_distance_from_collisions
-                upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
+                upper_bound[idx] = (self.gain * dist) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
             jac = compute_contact_normal_jacobian(
@@ -235,9 +217,10 @@ class CollisionAvoidanceLimit(Limit):
         for g in geom_list:
             if isinstance(g, int):
                 list_of_int.append(g)
-            else:
-                assert isinstance(g, str)
+            elif isinstance(g, str):
                 list_of_int.append(self.model.geom(g).id)
+            else:
+                raise TypeError(f"Geom must be int or str, got {type(g)}")
         return list_of_int
 
     def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
