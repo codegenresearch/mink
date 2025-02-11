@@ -12,7 +12,16 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
 # Joint names for a single arm.
-_JOINT_NAMES = [
+LEFT_JOINT_NAMES = [
+    "waist",
+    "shoulder",
+    "elbow",
+    "forearm_roll",
+    "wrist_angle",
+    "wrist_rotate",
+]
+
+RIGHT_JOINT_NAMES = [
     "waist",
     "shoulder",
     "elbow",
@@ -23,10 +32,8 @@ _JOINT_NAMES = [
 
 # Velocity limits for each joint, sourced from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_JOINT_VELOCITY_LIMITS = {}
-for joint in _JOINT_NAMES:
-    _JOINT_VELOCITY_LIMITS[f"left/{joint}"] = np.pi
-    _JOINT_VELOCITY_LIMITS[f"right/{joint}"] = np.pi
+JOINT_VELOCITY_LIMITS = {f"left/{joint}": np.pi for joint in LEFT_JOINT_NAMES}
+JOINT_VELOCITY_LIMITS.update({f"right/{joint}": np.pi for joint in RIGHT_JOINT_NAMES})
 
 
 def compensate_gravity(
@@ -61,22 +68,22 @@ if __name__ == "__main__":
     right_subtree_id = model.body("right/base_link").id
 
     # Collect joint and actuator IDs for both arms.
-    joint_ids = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
-    dof_ids = np.array([model.joint(name).id for name in joint_ids])
-    actuator_ids = np.array([model.actuator(name).id for name in joint_ids])
+    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in LEFT_JOINT_NAMES]
+    dof_ids = np.array([model.joint(name).id for name in joint_names])
+    actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
     configuration = mink.Configuration(model)
 
     # Define tasks for both arms and posture.
     tasks = [
-        l_ee_task := mink.FrameTask(
+        left_ee_task := mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        r_ee_task := mink.FrameTask(
+        right_ee_task := mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
@@ -105,7 +112,7 @@ if __name__ == "__main__":
 
     # Define limits for configuration, velocity, and collision avoidance.
     config_limit = mink.ConfigurationLimit(model=model)
-    velocity_limit = mink.VelocityLimit(model, _JOINT_VELOCITY_LIMITS)
+    velocity_limit = mink.VelocityLimit(model, JOINT_VELOCITY_LIMITS)
     limits = [config_limit, velocity_limit, collision_avoidance_limit]
 
     # Mocap IDs for left and right targets.
@@ -136,8 +143,8 @@ if __name__ == "__main__":
         rate_limiter = RateLimiter(frequency=200.0, warn=False)
         while viewer.is_running():
             # Update task targets.
-            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Solve IK and integrate the solution.
             for _ in range(max_iterations):
@@ -152,10 +159,10 @@ if __name__ == "__main__":
                 configuration.integrate_inplace(velocity, rate_limiter.dt)
 
                 # Check if both arms have reached their targets.
-                left_error = l_ee_task.compute_error(configuration)
+                left_error = left_ee_task.compute_error(configuration)
                 left_position_achieved = np.linalg.norm(left_error[:3]) <= position_threshold
                 left_orientation_achieved = np.linalg.norm(left_error[3:]) <= orientation_threshold
-                right_error = r_ee_task.compute_error(configuration)
+                right_error = right_ee_task.compute_error(configuration)
                 right_position_achieved = np.linalg.norm(right_error[:3]) <= position_threshold
                 right_orientation_achieved = np.linalg.norm(right_error[3:]) <= orientation_threshold
                 if left_position_achieved and left_orientation_achieved and right_position_achieved and right_orientation_achieved:
