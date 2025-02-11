@@ -26,16 +26,16 @@ class TestVelocityLimit(absltest.TestCase):
             self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt) if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE
         }
 
-    def test_projection_matrix_and_indices_dimensions(self):
-        """Test the dimensions of the projection matrix and indices."""
+    def test_projection_matrix_and_indices(self):
+        """Test dimensions of projection matrix and indices."""
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
         nb = nv - len(get_freejoint_dims(self.model)[1])
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
 
-    def test_no_velocity_limits(self):
-        """Test the behavior when no velocity limits are defined."""
+    def test_no_limits(self):
+        """Test behavior with no velocity limits."""
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
         empty_bounded = VelocityLimit(empty_model)
         self.assertEqual(len(empty_bounded.indices), 0)
@@ -44,8 +44,8 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(G)
         self.assertIsNone(h)
 
-    def test_subset_of_velocity_limits(self):
-        """Test the behavior when only a subset of joints have velocity limits."""
+    def test_subset_limits(self):
+        """Test behavior with a subset of velocity limits."""
         valid_joint_names = [self.model.joint(i).name for i in range(self.model.njnt) if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE]
         velocities = {joint_name: 3.14 for joint_name in valid_joint_names[:3]}
         limit = VelocityLimit(self.model, velocities)
@@ -54,7 +54,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
 
-    def test_ball_joint_velocity_limits(self):
+    def test_ball_joint_limits(self):
         """Test velocity limits for a ball joint."""
         xml_str = """
         <mujoco>
@@ -81,7 +81,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(limit.projection_matrix.shape, (nb, model.nv))
 
     def test_invalid_ball_joint_limit_shape(self):
-        """Test that an error is raised for an invalid ball joint limit shape."""
+        """Test error for invalid ball joint limit shape."""
         xml_str = """
         <mujoco>
           <worldbody>
@@ -105,8 +105,8 @@ class TestVelocityLimit(absltest.TestCase):
         expected_error_message = "Joint ball must have a limit of shape (3,). Got: (2,)"
         self.assertEqual(str(cm.exception), expected_error_message)
 
-    def test_free_joint_raises_error(self):
-        """Test that an error is raised when a free joint is included."""
+    def test_free_joint_error(self):
+        """Test error for free joint."""
         xml_str = """
         <mujoco>
           <worldbody>
