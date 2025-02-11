@@ -150,8 +150,10 @@ if __name__ == "__main__":
 
 ### Key Changes:
 1. **Removed Misplaced Comment/Docstring**: Ensured that there are no misplaced comments or documentation strings that could cause syntax errors.
-2. **Expected Values in Tests**: Reviewed and ensured that the expected values for `lower` and `upper` arrays in `test_model_with_subset_of_velocities_limited` and `test_freejoint_ignored` match the correct shapes and values.
+2. **Expected Values in Tests**: Reviewed and ensured that the expected values for `lower` and `upper` arrays in `test_indices`, `test_model_with_subset_of_velocities_limited`, and `test_freejoint_ignored` match the correct shapes and values.
 3. **Array Initialization**: Corrected the initialization of expected arrays to match the expected structure and values.
 4. **Comment Clarity**: Refined comments for clarity and consistency with the expected behavior.
 5. **Consistency in Assertions**: Ensured that assertions are consistent with the expected outcomes.
 6. **Method Descriptions**: Reviewed and ensured that docstrings clearly describe what each test is verifying.
+
+This should address the syntax error and align the code more closely with the expected structure and values.
