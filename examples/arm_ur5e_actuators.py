@@ -36,7 +36,7 @@ if __name__ == "__main__":
         ),
     ]
 
-    # Enable collision avoidance between the wrist_3_link and the floor, wall
+    # Enable collision avoidance between wrist_3_link and floor, wall
     wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
         (wrist_3_geoms, ["floor", "wall"]),
