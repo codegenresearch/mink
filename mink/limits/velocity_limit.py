@@ -89,8 +89,8 @@ class VelocityLimit(Limit):
 
         Returns:
             Pair :math:`(G, h)` representing the inequality constraint as
-            :math:`G \Delta q \leq h`, where :math:`G` has shape (2nb, nv) and
-            :math:`h` has shape (2nb,), or ``None`` if there is no limit.
+            :math:`G \Delta q \leq h`, where :math:`G` is a matrix of shape (2nb, nv)
+            and :math:`h` is a vector of shape (2nb,), or ``None`` if there is no limit.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
