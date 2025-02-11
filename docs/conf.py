@@ -28,14 +28,12 @@ source_suffix = {".rst": "restructuredtext"}
 
 pygments_style = "sphinx"
 
-napoleon_numpy_docstring = False
-napoleon_use_rtype = False
-
 # Autodoc configuration
 autodoc_typehints = "both"
 autodoc_class_signature = "separated"
 autodoc_default_options = {
     "members": True,
+    "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
     "inherited-members": True,
@@ -44,8 +42,12 @@ autodoc_default_options = {
 
 # Autodoc type aliases
 autodoc_type_aliases = {
-    "MyType": "int",
+    "ExampleType": "int",
 }
+
+# Napoleon settings
+napoleon_numpy_docstring = False
+napoleon_use_rtype = False
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
