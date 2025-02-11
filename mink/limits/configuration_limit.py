@@ -26,7 +26,7 @@ class ConfigurationLimit(Limit):
         Args:
             model: MuJoCo model.
             gain: Gain factor in (0, 1] that determines how fast each joint is
-                allowed to move towards the joint limits at each timestep. Values lower
+                allowed to move towards the joint limits at each timestep. Values less
                 than 1 are safer but may make the joints move more slowly.
             min_distance_from_limits: Offset in meters (slide joints) or radians
                 (hinge joints) to be added to the limits. Positive values decrease the
@@ -39,8 +39,8 @@ class ConfigurationLimit(Limit):
             )
 
         index_list: list[int] = []  # DoF indices that are limited.
-        lower = np.full(model.nq, -mujoco.mjMAXVAL)
-        upper = np.full(model.nq, mujoco.mjMAXVAL)
+        lower = np.full((model.nq,), -mujoco.mjMAXVAL)
+        upper = np.full((model.nq,), mujoco.mjMAXVAL)
         for jnt in range(model.njnt):
             jnt_type = model.jnt_type[jnt]
             qpos_dim = qpos_width(jnt_type)
@@ -97,7 +97,7 @@ class ConfigurationLimit(Limit):
             return Constraint()
 
         # Upper.
-        delta_q_max = np.zeros(self.model.nv)
+        delta_q_max = np.zeros((self.model.nv,))
         mujoco.mj_differentiatePos(
             m=self.model,
             qvel=delta_q_max,
@@ -107,7 +107,7 @@ class ConfigurationLimit(Limit):
         )
 
         # Lower.
-        delta_q_min = np.zeros(self.model.nv)
+        delta_q_min = np.zeros((self.model.nv,))
         mujoco.mj_differentiatePos(
             m=self.model,
             qvel=delta_q_min,
