@@ -1,12 +1,21 @@
 """Configuration space of a robot model.
 
-The :class:`Configuration` class bundles a MuJoCo `model <https://mujoco.readthedocs.io/en/latest/APIreference/APItypes.html#mjmodel>`__
-and `data <https://mujoco.readthedocs.io/en/latest/APIreference/APItypes.html#mjdata>`__,
-and enables easy access to kinematic quantities such as frame transforms and frame
-Jacobians.
+The Configuration class encapsulates a MuJoCo model and its associated data,
+enabling easy access to kinematic quantities such as frame transforms and Jacobians.
+It automatically performs forward kinematics at each time step, ensuring that all
+kinematic queries return up-to-date information.
 
-Frames are coordinate systems that can be attached to different elements of
-the robot model. mink supports frames of type `body`, `geom` and `site`.
+In this context, a frame refers to a coordinate system that can be attached to
+different elements of the robot model. Currently supported frames include
+`body`, `geom`, and `site`.
+
+Key functionalities include:
+
+    - Running forward kinematics to update the state.
+    - Checking configuration limits.
+    - Computing Jacobians for different frames.
+    - Retrieving frame transforms relative to the world frame.
+    - Integrating velocities to update configurations.
 """
 
 from typing import Optional
@@ -27,10 +36,6 @@ class Configuration:
     kinematics is computed at each time step, allowing the user to query up-to-date
     information about the robot's state.
 
-    In this context, a frame refers to a coordinate system that can be attached to
-    different elements of the robot model. Currently supported frames include
-    `body`, `geom` and `site`.
-
     Key functionalities include:
 
         - Running forward kinematics to update the state.
@@ -43,98 +48,92 @@ class Configuration:
     def __init__(
         self,
         model: mujoco.MjModel,
-        q: Optional[np.ndarray] = None,
+        initial_configuration: Optional[np.ndarray] = None,
     ):
-        """Constructor.
+        """Initialize the Configuration with a model and an optional initial configuration.
 
         Args:
             model: Mujoco model.
-            q: Configuration to initialize from. If None, the configuration
+            initial_configuration: Configuration to initialize from. If None, the configuration
                 is initialized to the reference configuration `qpos0`.
         """
         self.model = model
         self.data = mujoco.MjData(model)
-        self.update(q=q)
+        self.update(initial_configuration)
 
-    def update(self, q: Optional[np.ndarray] = None) -> None:
-        """Run forward kinematics.
+    def update(self, configuration: Optional[np.ndarray] = None) -> None:
+        """Run forward kinematics to update the state.
 
         Args:
-            q: Optional configuration vector to override internal data.qpos with.
+            configuration: Optional configuration vector to override the internal data.qpos.
         """
-        if q is not None:
-            self.data.qpos = q
-        # The minimal function call required to get updated frame transforms is
-        # mj_kinematics. An extra call to mj_comPos is required for updated Jacobians.
+        if configuration is not None:
+            self.data.qpos = configuration
+        # Perform forward kinematics to update frame transforms and Jacobians.
         mujoco.mj_kinematics(self.model, self.data)
         mujoco.mj_comPos(self.model, self.data)
 
-    def update_from_keyframe(self, key_name: str) -> None:
-        """Update the configuration from a keyframe.
+    def update_from_keyframe(self, keyframe_name: str) -> None:
+        """Update the configuration from a specified keyframe.
 
         Args:
-            key_name: The name of the keyframe.
+            keyframe_name: The name of the keyframe.
 
         Raises:
-            ValueError: if no key named `key` was found in the model.
+            InvalidKeyframe: If no keyframe with the specified name is found in the model.
         """
-        key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
-        if key_id == -1:
-            raise exceptions.InvalidKeyframe(key_name, self.model)
-        self.update(q=self.model.key_qpos[key_id])
+        keyframe_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, keyframe_name)
+        if keyframe_id == -1:
+            raise exceptions.InvalidKeyframe(keyframe_name, self.model)
+        self.update(self.model.key_qpos[keyframe_id])
 
-    def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
-        """Check that the current configuration is within bounds.
+    def check_limits(self, tolerance: float = 1e-6, raise_exception: bool = True) -> None:
+        """Check if the current configuration is within the specified joint limits.
 
         Args:
-            tol: Tolerance in [rad].
-            safety_break: If True, stop execution and raise an exception if the current
-                configuration is outside limits. If False, print a warning and continue
-                execution.
+            tolerance: Tolerance in radians for checking joint limits.
+            raise_exception: If True, raise an exception if the configuration is out of limits.
+                If False, print a warning and continue execution.
+
+        Raises:
+            NotWithinConfigurationLimits: If the configuration is out of limits and raise_exception is True.
         """
-        for jnt in range(self.model.njnt):
-            jnt_type = self.model.jnt_type[jnt]
-            if (
-                jnt_type == mujoco.mjtJoint.mjJNT_FREE
-                or not self.model.jnt_limited[jnt]
-            ):
+        for joint_index in range(self.model.njnt):
+            joint_type = self.model.jnt_type[joint_index]
+            if joint_type == mujoco.mjtJoint.mjJNT_FREE or not self.model.jnt_limited[joint_index]:
                 continue
-            padr = self.model.jnt_qposadr[jnt]
-            qval = self.q[padr]
-            qmin = self.model.jnt_range[jnt, 0]
-            qmax = self.model.jnt_range[jnt, 1]
-            if qval < qmin - tol or qval > qmax + tol:
-                if safety_break:
+            joint_position_index = self.model.jnt_qposadr[joint_index]
+            joint_value = self.q[joint_position_index]
+            joint_min = self.model.jnt_range[joint_index, 0]
+            joint_max = self.model.jnt_range[joint_index, 1]
+            if joint_value < joint_min - tolerance or joint_value > joint_max + tolerance:
+                if raise_exception:
                     raise exceptions.NotWithinConfigurationLimits(
-                        joint_id=jnt,
-                        value=qval,
-                        lower=qmin,
-                        upper=qmax,
+                        joint_id=joint_index,
+                        value=joint_value,
+                        lower=joint_min,
+                        upper=joint_max,
                         model=self.model,
                     )
                 else:
                     print(
-                        f"Value {qval} at index {jnt} is out of limits: "
-                        f"[{qmin}, {qmax}]"
+                        f"Joint value {joint_value} at index {joint_index} is out of limits: "
+                        f"[{joint_min}, {joint_max}]"
                     )
 
     def get_frame_jacobian(self, frame_name: str, frame_type: str) -> np.ndarray:
-        """Compute the Jacobian matrix of a frame velocity.
-
-        Denoting our frame by :math:`B` and the world frame by :math:`W`, the
-        Jacobian matrix :math:`{}_B J_{WB}` is related to the body velocity
-        :math:`{}_B v_{WB}` by:
-
-        .. math::
-
-            {}_B v_{WB} = {}_B J_{WB} \dot{q}
+        """Compute the Jacobian matrix of a frame velocity relative to the world frame.
 
         Args:
             frame_name: Name of the frame in the MJCF.
-            frame_type: Type of frame. Can be a geom, a body or a site.
+            frame_type: Type of frame. Can be 'geom', 'body', or 'site'.
 
         Returns:
-            Jacobian :math:`{}_B J_{WB}` of the frame.
+            Jacobian matrix of the frame velocity relative to the world frame.
+
+        Raises:
+            UnsupportedFrame: If the frame type is not supported.
+            InvalidFrame: If the frame name is not found in the model.
         """
         if frame_type not in consts.SUPPORTED_FRAMES:
             raise exceptions.UnsupportedFrame(frame_type, consts.SUPPORTED_FRAMES)
@@ -149,29 +148,31 @@ class Configuration:
                 model=self.model,
             )
 
-        jac = np.empty((6, self.model.nv))
-        jac_func = consts.FRAME_TO_JAC_FUNC[frame_type]
-        jac_func(self.model, self.data, jac[:3], jac[3:], frame_id)
+        jacobian = np.empty((6, self.model.nv))
+        jacobian_function = consts.FRAME_TO_JAC_FUNC[frame_type]
+        jacobian_function(self.model, self.data, jacobian[:3], jacobian[3:], frame_id)
 
-        # MuJoCo jacobians have a frame of reference centered at the local frame but
-        # aligned with the world frame. To obtain a jacobian expressed in the local
-        # frame, aka body jacobian, we need to left-multiply by A[T_fw].
-        xmat = getattr(self.data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
-        R_wf = SO3.from_matrix(xmat.reshape(3, 3))
-        A_fw = SE3.from_rotation(R_wf.inverse()).adjoint()
-        jac = A_fw @ jac
+        # Convert the Jacobian from world frame to the local frame.
+        rotation_matrix = getattr(self.data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
+        world_to_frame_rotation = SO3.from_matrix(rotation_matrix.reshape(3, 3))
+        frame_to_world_adjoint = SE3.from_rotation(world_to_frame_rotation.inverse()).adjoint()
+        jacobian = frame_to_world_adjoint @ jacobian
 
-        return jac
+        return jacobian
 
     def get_transform_frame_to_world(self, frame_name: str, frame_type: str) -> SE3:
-        """Get the pose of a frame at the current configuration.
+        """Get the pose of a frame relative to the world frame at the current configuration.
 
         Args:
             frame_name: Name of the frame in the MJCF.
-            frame_type: Type of frame. Can be a geom, a body or a site.
+            frame_type: Type of frame. Can be 'geom', 'body', or 'site'.
 
         Returns:
-            The pose of the frame in the world frame.
+            Pose of the frame relative to the world frame.
+
+        Raises:
+            UnsupportedFrame: If the frame type is not supported.
+            InvalidFrame: If the frame name is not found in the model.
         """
         if frame_type not in consts.SUPPORTED_FRAMES:
             raise exceptions.UnsupportedFrame(frame_type, consts.SUPPORTED_FRAMES)
@@ -186,35 +187,35 @@ class Configuration:
                 model=self.model,
             )
 
-        xpos = getattr(self.data, consts.FRAME_TO_POS_ATTR[frame_type])[frame_id]
-        xmat = getattr(self.data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
+        position = getattr(self.data, consts.FRAME_TO_POS_ATTR[frame_type])[frame_id]
+        rotation_matrix = getattr(self.data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
         return SE3.from_rotation_and_translation(
-            rotation=SO3.from_matrix(xmat.reshape(3, 3)),
-            translation=xpos,
+            rotation=SO3.from_matrix(rotation_matrix.reshape(3, 3)),
+            translation=position,
         )
 
-    def integrate(self, velocity: np.ndarray, dt: float) -> np.ndarray:
+    def integrate(self, velocity: np.ndarray, duration: float) -> np.ndarray:
         """Integrate a velocity starting from the current configuration.
 
         Args:
             velocity: The velocity in tangent space.
-            dt: Integration duration in [s].
+            duration: Integration duration in seconds.
 
         Returns:
             The new configuration after integration.
         """
-        q = self.data.qpos.copy()
-        mujoco.mj_integratePos(self.model, q, velocity, dt)
-        return q
+        new_configuration = self.data.qpos.copy()
+        mujoco.mj_integratePos(self.model, new_configuration, velocity, duration)
+        return new_configuration
 
-    def integrate_inplace(self, velocity: np.ndarray, dt: float) -> None:
-        """Integrate a velocity and update the current configuration inplace.
+    def integrate_inplace(self, velocity: np.ndarray, duration: float) -> None:
+        """Integrate a velocity and update the current configuration in place.
 
         Args:
             velocity: The velocity in tangent space.
-            dt: Integration duration in [s].
+            duration: Integration duration in seconds.
         """
-        mujoco.mj_integratePos(self.model, self.data.qpos, velocity, dt)
+        mujoco.mj_integratePos(self.model, self.data.qpos, velocity, duration)
         self.update()
 
     # Aliases.
