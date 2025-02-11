@@ -1,6 +1,6 @@
 """Build and solve the inverse kinematics problem."""
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, List
 
 import numpy as np
 import qpsolvers
@@ -13,6 +13,16 @@ from .tasks import Objective, Task
 def _compute_qp_objective(
     configuration: Configuration, tasks: Sequence[Task], damping: float
 ) -> Objective:
+    """Compute the quadratic programming objective for the inverse kinematics problem.
+
+    Args:
+        configuration: Robot configuration.
+        tasks: List of kinematic tasks.
+        damping: Levenberg-Marquardt damping.
+
+    Returns:
+        Objective (H, c) for the quadratic program.
+    """
     H = np.eye(configuration.model.nv) * damping
     c = np.zeros(configuration.model.nv)
     for task in tasks:
@@ -25,10 +35,20 @@ def _compute_qp_objective(
 def _compute_qp_inequalities(
     configuration: Configuration, limits: Optional[Sequence[Limit]], dt: float
 ) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    """Compute the quadratic programming inequalities for the inverse kinematics problem.
+
+    Args:
+        configuration: Robot configuration.
+        limits: List of limits to enforce.
+        dt: Integration timestep in [s].
+
+    Returns:
+        Pair (G, h) representing the inequality constraint as G * dq <= h, or (None, None) if there is no limit.
+    """
     if limits is None:
         limits = [ConfigurationLimit(configuration.model)]
-    G_list = []
-    h_list = []
+    G_list: List[np.ndarray] = []
+    h_list: List[np.ndarray] = []
     for limit in limits:
         inequality = limit.compute_qp_inequalities(configuration, dt)
         if not inequality.inactive:
@@ -107,15 +127,30 @@ def solve_ik(
     return v
 
 
-def initialize_configuration(model):
-    """Initialize a configuration with default values."""
+def initialize_configuration(model) -> Configuration:
+    """Initialize a configuration with default values.
+
+    Args:
+        model: MuJoCo model.
+
+    Returns:
+        Initialized configuration.
+    """
     configuration = Configuration(model)
     configuration.update(model.key("home").qpos)
     return configuration
 
 
-def validate_task_target(task, configuration):
-    """Validate that the task target is set and reachable."""
+def validate_task_target(task: Task, configuration: Configuration) -> None:
+    """Validate that the task target is set and reachable.
+
+    Args:
+        task: Kinematic task.
+        configuration: Robot configuration.
+
+    Raises:
+        ValueError: If the task target is not set or not reachable.
+    """
     if task.target is None:
         raise ValueError("Task target is not set.")
     try:
