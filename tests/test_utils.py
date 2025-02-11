@@ -178,8 +178,9 @@ class TestUtils(absltest.TestCase):
               <joint type="free"/>
               <geom type="sphere" size=".1" mass=".1"/>  <!-- Ensure body has a geom for mass -->
             </body>
-            <body name="b2">
+            <body name="b2" pos="0 0 0">
               <joint type="hinge" name="hinge_b2" range="0 1.57" limited="true"/>
+              <geom type="sphere" size=".1" mass=".1"/>  <!-- Add geom to b2 -->
             </body>
           </worldbody>
         </mujoco>
@@ -193,8 +194,9 @@ class TestUtils(absltest.TestCase):
 
         body_id_b2 = model.body("b2").id
         actual_geom_ids_b2 = utils.get_subtree_geom_ids(model, body_id_b2)
-        expected_geom_ids_b2 = []
-        self.assertListEqual(actual_geom_ids_b2, expected_geom_ids_b2)
+        expected_geom_names_b2 = {"b2/g1"}
+        expected_geom_ids_b2 = {model.geom(geom_name).id for geom_name in expected_geom_names_b2}
+        self.assertSetEqual(set(actual_geom_ids_b2), expected_geom_ids_b2)
 
 
 if __name__ == "__main__":
