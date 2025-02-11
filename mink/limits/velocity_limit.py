@@ -43,16 +43,16 @@ class VelocityLimit(Limit):
         for joint_name, max_vel in velocities.items():
             jid = model.joint(joint_name).id
             jnt_type = model.jnt_type[jid]
-            jnt_dim = dof_width(jnt_type)
-            jnt_id = model.jnt_dofadr[jid]
+            vdim = dof_width(jnt_type)
+            vadr = model.jnt_dofadr[jid]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
-                raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
+                raise LimitDefinitionError(f"Joint {joint_name} is a free joint and is not supported")
             max_vel = np.atleast_1d(max_vel)
-            if jnt_dim == 3 and max_vel.shape != (3,):
-                raise LimitDefinitionError(f"Ball joint {joint_name} must have a limit of shape (3,). Got: {max_vel.shape}")
-            elif jnt_dim != 3 and max_vel.shape != (jnt_dim,):
-                raise LimitDefinitionError(f"Joint {joint_name} must have a limit of shape ({jnt_dim},). Got: {max_vel.shape}")
-            index_list.extend(range(jnt_id, jnt_id + jnt_dim))
+            if vdim == 3 and max_vel.shape != (3,):
+                raise LimitDefinitionError(f"Joint {joint_name} must have a limit of shape (3,). Got: {max_vel.shape}")
+            elif vdim != 3 and max_vel.shape != (vdim,):
+                raise LimitDefinitionError(f"Joint {joint_name} must have a limit of shape ({vdim},). Got: {max_vel.shape}")
+            index_list.extend(range(vadr, vadr + vdim))
             limit_list.extend(max_vel.tolist())
 
         self.indices = np.array(index_list)
@@ -74,7 +74,7 @@ class VelocityLimit(Limit):
 
             -v_{\text{max}} \cdot dt \leq \Delta q \leq v_{\text{max}} \cdot dt
 
-        where :math:`v_{max}` is the maximum velocity vector and :math:`\Delta q`
+        where :math:`v_{\text{max}}` is the maximum velocity vector and :math:`\Delta q`
         is the velocity displacement in the tangent space.
 
         Args:
@@ -83,7 +83,9 @@ class VelocityLimit(Limit):
 
         Returns:
             Pair :math:`(G, h)` representing the inequality constraint as
-            :math:`G \Delta q \leq h`, or `None` if no limits are set.
+            :math:`G \Delta q \leq h`, where :math:`G` is a matrix of shape
+            :math:`(2 \times \text{dim}, \text{nv})` and :math:`h` is a vector of
+            shape :math:`(2 \times \text{dim},)`, or `None` if no limits are set.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
