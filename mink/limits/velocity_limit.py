@@ -1,4 +1,4 @@
-"""Joint velocity limit with posture task and enhanced collision avoidance."""
+"""Joint velocity limit."""
 
 from typing import Mapping
 
@@ -15,15 +15,14 @@ from .limit import Constraint, Limit
 class VelocityLimit(Limit):
     """Inequality constraint on joint velocities in a robot model.
 
-    Floating base joints are ignored. This class also supports adding posture tasks
-    and enhancing collision avoidance handling.
+    Floating base joints are ignored.
 
     Attributes:
-        indices: Tangent indices corresponding to velocity-limited joints.
+        indices: Tangent indices corresponding to velocity-limited joints. Shape: (n,)
         limit: Maximum allowed velocity magnitude for velocity-limited joints, in
-            [m]/[s] for slide joints and [rad]/[s] for hinge joints.
+            [m]/[s] for slide joints and [rad]/[s] for hinge joints. Shape: (n,)
         projection_matrix: Projection from tangent space to subspace with
-            velocity-limited joints.
+            velocity-limited joints. Shape: (n, nv)
     """
 
     indices: np.ndarray
@@ -34,8 +33,6 @@ class VelocityLimit(Limit):
         self,
         model: mujoco.MjModel,
         velocities: Mapping[str, npt.ArrayLike] = {},
-        posture_task: Mapping[str, npt.ArrayLike] = {},
-        collision_avoidance: bool = False,
     ):
         """Initialize velocity limits.
 
@@ -43,9 +40,6 @@ class VelocityLimit(Limit):
             model: MuJoCo model.
             velocities: Dictionary mapping joint name to maximum allowed magnitude in
                 [m]/[s] for slide joints and [rad]/[s] for hinge joints.
-            posture_task: Dictionary mapping joint name to desired posture in
-                [m] for slide joints and [rad] for hinge joints.
-            collision_avoidance: Boolean flag to enable collision avoidance handling.
         """
         limit_list: list[float] = []
         index_list: list[int] = []
@@ -72,8 +66,6 @@ class VelocityLimit(Limit):
 
         dim = len(self.indices)
         self.projection_matrix = np.eye(model.nv)[self.indices] if dim > 0 else None
-        self.posture_task = posture_task
-        self.collision_avoidance = collision_avoidance
 
     def compute_qp_inequalities(
         self, configuration: Configuration, dt: float
@@ -99,38 +91,9 @@ class VelocityLimit(Limit):
             Pair :math:`(G, h)` representing the inequality constraint as
             :math:`G \Delta q \leq h`, or ``None`` if there is no limit.
         """
+        del configuration  # Unused.
         if self.projection_matrix is None:
             return Constraint()
-
         G = np.vstack([self.projection_matrix, -self.projection_matrix])
         h = np.hstack([dt * self.limit, dt * self.limit])
-
-        # Add posture task constraints
-        if self.posture_task:
-            posture_constraints = self._compute_posture_task_constraints(configuration)
-            G = np.vstack([G, posture_constraints.G])
-            h = np.hstack([h, posture_constraints.h])
-
-        # Add collision avoidance constraints
-        if self.collision_avoidance:
-            collision_constraints = self._compute_collision_avoidance_constraints(configuration)
-            G = np.vstack([G, collision_constraints.G])
-            h = np.hstack([h, collision_constraints.h])
-
-        return Constraint(G=G, h=h)
-
-    def _compute_posture_task_constraints(self, configuration: Configuration) -> Constraint:
-        """Compute posture task constraints."""
-        # Placeholder for posture task constraint computation
-        # This should be replaced with actual logic based on the desired posture
-        G = np.zeros((0, configuration.q.shape[0]))
-        h = np.zeros(0)
-        return Constraint(G=G, h=h)
-
-    def _compute_collision_avoidance_constraints(self, configuration: Configuration) -> Constraint:
-        """Compute collision avoidance constraints."""
-        # Placeholder for collision avoidance constraint computation
-        # This should be replaced with actual logic based on collision detection
-        G = np.zeros((0, configuration.q.shape[0]))
-        h = np.zeros(0)
         return Constraint(G=G, h=h)
