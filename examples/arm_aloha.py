@@ -4,7 +4,7 @@ import mujoco.viewer
 import numpy as np
 from loop_rate_limiters import RateLimiter
 import mink
-from typing import List, Dict, Tuple, Sequence
+from typing import List, Dict, Tuple, Sequence, Optional
 
 _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
@@ -29,32 +29,60 @@ _ORIENTATION_THRESHOLD = 1e-2
 
 
 def get_joint_and_actuator_ids(model: mujoco.MjModel, joint_names: List[str]) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Get the degree of freedom (DOF) and actuator IDs for the specified joint names.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        joint_names (List[str]): List of joint names.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: Arrays of DOF and actuator IDs.
+    """
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
     return dof_ids, actuator_ids
 
 
 def initialize_tasks(model: mujoco.MjModel) -> List[mink.FrameTask]:
+    """
+    Initialize the tasks for the left and right end-effectors and posture.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+
+    Returns:
+        List[mink.FrameTask]: List of initialized tasks.
+    """
     return [
-        mink.FrameTask(
+        (l_ee_task := mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
-        ),
-        mink.FrameTask(
+        )),
+        (r_ee_task := mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
-        ),
-        mink.PostureTask(model, cost=1e-4),
+        )),
+        (posture_task := mink.PostureTask(model, cost=1e-4)),
     ]
 
 
 def setup_collision_avoidance(model: mujoco.MjModel) -> mink.CollisionAvoidanceLimit:
+    """
+    Set up collision avoidance for the specified geoms.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+
+    Returns:
+        mink.CollisionAvoidanceLimit: Configured collision avoidance limit.
+    """
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     l_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
@@ -73,6 +101,17 @@ def setup_collision_avoidance(model: mujoco.MjModel) -> mink.CollisionAvoidanceL
 
 
 def setup_limits(model: mujoco.MjModel, velocity_limits: Dict[str, float], collision_avoidance_limit: mink.CollisionAvoidanceLimit) -> List[mink.Limit]:
+    """
+    Set up the configuration limits, velocity limits, and collision avoidance limits.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        velocity_limits (Dict[str, float]): Dictionary of joint names and their velocity limits.
+        collision_avoidance_limit (mink.CollisionAvoidanceLimit): Configured collision avoidance limit.
+
+    Returns:
+        List[mink.Limit]: List of configuration limits.
+    """
     return [
         mink.ConfigurationLimit(model=model),
         mink.VelocityLimit(model, velocity_limits),
@@ -81,11 +120,27 @@ def setup_limits(model: mujoco.MjModel, velocity_limits: Dict[str, float], colli
 
 
 def initialize_mocap_targets(model: mujoco.MjModel, data: mujoco.MjData) -> None:
+    """
+    Initialize the mocap targets at the end-effector sites.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        data (mujoco.MjData): The MuJoCo data.
+    """
     mink.move_mocap_to_frame(model, data, "left/target", "left/gripper", "site")
     mink.move_mocap_to_frame(model, data, "right/target", "right/gripper", "site")
 
 
 def update_task_targets(model: mujoco.MjModel, data: mujoco.MjData, l_ee_task: mink.FrameTask, r_ee_task: mink.FrameTask) -> None:
+    """
+    Update the task targets for the left and right end-effectors.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        data (mujoco.MjData): The MuJoCo data.
+        l_ee_task (mink.FrameTask): Left end-effector task.
+        r_ee_task (mink.FrameTask): Right end-effector task.
+    """
     l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
     r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
@@ -101,6 +156,20 @@ def compute_velocity_and_integrate(
     ori_threshold: float,
     max_iters: int
 ) -> None:
+    """
+    Compute the velocity and integrate it into the next configuration.
+
+    Args:
+        configuration (mink.Configuration): The current configuration.
+        tasks (List[mink.FrameTask]): List of tasks.
+        rate (RateLimiter): Rate limiter for controlling the loop frequency.
+        solver (str): Solver to use for IK.
+        limits (List[mink.Limit]): List of limits.
+        damping (float): Damping factor for IK.
+        pos_threshold (float): Position threshold for task achievement.
+        ori_threshold (float): Orientation threshold for task achievement.
+        max_iters (int): Maximum number of iterations for IK.
+    """
     for i in range(max_iters):
         vel = mink.solve_ik(
             configuration,
@@ -113,27 +182,29 @@ def compute_velocity_and_integrate(
         configuration.integrate_inplace(vel, rate.dt)
 
         l_err = tasks[0].compute_error(configuration)
-        l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
-        l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-
         r_err = tasks[1].compute_error(configuration)
-        r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
-        r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
 
-        if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
+        if (np.linalg.norm(l_err[:3]) <= pos_threshold and np.linalg.norm(l_err[3:]) <= ori_threshold and
+            np.linalg.norm(r_err[:3]) <= pos_threshold and np.linalg.norm(r_err[3:]) <= ori_threshold):
             break
 
 
-def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, subtree_ids: Sequence[int], qfrc_applied: np.ndarray) -> None:
+def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, subtree_ids: Sequence[int], qfrc_applied: Optional[np.ndarray] = None) -> np.ndarray:
     """
-    Compensate for gravity by computing the necessary forces for each subtree and applying them to qfrc_applied.
+    Compensate for gravity by computing the necessary forces for each subtree.
 
     Args:
         model (mujoco.MjModel): The MuJoCo model.
         data (mujoco.MjData): The MuJoCo data.
         subtree_ids (Sequence[int]): List of subtree IDs for which to compute gravity compensation.
-        qfrc_applied (np.ndarray): Array to which the computed gravity forces will be added.
+        qfrc_applied (Optional[np.ndarray]): Array to which the computed gravity forces will be added. Defaults to None.
+
+    Returns:
+        np.ndarray: Array of gravity compensation forces.
     """
+    if qfrc_applied is None:
+        qfrc_applied = np.zeros(model.nu)
+
     for subtree_id in subtree_ids:
         # Compute the total mass of the subtree
         total_mass = 0.0
@@ -150,11 +221,14 @@ def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, subtree_ids: 
         gravity_compensation = total_mass * model.opt.gravity
         qfrc_applied += jacp.T @ gravity_compensation
 
+    return qfrc_applied
+
 
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
+    # Initialize joint names and velocity limits
     joint_names = [f"{prefix}/{n}" for prefix in ["left", "right"] for n in _JOINT_NAMES]
     velocity_limits = {name: _VELOCITY_LIMITS[name.split("/")[-1]] for name in joint_names}
     dof_ids, actuator_ids = get_joint_and_actuator_ids(model, joint_names)
@@ -188,8 +262,7 @@ if __name__ == "__main__":
             )
 
             # Compensate for gravity
-            qfrc_applied = np.zeros(model.nu)
-            compensate_gravity(model, data, [model.body("left/wrist_link").id, model.body("right/wrist_link").id], qfrc_applied)
+            qfrc_applied = compensate_gravity(model, data, [model.body("left/wrist_link").id, model.body("right/wrist_link").id])
             data.qfrc_applied[actuator_ids] += qfrc_applied[actuator_ids]
 
             mujoco.mj_step(model, data)
