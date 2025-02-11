@@ -5,19 +5,19 @@ from mink.tasks.task import Task
 
 
 class TestTask(absltest.TestCase):
-    """Test the Task class for proper error handling with invalid parameters."""
+    """Test the Task class for proper error handling."""
 
     def setUp(self):
-        """Prepare test fixture by making Task instantiable."""
+        """Prepare test fixture."""
         Task.__abstractmethods__ = set()
 
     def test_task_throws_error_if_gain_negative(self):
-        """Verify that Task raises InvalidGain when gain is negative."""
+        """Test that Task raises InvalidGain for negative gain."""
         with self.assertRaises(InvalidGain):
             Task(cost=0.0, gain=-0.5)
 
     def test_task_throws_error_if_lm_damping_negative(self):
-        """Verify that Task raises InvalidDamping when lm_damping is negative."""
+        """Test that Task raises InvalidDamping for negative lm_damping."""
         with self.assertRaises(InvalidDamping):
             Task(cost=0.0, gain=1.0, lm_damping=-1.0)
 
