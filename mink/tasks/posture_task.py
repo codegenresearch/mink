@@ -1,7 +1,7 @@
 """Posture task implementation.
 
 This module defines a task for regulating the joint angles of a robot towards a desired posture.
-A posture is defined as a vector of actuated joint angles, and this task does not affect floating-base coordinates.
+A posture is defined as a vector of actuated joint angles, excluding floating-base coordinates.
 
 References:
 - For more information on the Mujoco library, see: https://mujoco.readthedocs.io/
