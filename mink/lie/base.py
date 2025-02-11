@@ -33,7 +33,7 @@ class MatrixLieGroup(abc.ABC):
         assert isinstance(other, MatrixLieGroup)
         return self.multiply(other=other)
 
-    # Factory methods.
+    # Factory.
 
     @classmethod
     @abc.abstractmethod
