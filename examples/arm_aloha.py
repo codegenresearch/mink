@@ -43,30 +43,29 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_name: str) -> list[int]:
 def compensate_gravity(
     model: mujoco.MjModel,
     data: mujoco.MjData,
-    subtree_ids: Sequence[int],
-    qfrc_applied: Optional[np.ndarray] = None
-) -> np.ndarray:
+    subtree_ids: Sequence[int]
+) -> None:
     """
-    Compute forces to counteract gravity for the specified subtree.
+    Compute and apply forces to counteract gravity for the specified subtree.
 
     Args:
     - model (mujoco.MjModel): The MuJoCo model.
     - data (mujoco.MjData): The MuJoCo data.
     - subtree_ids (Sequence[int]): List of body IDs in the subtree.
-    - qfrc_applied (Optional[np.ndarray]): Array to store applied forces. Defaults to None.
-
-    Returns:
-    - np.ndarray: Gravity compensation forces.
     """
-    if qfrc_applied is None:
-        qfrc_applied = data.qfrc_applied.copy()
+    # Initialize Jacobian and COM position arrays
+    jacp = np.zeros((3, model.nv))
+    jacr = np.zeros((3, model.nv))
+    com_pos = np.zeros(3)
 
-    for body_id in subtree_ids:
-        start_idx = model.body_dofadr[body_id]
-        end_idx = start_idx + model.body_dofnum[body_id]
-        qfrc_applied[start_idx:end_idx] += data.qfrc_bias[start_idx:end_idx]
+    # Compute the Jacobian and COM position for the subtree
+    mujoco.mj_jacSubtreeCom(model, data, jacp, jacr, com_pos, subtree_ids[0])
 
-    return qfrc_applied
+    # Compute the gravity compensation force
+    gravity_compensation = -model.opt.gravity[2] * data.mass[subtree_ids[0]] * jacp[:, :3]
+
+    # Apply the gravity compensation force to qfrc_applied
+    data.qfrc_applied += gravity_compensation.flatten()
 
 def test_get_subtree_body_ids():
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
@@ -202,10 +201,10 @@ if __name__ == "__main__":
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
 
             # Apply gravity compensation
-            left_subtree_ids = get_subtree_body_ids(model, "left/wrist_link")
-            right_subtree_ids = get_subtree_body_ids(model, "right/wrist_link")
-            data.qfrc_applied = compensate_gravity(model, data, left_subtree_ids)
-            data.qfrc_applied = compensate_gravity(model, data, right_subtree_ids)
+            left_subtree_ids = get_subtree_body_ids(model, "left/base_link")
+            right_subtree_ids = get_subtree_body_ids(model, "right/base_link")
+            compensate_gravity(model, data, left_subtree_ids)
+            compensate_gravity(model, data, right_subtree_ids)
 
             mujoco.mj_step(model, data)
 
