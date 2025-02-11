@@ -113,7 +113,8 @@ if __name__ == "__main__":
    - Set `model.opt.cone` to `mujoco.mjtCone.mjCONE_ELLIPTIC`.
    - Set `model.opt.jacobian` to `mujoco.mjtJac.mjJAC_TRUE`.
 3. **Disable Flags**: Used the bitwise OR operator to combine the disable flags, matching the gold code's style.
-4. **Data Initialization**: Initialized the `data` object in the `test_contact_normal_jac_matches_mujoco` method after setting all necessary model options.
-5. **Contact Handling**: Set a specific `qpos` to ensure multiple contacts and used `mujoco.mj_contactForce` to compute contact forces.
-6. **Assertions**: Ensured that the assertions check for the number of contacts and the correctness of the Jacobian, consistent with the gold code.
-7. **Code Structure**: Maintained a consistent structure and flow in the tests, ensuring the logical progression of the tests mirrors that of the gold code.
+4. **Contact Dimensionality**: Set `model.geom_condim[:] = 1` to ensure contact dimensionality matches the gold code.
+5. **Data Initialization**: Initialized the `data` object in the `test_contact_normal_jac_matches_mujoco` method after setting all necessary model options.
+6. **Contact Handling**: Set a specific `qpos` to ensure multiple contacts and used `mujoco.mj_contactForce` to compute contact forces.
+7. **Assertions**: Ensured that the assertions check for the number of contacts and the correctness of the Jacobian, consistent with the gold code.
+8. **Code Structure and Comments**: Maintained a consistent structure and flow in the tests, ensuring the logical progression of the tests mirrors that of the gold code. Comments are clear and match the intent of the gold code.
