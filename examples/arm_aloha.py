@@ -4,6 +4,7 @@ import mujoco.viewer
 import numpy as np
 from loop_rate_limiters import RateLimiter
 import mink
+from typing import Optional, Sequence
 
 _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
@@ -26,16 +27,24 @@ _VELOCITY_LIMITS: dict[str, float] = {k: np.pi for k in _JOINT_NAMES}
 def compensate_gravity(
     model: mujoco.MjModel,
     data: mujoco.MjData,
-    subtree_ids: list[int],
-    qfrc_applied: np.ndarray = None,
+    subtree_ids: Sequence[int],
+    qfrc_applied: Optional[np.ndarray] = None,
 ) -> None:
-    """Compensate for gravity by setting the control to the gravity forces for specified subtrees."""
+    """Compensate for gravity by setting the control to the gravity forces for specified subtrees.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        data (mujoco.MjData): The MuJoCo data.
+        subtree_ids (Sequence[int]): List of subtree IDs for which to compensate gravity.
+        qfrc_applied (Optional[np.ndarray]): Optional array to store the applied forces. If None, a new array is created.
+    """
     if qfrc_applied is None:
         qfrc_applied = np.zeros(model.nv)
     mujoco.mj_rneUnconstrained(model, data, qfrc_applied)
     for subtree_id in subtree_ids:
-        qfrc_applied[model.body(subtree_id).dofadr:model.body(subtree_id).dofadr + model.body(subtree_id).dof]
-        += data.qfrc_grav[model.body(subtree_id).dofadr:model.body(subtree_id).dofadr + model.body(subtree_id).dof]
+        start_idx = model.body(subtree_id).dofadr
+        end_idx = start_idx + model.body(subtree_id).dof
+        qfrc_applied[start_idx:end_idx] += data.qfrc_grav[start_idx:end_idx]
     data.ctrl[:] = qfrc_applied
 
 
@@ -54,7 +63,7 @@ def test_body_ids(model: mujoco.MjModel) -> None:
 
 
 if __name__ == "__main__":
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+    model = mujoco.MjModel.from_xml_path(str(_XML))
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
