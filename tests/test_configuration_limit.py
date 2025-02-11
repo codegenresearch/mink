@@ -76,8 +76,8 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        expected_lower = np.asarray([-np.inf] * 6 + [0] + [-np.inf] * (nv - 7))
-        expected_upper = np.asarray([np.inf] * 6 + [1.57] + [np.inf] * (nv - 7))
+        expected_lower = np.asarray([-mujoco.mjMAXVAL] * 6 + [0] + [-mujoco.mjMAXVAL] * (nv - 7))
+        expected_upper = np.asarray([mujoco.mjMAXVAL] * 6 + [1.57] + [mujoco.mjMAXVAL] * (nv - 7))
         np.testing.assert_allclose(limit.lower, expected_lower)
         np.testing.assert_allclose(limit.upper, expected_upper)
 
@@ -103,8 +103,8 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        expected_lower = np.asarray([-np.inf] * 6 + [0] + [-np.inf] * (nv - 7))
-        expected_upper = np.asarray([np.inf] * 6 + [1.57] + [np.inf] * (nv - 7))
+        expected_lower = np.asarray([-mujoco.mjMAXVAL] * 6 + [0] + [-mujoco.mjMAXVAL] * (nv - 7))
+        expected_upper = np.asarray([mujoco.mjMAXVAL] * 6 + [1.57] + [mujoco.mjMAXVAL] * (nv - 7))
         np.testing.assert_allclose(limit.lower, expected_lower)
         np.testing.assert_allclose(limit.upper, expected_upper)
 
