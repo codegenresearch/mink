@@ -57,6 +57,9 @@ def construct_model():
     )
 
 if __name__ == "__main__":
+    # IK settings
+    solver = "quadprog"
+
     # Construct the model and initialize configuration
     model = construct_model()
     configuration = mink.Configuration(model)
@@ -89,7 +92,6 @@ if __name__ == "__main__":
     tasks = [end_effector_task, posture_task, *finger_tasks]
 
     limits = [mink.ConfigurationLimit(model=model)]
-    solver = "quadprog"
 
     # Initialize mocap targets
     mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
