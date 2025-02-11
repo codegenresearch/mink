@@ -29,7 +29,7 @@ class Task(abc.ABC):
     the error and Jacobian necessary for inverse kinematics. Subclasses must implement
     the `compute_error` and `compute_jacobian` methods.
 
-    The task dynamics are defined by the equation:
+    The task dynamics are defined by:
 
     .. math::
 
@@ -37,8 +37,6 @@ class Task(abc.ABC):
 
     where :math:`J(q)` is the task Jacobian, :math:`\Delta q` is the configuration
     displacement, :math:`\alpha` is the task gain, and :math:`e(q)` is the task error.
-    The Jacobian :math:`J(q)` is the derivative of the task error with respect to the
-    configuration :math:`q`.
 
     The task gain :math:`\alpha` is a parameter in the range [0, 1] that can be used
     for additional low-pass filtering. A gain of 1.0 corresponds to dead-beat control,
@@ -88,20 +86,12 @@ class Task(abc.ABC):
 
         The error function :math:`e(q) \in \mathbb{R}^{k}` is the quantity that
         the task aims to drive to zero (:math:`k` is the dimension of the task).
-        It appears in the first-order task dynamics:
-
-        .. math::
-
-            J(q) \Delta q = -\alpha e(q)
-
-        where :math:`J(q)` is the task Jacobian, :math:`\Delta q` is the configuration
-        displacement, :math:`\alpha` is the task gain, and :math:`e(q)` is the task error.
 
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Task error vector :math:`e(q) \in \mathbb{R}^{k}`.
+            Task error vector :math:`e(q)`.
         """
         raise NotImplementedError
 
@@ -118,7 +108,7 @@ class Task(abc.ABC):
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Task Jacobian matrix :math:`J(q) \in \mathbb{R}^{k \times n_v}`.
+            Task Jacobian matrix :math:`J(q)`.
         """
         raise NotImplementedError
 
