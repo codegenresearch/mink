@@ -25,7 +25,7 @@ def move_mocap_to_frame(
 
     Raises:
         InvalidMocapBody: If the specified mocap body does not exist.
-        ValueError: If the specified frame type is not supported.
+        ValueError: If the specified frame type is not supported or the frame does not exist.
     """
     mocap_id = model.body(mocap_name).mocapid[0]
     if mocap_id == -1:
@@ -119,18 +119,16 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     Returns:
         A list of geom IDs in the subtree.
     """
-
-    def gather_geoms(current_body_id: int) -> List[int]:
-        geoms: List[int] = []
+    geom_ids: List[int] = []
+    stack = [body_id]
+    while stack:
+        current_body_id = stack.pop()
         geom_start = model.body_geomadr[current_body_id]
         geom_end = geom_start + model.body_geomnum[current_body_id]
-        geoms.extend(range(geom_start, geom_end))
+        geom_ids.extend(range(geom_start, geom_end))
         children = [i for i in range(model.nbody) if model.body_parentid[i] == current_body_id]
-        for child_id in children:
-            geoms.extend(gather_geoms(child_id))
-        return geoms
-
-    return gather_geoms(body_id)
+        stack.extend(children)
+    return geom_ids
 
 
 def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
@@ -146,6 +144,26 @@ def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     geom_start = model.body_geomadr[body_id]
     geom_end = geom_start + model.body_geomnum[body_id]
     return list(range(geom_start, geom_end))
+
+
+def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+    """Retrieve all body IDs belonging to the subtree starting at a given body.
+
+    Args:
+        model: Mujoco model.
+        body_id: ID of the body where the subtree starts.
+
+    Returns:
+        A list of body IDs in the subtree.
+    """
+    body_ids: List[int] = []
+    stack = [body_id]
+    while stack:
+        current_body_id = stack.pop()
+        body_ids.append(current_body_id)
+        children = [i for i in range(model.nbody) if model.body_parentid[i] == current_body_id]
+        stack.extend(children)
+    return body_ids
 
 
 def apply_gravity_compensation(
