@@ -84,7 +84,7 @@ def create_tasks(model, configuration):
 
     posture_cost = np.zeros((model.nv,))
     posture_cost[2] = 1e-3  # Mobile Base.
-    posture_cost[-16:] = 5e-2  # Leap Hand.
+    posture_cost[-16:] = 1e-3  # Leap Hand.
 
     posture_task = mink.PostureTask(model, cost=posture_cost)
 
@@ -93,8 +93,9 @@ def create_tasks(model, configuration):
     immobile_base_cost[2] = 1e-3
     damping_task = mink.DampingTask(model, immobile_base_cost)
 
-    finger_tasks = [
-        mink.RelativeFrameTask(
+    finger_tasks = []
+    for finger in fingers:
+        task = mink.RelativeFrameTask(
             frame_name=f"leap_right/{finger}",
             frame_type="site",
             root_name="leap_right/palm_lower",
@@ -103,8 +104,7 @@ def create_tasks(model, configuration):
             orientation_cost=0.0,
             lm_damping=1e-3,
         )
-        for finger in fingers
-    ]
+        finger_tasks.append(task)
 
     tasks = [end_effector_task, posture_task, *finger_tasks]
     return tasks, damping_task
@@ -163,8 +163,8 @@ if __name__ == "__main__":
                 data.mocap_pos[model.body(f"{finger}_target").mocapid[0]] = T_w_mocap_new.translation()
                 data.mocap_quat[model.body(f"{finger}_target").mocapid[0]] = T_w_mocap_new.rotation().wxyz
 
+            tasks_to_solve = tasks + [damping_task] if key_callback.fix_base else tasks
             for _ in range(max_iters):
-                tasks_to_solve = tasks + [damping_task] if key_callback.fix_base else tasks
                 vel = mink.solve_ik(configuration, tasks_to_solve, dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, dt)
 
