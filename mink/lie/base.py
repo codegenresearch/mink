@@ -38,7 +38,7 @@ class MatrixLieGroup(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def identity(cls) -> Self:
-        """Returns identity element."""
+        """Returns the identity element."""
         raise NotImplementedError
 
     @classmethod
@@ -57,19 +57,19 @@ class MatrixLieGroup(abc.ABC):
 
     @abc.abstractmethod
     def as_matrix(self) -> np.ndarray:
-        """Returns transformation as a matrix."""
+        """Returns the transformation as a matrix."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def parameters(self) -> np.ndarray:
-        """Returns underlying parameters."""
+        """Returns the underlying parameters."""
         raise NotImplementedError
 
     # Operations.
 
     @abc.abstractmethod
     def apply(self, target: np.ndarray) -> np.ndarray:
-        """Applies group action to a point."""
+        """Applies the group action to a point."""
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -80,12 +80,12 @@ class MatrixLieGroup(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def exp(cls, tangent: np.ndarray) -> Self:
-        """Computes expm(wedge(tangent))."""
+        """Computes `expm(wedge(tangent))`."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def log(self) -> np.ndarray:
-        """Computes vee(logm(transformation matrix))."""
+        """Computes `vee(logm(transformation matrix))`."""
         raise NotImplementedError
 
     @abc.abstractmethod
