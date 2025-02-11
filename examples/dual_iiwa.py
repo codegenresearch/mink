@@ -156,8 +156,8 @@ if __name__ == "__main__":
                 dt=rate.dt,
                 solver=solver,
                 damping=1e-2,
-                use_sparse_solver=False,
                 limits=limits,
+                use_sparse_solver=False,
             )
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
