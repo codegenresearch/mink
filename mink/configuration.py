@@ -53,7 +53,7 @@ class Configuration:
 
         Args:
             model: Mujoco model.
-            q: Configuration to initialize from. If None, the configuration
+            q: Configuration vector to initialize from. If None, the configuration
                 is initialized to the reference configuration `qpos0`.
         """
         self.model = model
@@ -64,7 +64,7 @@ class Configuration:
         """Run forward kinematics to update the state.
 
         Args:
-            q: Optional configuration to override the internal data.qpos.
+            q: Optional configuration vector to override the internal data.qpos.
         """
         if q is not None:
             self.data.qpos = q
@@ -79,11 +79,11 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            ValueError: If no key named `key` was found in the model.
+            InvalidKeyframe: If no key named `key` was found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise ValueError(f"No key named '{key_name}' was found in the model.")
+            raise exceptions.InvalidKeyframe(key_name, self.model)
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
@@ -209,14 +209,14 @@ class Configuration:
             dt: Integration duration in seconds.
 
         Returns:
-            The new configuration after integration.
+            The new configuration vector after integration.
         """
         q = self.data.qpos.copy()
         mujoco.mj_integratePos(self.model, q, velocity, dt)
         return q
 
     def integrate_inplace(self, velocity: np.ndarray, dt: float) -> None:
-        """Integrate a velocity and update the current configuration inplace.
+        """Integrate a velocity and update the current configuration in place.
 
         Args:
             velocity: The velocity in tangent space.
