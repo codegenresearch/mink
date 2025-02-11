@@ -15,7 +15,9 @@ class Constraint(NamedTuple):
     """
 
     G: Optional[np.ndarray] = None
+    """Shape (2nb, nv)."""
     h: Optional[np.ndarray] = None
+    """Shape (2nb,)."""
 
     @property
     def inactive(self) -> bool:
@@ -52,6 +54,7 @@ class Limit(abc.ABC):
             dt: Integration time step in [s].
 
         Returns:
-            Pair :math:`(G, h)`.
+            Pair :math:`(G, h)` representing the inequality constraint as
+            :math:`G \Delta q \leq h`. G has shape (2nb, nv) and h has shape (2nb,).
         """
         raise NotImplementedError
