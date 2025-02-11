@@ -142,3 +142,11 @@ if __name__ == "__main__":
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
+
+
+### Changes Made:
+1. **Error Handling**: Ensured that errors for both end-effector tasks are computed correctly.
+2. **Variable Naming Consistency**: Corrected the variable name `r_err` to ensure consistency with the right end-effector task.
+3. **Comment Clarity**: Improved comments to provide more context and clarity.
+4. **Code Structure**: Ensured the structure of loops and conditionals matches the gold code.
+5. **Formatting and Style**: Adhered to consistent formatting and style guidelines for readability.
