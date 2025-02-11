@@ -86,11 +86,15 @@ def setup_collision_avoidance(model):
     """
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
+    l_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
+    r_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     table_geom = ["table"]
     collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),  # Collision between left and right wrists
-        (l_wrist_geoms + r_wrist_geoms, frame_geoms + table_geom),  # Collision between wrists and table/frame
+        (l_wrist_geoms, frame_geoms + table_geom),  # Collision between left wrist and table/frame
+        (r_wrist_geoms, frame_geoms + table_geom),  # Collision between right wrist and table/frame
+        (l_upper_arm_geoms, r_upper_arm_geoms),  # Collision between left and right upper arms
     ]
     return mink.CollisionAvoidanceLimit(
         model=model,
