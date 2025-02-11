@@ -92,9 +92,12 @@ class TestConfiguration(absltest.TestCase):
     def test_check_limits(self):
         """Check that an error is raised iff a joint limit is exceeded."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
+        configuration.check_limits()
         configuration.check_limits(safety_break=1e-6)
         self.q_ref[0] += 1e4  # Move configuration out of bounds.
         configuration.update(q=self.q_ref)
+        with self.assertRaises(mink.NotWithinConfigurationLimits):
+            configuration.check_limits()
         with self.assertRaises(mink.NotWithinConfigurationLimits):
             configuration.check_limits(safety_break=1e-6)
 
@@ -116,6 +119,7 @@ class TestConfiguration(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         configuration = mink.Configuration(model)
+        configuration.check_limits()  # Free joint should not cause an error
         configuration.check_limits(safety_break=1e-6)  # Free joint should not cause an error
 
     def test_get_frame_jacobian_site(self):
@@ -131,7 +135,8 @@ class TestConfiguration(absltest.TestCase):
         jacobian = configuration.get_frame_jacobian(site_name, "site")
 
         # Correctly compute the expected Jacobian using mujoco functions
-        mujoco.mj_jacSite(self.model, configuration.data, site_name)
+        site_id = self.model.site_name2id(site_name)
+        mujoco.mj_jacSite(self.model, configuration.data, site_id)
         expected_jacobian = configuration.data.site_jacp
         np.testing.assert_almost_equal(jacobian, expected_jacobian)
 
