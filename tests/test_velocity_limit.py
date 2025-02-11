@@ -140,7 +140,6 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(str(cm.exception), expected_error_message)
 
     def test_velocity_limit_refinement(self):
-        """Test the refinement of velocity limit definitions."""
         refined_velocities = {
             self.model.joint(i).name: 2.0 * np.pi for i in range(1, self.model.njnt)
         }
@@ -155,7 +154,6 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(h.shape, (2 * nb,))
 
     def test_collision_detection_with_velocity_limits(self):
-        """Test collision detection accuracy with velocity limits."""
         xml_str = """
         <mujoco>
           <worldbody>
@@ -184,7 +182,6 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(h.shape, (4,))
 
     def test_posture_task_integration(self):
-        """Test posture task integration with velocity limits."""
         xml_str = """
         <mujoco>
           <worldbody>
