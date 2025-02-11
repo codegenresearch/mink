@@ -30,9 +30,11 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Define the joints to control.
+    # Base joints.
+    # Arm joints.
     joint_names = [
-        "joint_x", "joint_y", "joint_th",  # Base joints
-        "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7",  # Arm joints
+        "joint_x", "joint_y", "joint_th",
+        "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7",
     ]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
@@ -67,9 +69,9 @@ if __name__ == "__main__":
 
     # Inverse kinematics settings.
     solver = "quadprog"
-    position_threshold = 1e-4
-    orientation_threshold = 1e-4
-    max_iterations = 20
+    pos_threshold = 1e-4
+    ori_threshold = 1e-4
+    max_iters = 20
 
     key_callback = KeyCallback()
 
@@ -90,30 +92,30 @@ if __name__ == "__main__":
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "pinch_site_target", "pinch_site", "site")
 
-        rate_limiter = RateLimiter(frequency=200.0)
-        time_step = rate_limiter.period
-        current_time = 0.0
+        rate = RateLimiter(frequency=200.0, warn=False)
+        dt = rate.period
+        t = 0.0
 
         while viewer.is_running():
             # Update the task target.
-            target_pose = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
-            end_effector_task.set_target(target_pose)
+            T_wt = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
+            end_effector_task.set_target(T_wt)
 
             # Compute velocity and integrate into the next configuration.
-            for _ in range(max_iterations):
+            for i in range(max_iters):
                 if key_callback.fix_base:
-                    velocity = mink.solve_ik(
-                        configuration, [*tasks, damping_task], time_step, solver, 1e-3
+                    vel = mink.solve_ik(
+                        configuration, [*tasks, damping_task], dt, solver, 1e-3
                     )
                 else:
-                    velocity = mink.solve_ik(configuration, tasks, time_step, solver, 1e-3)
-                configuration.integrate_inplace(velocity, time_step)
+                    vel = mink.solve_ik(configuration, tasks, dt, solver, 1e-3)
+                configuration.integrate_inplace(vel, dt)
 
                 # Check if the target position and orientation are achieved.
-                error = end_effector_task.compute_error(configuration)
-                position_achieved = np.linalg.norm(error[:3]) <= position_threshold
-                orientation_achieved = np.linalg.norm(error[3:]) <= orientation_threshold
-                if position_achieved and orientation_achieved:
+                err = end_effector_task.compute_error(configuration)
+                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
+                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
+                if pos_achieved and ori_achieved:
                     break
 
             # Update the control signals.
@@ -125,5 +127,5 @@ if __name__ == "__main__":
 
             # Synchronize the viewer and sleep to maintain the desired frame rate.
             viewer.sync()
-            rate_limiter.sleep()
-            current_time += time_step
+            rate.sleep()
+            t += dt
