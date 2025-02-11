@@ -105,22 +105,22 @@ class MatrixLieGroup(abc.ABC):
 
     # Plus and minus operators
 
-    # Eqn. 25
+    # Eqn. 25.
     def rplus(self, other: np.ndarray) -> Self:
         """Applies a tangent vector using the right plus operator."""
         return self @ self.exp(other)
 
-    # Eqn. 26
+    # Eqn. 26.
     def rminus(self, other: Self) -> np.ndarray:
         """Computes the difference using the right minus operator."""
         return (other.inverse() @ self).log()
 
-    # Eqn. 27
+    # Eqn. 27.
     def lplus(self, other: np.ndarray) -> Self:
         """Applies a tangent vector using the left plus operator."""
         return self.exp(other) @ self
 
-    # Eqn. 28
+    # Eqn. 28.
     def lminus(self, other: Self) -> np.ndarray:
         """Computes the difference using the left minus operator."""
         return (self @ other.inverse()).log()
@@ -148,7 +148,7 @@ class MatrixLieGroup(abc.ABC):
         # NOTE: This can be computed as np.linalg.inv(cls.ljac(other)).
         raise NotImplementedError
 
-    # Eqn. 67
+    # Eqn. 67.
     @classmethod
     def rjac(cls, other: np.ndarray) -> np.ndarray:
         """Computes the right Jacobian."""
@@ -159,7 +159,7 @@ class MatrixLieGroup(abc.ABC):
         """Computes the inverse of the right Jacobian."""
         return cls.ljacinv(-other)
 
-    # Eqn. 79
+    # Eqn. 79.
     def jlog(self) -> np.ndarray:
         """Computes the Jacobian of the logarithmic map."""
         return self.rjacinv(self.log())
