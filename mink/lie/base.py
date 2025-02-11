@@ -33,12 +33,12 @@ class MatrixLieGroup(abc.ABC):
         assert isinstance(other, MatrixLieGroup)
         return self.multiply(other=other)
 
-    # Factory.
+    # Factory methods.
 
     @classmethod
     @abc.abstractmethod
     def identity(cls) -> Self:
-        """Returns the identity element."""
+        """Returns identity element."""
         raise NotImplementedError
 
     @classmethod
@@ -57,19 +57,19 @@ class MatrixLieGroup(abc.ABC):
 
     @abc.abstractmethod
     def as_matrix(self) -> np.ndarray:
-        """Returns the transformation as a matrix."""
+        """Returns transformation as a matrix."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def parameters(self) -> np.ndarray:
-        """Returns the underlying parameters."""
+        """Returns underlying parameters."""
         raise NotImplementedError
 
     # Operations.
 
     @abc.abstractmethod
     def apply(self, target: np.ndarray) -> np.ndarray:
-        """Applies the group action to a point."""
+        """Applies group action to a point."""
         raise NotImplementedError
 
     @abc.abstractmethod
