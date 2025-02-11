@@ -16,15 +16,13 @@ from .task import Task
 class FrameTask(Task):
     """Regulate the pose of a specified robot frame in the world frame.
 
-    This task aims to align a specific frame of the robot (typically the name of a body, geom, or site
-    in the robot model) with a desired pose in the world frame. The pose is represented as a
-    transformation matrix from the frame to the world.
+    This task aims to align a specific frame of the robot (typically a body, geom, or site
+    in the robot model) with a desired pose in the world frame.
 
     Attributes:
         frame_name: Name of the frame to regulate, typically a body, geom, or site in the robot model.
         frame_type: Type of the frame, which can be 'body', 'geom', or 'site'.
-        transform_target_to_world: Target pose of the frame in the world frame, represented
-            as an SE3 transformation.
+        transform_target_to_world: Target pose of the frame in the world frame.
     """
 
     k: int = 6
@@ -169,9 +167,7 @@ class FrameTask(Task):
         Compute the frame task Jacobian.
 
         The Jacobian is computed using the current frame pose and the target pose. It represents
-        the sensitivity of the task error to changes in the robot configuration. The Jacobian is
-        derived from the error computation, ensuring that the task error is minimized with respect
-        to the configuration.
+        the sensitivity of the task error to changes in the robot configuration.
 
         Args:
             configuration: Robot configuration :math:`q`.
