@@ -25,26 +25,31 @@ def main():
     model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
     data = mujoco.MjData(model)
 
-    # Setup IK configuration
+    ## =================== ##
+    ## Setup IK.
+    ## =================== ##
+
     configuration = mink.Configuration(model)
 
     # Define tasks for the IK solver
     tasks = [
-        mink.FrameTask(
+        end_effector_task := mink.FrameTask(
             frame_name="attachment_site",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        mink.PostureTask(model=model, cost=1e-2),
+        posture_task := mink.PostureTask(model=model, cost=1e-2),
     ]
 
     # Define IK settings
     solver = "quadprog"
-    position_threshold = 1e-4
-    orientation_threshold = 1e-4
-    max_iterations = 20
+    pos_threshold = 1e-4
+    ori_threshold = 1e-4
+    max_iters = 20
+
+    ## =================== ##
 
     # Launch the MuJoCo viewer
     with mujoco.viewer.launch_passive(
@@ -56,30 +61,29 @@ def main():
         # Reset the robot to the home position
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
-        tasks[1].set_target_from_configuration(configuration)  # Set posture target
+        posture_task.set_target_from_configuration(configuration)  # Set posture target
         mujoco.mj_forward(model, data)
 
         # Initialize the mocap target at the end-effector site
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
         # Set up the rate limiter for controlling the loop frequency
-        rate_limiter = RateLimiter(frequency=500.0)
+        rate = RateLimiter(frequency=500.0)
 
         # Main simulation loop
         while viewer.is_running():
             # Update the task target based on the mocap position
-            target_pose = mink.SE3.from_mocap_name(model, data, "target")
-            tasks[0].set_target(target_pose)
+            T_wt = mink.SE3.from_mocap_name(model, data, "target")
+            end_effector_task.set_target(T_wt)
 
             # Solve IK and update the robot configuration
-            for iteration in range(max_iterations):
-                velocity = mink.solve_ik(configuration, tasks, rate_limiter.dt, solver, 1e-3)
-                configuration.integrate_inplace(velocity, rate_limiter.dt)
-                error = tasks[0].compute_error(configuration)
-                position_achieved = np.linalg.norm(error[:3]) <= position_threshold
-                orientation_achieved = np.linalg.norm(error[3:]) <= orientation_threshold
-                if position_achieved and orientation_achieved:
-                    print(f"Task achieved after {iteration + 1} iterations.")
+            for i in range(max_iters):
+                vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
+                configuration.integrate_inplace(vel, rate.dt)
+                err = end_effector_task.compute_error(configuration)
+                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
+                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
+                if pos_achieved and ori_achieved:
                     break
 
             # Apply the updated configuration to the robot's actuators
@@ -88,7 +92,7 @@ def main():
 
             # Synchronize the viewer and sleep to maintain the desired loop rate
             viewer.sync()
-            rate_limiter.sleep()
+            rate.sleep()
 
 if __name__ == "__main__":
     main()
