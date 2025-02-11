@@ -182,8 +182,8 @@ if __name__ == "__main__":
 ### Key Changes:
 1. **Removed Invalid Comment**: Removed the invalid comment that was causing the `SyntaxError`.
 2. **Class Structure**: Ensured that `TestOperations` handles general operations and `TestGroupSpecificOperations` handles group-specific tests.
-3. **Error Handling**: Used `self.assertRaises` consistently for error handling tests.
-4. **Assertions**: Used `self.assertEqual` for checking shapes where appropriate.
+3. **Assertions**: Used `self.assertEqual` for checking shapes where appropriate.
+4. **Error Handling**: Used `self.assertRaises` consistently for error handling tests.
 5. **Documentation**: Updated docstrings to be concise and directly related to the tests being performed.
 6. **Edge Cases**: Included edge cases for RPY conversion within the `test_so3_rpy_bijective` method.
 7. **Assertions**: Used `np.testing.assert_allclose` consistently for numerical comparisons.
