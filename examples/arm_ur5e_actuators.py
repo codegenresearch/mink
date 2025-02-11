@@ -10,12 +10,15 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 
-def setup_configuration_and_limits(model):
-    configuration = mink.Configuration(model)
+if __name__ == "__main__":
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+    data = mujoco.MjData(model)
 
     ## =================== ##
     ## Setup IK.
     ## =================== ##
+
+    configuration = mink.Configuration(model)
 
     tasks = [
         end_effector_task := mink.FrameTask(
@@ -52,14 +55,9 @@ def setup_configuration_and_limits(model):
     velocity_limit = mink.VelocityLimit(model, max_velocities)
     limits.append(velocity_limit)
 
-    return configuration, tasks, limits
+    ## =================== ##
 
-def main():
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
-    data = mujoco.MjData(model)
-
-    configuration, tasks, limits = setup_configuration_and_limits(model)
-    end_effector_task = tasks[0]
+    mid = model.body("target").mocapid[0]
 
     # IK settings.
     solver = "quadprog"
@@ -85,7 +83,7 @@ def main():
             end_effector_task.set_target(T_wt)
 
             # Compute velocity and integrate into the next configuration.
-            for _ in range(max_iters):
+            for i in range(max_iters):
                 vel = mink.solve_ik(
                     configuration, tasks, rate.dt, solver, damping=1e-3, limits=limits
                 )
@@ -102,6 +100,3 @@ def main():
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
-
-if __name__ == "__main__":
-    main()
