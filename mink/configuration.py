@@ -46,7 +46,7 @@ class Configuration:
         model: mujoco.MjModel,
         q: Optional[np.ndarray] = None,
     ):
-        """Constructor.
+        """Initialize the configuration with a MuJoCo model and an optional configuration vector.
 
         Args:
             model (mujoco.MjModel): The MuJoCo model.
@@ -122,20 +122,12 @@ class Configuration:
     def get_frame_jacobian(self, frame_name: str, frame_type: str) -> np.ndarray:
         """Compute the Jacobian matrix of a frame velocity.
 
-        Denoting our frame by :math:`B` and the world frame by :math:`W`, the
-        Jacobian matrix :math:`{}_B J_{WB}` is related to the body velocity
-        :math:`{}_B v_{WB}` by:
-
-        .. math::
-
-            {}_B v_{WB} = {}_B J_{WB} \\dot{q}
-
         Args:
             frame_name (str): Name of the frame in the MJCF.
             frame_type (str): Type of frame. Can be a geom, a body, or a site.
 
         Returns:
-            np.ndarray: Jacobian matrix :math:`{}_B J_{WB}` of the frame.
+            np.ndarray: Jacobian matrix of the frame.
 
         Raises:
             exceptions.UnsupportedFrame: If the frame type is not supported.
