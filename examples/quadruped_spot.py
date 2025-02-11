@@ -14,6 +14,10 @@ if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
+    ## =================== ##
+    ## Setup IK.
+    ## =================== ##
+
     configuration = mink.Configuration(model)
 
     feet = ["FL", "FR", "HR", "HL"]
@@ -27,12 +31,15 @@ if __name__ == "__main__":
 
     posture_task = mink.PostureTask(model, cost=1e-5)
 
-    feet_tasks = [mink.FrameTask(
-        frame_name=foot,
-        frame_type="geom",
-        position_cost=1.0,
-        orientation_cost=0.0,
-    ) for foot in feet]
+    feet_tasks = []
+    for foot in feet:
+        task = mink.FrameTask(
+            frame_name=foot,
+            frame_type="geom",
+            position_cost=1.0,
+            orientation_cost=0.0,
+        )
+        feet_tasks.append(task)
 
     eef_task = mink.FrameTask(
         frame_name="EE",
@@ -43,10 +50,15 @@ if __name__ == "__main__":
 
     tasks = [base_task, posture_task, *feet_tasks, eef_task]
 
+    ## =================== ##
+    ## Setup Mocap Targets.
+    ## =================== ##
+
     base_mid = model.body("body_target").mocapid[0]
     feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
     eef_mid = model.body("EE_target").mocapid[0]
 
+    # IK settings.
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
@@ -74,6 +86,9 @@ if __name__ == "__main__":
                 task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
             eef_task.set_target(mink.SE3.from_mocap_id(data, eef_mid))
 
+            ## =================== ##
+            ## Compute velocity and integrate into the next configuration.
+            ## =================== ##
             for i in range(max_iters):
                 vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
@@ -90,5 +105,6 @@ if __name__ == "__main__":
             data.ctrl = configuration.q[7:]
             mujoco.mj_step(model, data)
 
+            # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
