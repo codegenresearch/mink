@@ -20,13 +20,14 @@ class TestVelocityLimit(absltest.TestCase):
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
+        # NOTE: These velocities are arbitrary and do not match real hardware.
         self.velocities = {self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)}
 
     def test_dimensions(self):
         """Test dimensions of velocity limit."""
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
-        nb = nv - len(get_freejoint_dims(self.model)[1])
+        nb = 6  # Excluding the 6 free joint dimensions.
         self.assertEqual(len(limit.indices), nb)
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
 
@@ -36,7 +37,7 @@ class TestVelocityLimit(absltest.TestCase):
         expected = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
         self.assertTrue(np.allclose(limit.indices, expected))
 
-    def test_no_limits(self):
+    def test_model_with_no_limit(self):
         """Test behavior with no velocity limits."""
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
         empty_bounded = VelocityLimit(empty_model)
@@ -48,8 +49,8 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_subset_of_velocities_limited(self):
         """Test behavior with a subset of velocity limits."""
-        partial_velocities = {key: value for key, value in list(self.velocities.items())[:3]}
-        limit = VelocityLimit(self.model, partial_velocities)
+        limited_velocities = {key: value for key, value in list(self.velocities.items())[:3]}
+        limit = VelocityLimit(self.model, limited_velocities)
         nb = 3
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
