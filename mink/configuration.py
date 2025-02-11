@@ -61,7 +61,6 @@ class Configuration:
         """
         if q is not None:
             self.data.qpos = q
-        # Update frame transforms and Jacobians.
         mujoco.mj_kinematics(self.model, self.data)
         mujoco.mj_comPos(self.model, self.data)
 
