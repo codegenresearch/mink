@@ -61,11 +61,14 @@ class Configuration:
 
         Args:
             q: Optional configuration vector to override the internal `qpos` with.
+
+        This method updates the configuration and computes the forward kinematics
+        to ensure that all kinematic quantities are up-to-date.
         """
         if q is not None:
             self.data.qpos = q
-        mujoco.mj_kinematics(self.model, self.data)
-        mujoco.mj_comPos(self.model, self.data)
+        mujoco.mj_kinematics(self.model, self.data)  # Update kinematic tree.
+        mujoco.mj_comPos(self.model, self.data)      # Update center of mass positions.
 
     def update_from_keyframe(self, key_name: str) -> None:
         """Update the configuration from a keyframe.
