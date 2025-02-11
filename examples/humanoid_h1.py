@@ -13,46 +13,46 @@ if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     configuration = mink.Configuration(model)
 
+    # Define feet and hands
     feet = ["right_foot", "left_foot"]
     hands = ["right_wrist", "left_wrist"]
 
-    # Define tasks with assignment expressions for easier reference
-    tasks = [
-        posture_task := mink.PostureTask(model, cost=1.0),
-        pelvis_orientation_task := mink.FrameTask(
-            frame_name="pelvis",
-            frame_type="body",
-            position_cost=0.0,
-            orientation_cost=10.0,
-        ),
-        com_task := mink.ComTask(cost=200.0),
-    ]
+    # Initialize tasks in the specified order
+    posture_task = mink.PostureTask(model, cost=1.0)
+    pelvis_orientation_task = mink.FrameTask(
+        frame_name="pelvis",
+        frame_type="body",
+        position_cost=0.0,
+        orientation_cost=10.0,
+    )
+    com_task = mink.ComTask(cost=200.0)
 
     # Initialize foot tasks
-    feet_tasks = []
-    for foot in feet:
-        task = mink.FrameTask(
+    feet_tasks = [
+        mink.FrameTask(
             frame_name=foot,
             frame_type="site",
             position_cost=200.0,
             orientation_cost=10.0,
             lm_damping=1.0,
         )
-        feet_tasks.append(task)
-    tasks.extend(feet_tasks)
+        for foot in feet
+    ]
 
     # Initialize hand tasks
-    hand_tasks = []
-    for hand in hands:
-        task = mink.FrameTask(
+    hand_tasks = [
+        mink.FrameTask(
             frame_name=hand,
             frame_type="site",
             position_cost=200.0,
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        hand_tasks.append(task)
-    tasks.extend(hand_tasks)
+        for hand in hands
+    ]
+
+    # Combine all tasks
+    tasks = [posture_task, pelvis_orientation_task, com_task] + feet_tasks + hand_tasks
 
     # Get mocap IDs for COM, feet, and hands
     com_mid = model.body("com_target").mocapid[0]
