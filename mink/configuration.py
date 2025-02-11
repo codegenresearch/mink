@@ -32,6 +32,8 @@ class Configuration:
     * Computing Jacobians for different frames.
     * Retrieving frame transforms relative to the world frame.
     * Integrating velocities to update configurations.
+    * Adding posture tasks for better control.
+    * Enhancing collision avoidance mechanisms.
     """
 
     def __init__(
@@ -43,8 +45,8 @@ class Configuration:
 
         Args:
             model: Mujoco model.
-            q: Configuration to initialize from. If None, the configuration is
-                initialized to the default configuration `qpos0`.
+            q: Configuration to initialize from. If None, the configuration
+                is initialized to the default configuration `qpos0`.
         """
         self.model = model
         self.data = mujoco.MjData(model)
@@ -234,6 +236,30 @@ class Configuration:
         """
         mujoco.mj_integratePos(self.model, self.data.qpos, velocity, dt)
         self.update()
+
+    def add_posture_task(self, cost: float) -> None:
+        """Add a posture task to the configuration for better control.
+
+        Args:
+            cost: The cost associated with the posture task.
+        """
+        self.posture_task = mink.PostureTask(model=self.model, cost=cost)
+
+    def check_collisions(self, tol: float = 1e-3) -> bool:
+        """Check for collisions in the current configuration.
+
+        Args:
+            tol: Tolerance for collision detection.
+
+        Returns:
+            True if a collision is detected, False otherwise.
+        """
+        mujoco.mj_collide(self.model, self.data)
+        for i in range(self.data.ncon):
+            contact = self.data.contact[i]
+            if contact.dist < tol:
+                return True
+        return False
 
     # Aliases.
 
