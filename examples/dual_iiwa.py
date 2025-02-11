@@ -115,8 +115,6 @@ if __name__ == "__main__":
     r_y_des = np.array([0.392, 0.392, 0.6])
     A = l_y_des.copy()
     B = r_y_des.copy()
-    l_dy_des = np.zeros(3)  # Unused but kept for consistency
-    r_dy_des = np.zeros(3)  # Unused but kept for consistency
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -154,8 +152,8 @@ if __name__ == "__main__":
                 configuration,
                 tasks,
                 dt=rate.dt,
-                solver=solver,
                 damping=1e-2,
+                solver=solver,
                 limits=limits,
                 use_sparse_solver=False,
             )
