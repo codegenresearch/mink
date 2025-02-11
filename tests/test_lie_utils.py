@@ -12,7 +12,9 @@ class TestUtils(absltest.TestCase):
             utils.skew(np.zeros((5,)))  # Invalid shape, should raise AssertionError
 
     def test_skew_equals_negative(self):
-        np.testing.assert_allclose(utils.skew(np.random.randn(3)).T, -utils.skew(np.random.randn(3)))
+        omega = np.random.randn(3)
+        skew_matrix = utils.skew(omega)
+        np.testing.assert_allclose(skew_matrix.T, -skew_matrix)
 
     def test_skew_returns_correct_skew_symmetric_matrix(self):
         omega = np.array([1.0, 2.0, 3.0])
