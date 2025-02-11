@@ -55,7 +55,6 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "EE_target", "link_grasp_center", "site")
 
         rate = RateLimiter(frequency=100.0, warn=False)
-        dt = rate.period
         t = 0.0
         while viewer.is_running():
             # Update task targets
@@ -70,11 +69,11 @@ if __name__ == "__main__":
             base_task.set_target(mink.SE3.from_mocap_id(data, mid))
 
             # Compute velocity and integrate into the next configuration.
-            vel = mink.solve_ik(configuration, tasks, dt, solver, 1e-3)
-            configuration.integrate_inplace(vel, dt)
+            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
+            configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
-            t += dt
+            t += rate.dt
