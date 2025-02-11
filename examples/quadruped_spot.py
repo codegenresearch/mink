@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
                 pos_achieved = True
                 ori_achieved = True
-                for task in [eef_task, base_task, *feet_tasks]:
+                for task in tasks:
                     err = task.compute_error(configuration)
                     pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
                     ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
@@ -105,6 +105,5 @@ if __name__ == "__main__":
             data.ctrl = configuration.q[7:]
             mujoco.mj_step(model, data)
 
-            # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
