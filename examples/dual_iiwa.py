@@ -11,7 +11,7 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "kuka_iiwa_14" / "iiwa14.xml"
+_XML = _HERE / "kuka_iiwa_14" / "iiwa14.xml"
 
 
 def construct_model():
@@ -31,14 +31,14 @@ def construct_model():
         "site", name="r_attachment_site", pos=[0, -0.2, 0], group=5
     )
 
-    left_iiwa = mjcf.from_path(_XML_PATH.as_posix())
+    left_iiwa = mjcf.from_path(_XML.as_posix())
     left_iiwa.model = "l_iiwa"
     left_iiwa.find("key", "home").remove()
     left_site.attach(left_iiwa)
     for i, g in enumerate(left_iiwa.worldbody.find_all("geom")):
         g.name = f"geom_{i}"
 
-    right_iiwa = mjcf.from_path(_XML_PATH.as_posix())
+    right_iiwa = mjcf.from_path(_XML.as_posix())
     right_iiwa.model = "r_iiwa"
     right_iiwa.find("key", "home").remove()
     right_site.attach(right_iiwa)
@@ -73,6 +73,7 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
     model, data = configuration.model, configuration.data
 
+    # Define tasks for the left and right end effectors
     tasks = [
         left_ee_task := mink.FrameTask(
             frame_name="l_iiwa/attachment_site",
@@ -88,6 +89,7 @@ if __name__ == "__main__":
         ),
     ]
 
+    # Define collision pairs for collision avoidance
     collision_pairs = [
         (
             mink.get_subtree_geom_ids(model, model.body("l_iiwa/link5").id),
@@ -95,6 +97,7 @@ if __name__ == "__main__":
         ),
     ]
 
+    # Define limits for the configuration
     limits = [
         mink.ConfigurationLimit(model=model),
         mink.CollisionAvoidanceLimit(
@@ -105,10 +108,12 @@ if __name__ == "__main__":
         ),
     ]
 
+    # Get mocap IDs for left and right targets
     left_mid = model.body("l_target").mocapid[0]
     right_mid = model.body("r_target").mocapid[0]
     solver = "osqp"
 
+    # Initial desired positions for left and right targets
     l_y_des = np.array([0.392, -0.392, 0.6])
     r_y_des = np.array([0.392, 0.392, 0.6])
     A = l_y_des.copy()
@@ -122,6 +127,7 @@ if __name__ == "__main__":
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
         viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
 
+        # Initialize mocap targets at the end-effector sites
         mink.move_mocap_to_frame(
             model, data, "l_target", "l_iiwa/attachment_site", "site"
         )
@@ -129,9 +135,11 @@ if __name__ == "__main__":
             model, data, "r_target", "r_iiwa/attachment_site", "site"
         )
 
+        # Set up rate limiter
         rate = RateLimiter(frequency=60.0, warn=False)
         t = 0.0
         while viewer.is_running():
+            # Update desired positions for left and right targets
             mu = (1 + np.cos(t)) / 2
             l_y_des[:] = (
                 A + (B - A + 0.2 * np.array([0, 0, np.sin(mu * np.pi) ** 2])) * mu
@@ -142,16 +150,20 @@ if __name__ == "__main__":
             data.mocap_pos[left_mid] = l_y_des
             data.mocap_pos[right_mid] = r_y_des
 
-            # Update task targets.
-            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "l_target"))
-            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "r_target"))
+            # Update task targets
+            T_wt_left = mink.SE3.from_mocap_name(model, data, "l_target")
+            left_ee_task.set_target(T_wt_left)
+            T_wt_right = mink.SE3.from_mocap_name(model, data, "r_target")
+            right_ee_task.set_target(T_wt_right)
 
+            # Solve inverse kinematics and integrate the result
             vel = mink.solve_ik(
                 configuration, tasks, rate.dt, solver, 1e-2, False, limits=limits
             )
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
+            # Sync viewer and sleep to maintain rate
             viewer.sync()
             rate.sleep()
             t += rate.dt
