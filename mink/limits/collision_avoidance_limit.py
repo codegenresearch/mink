@@ -38,7 +38,7 @@ class Contact:
         return self.dist == self.distmax and not self.fromto.any()
 
 
-def _compute_contact_normal_jacobian(model: mujoco.MjModel, data: mujoco.MjData, contact: Contact) -> np.ndarray:
+def compute_contact_normal_jacobian(model: mujoco.MjModel, data: mujoco.MjData, contact: Contact) -> np.ndarray:
     """Compute the Jacobian for the contact normal.
 
     Args:
@@ -60,7 +60,7 @@ def _compute_contact_normal_jacobian(model: mujoco.MjModel, data: mujoco.MjData,
     return contact.normal @ (jac2 - jac1)
 
 
-def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
+def is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
     """Check if the geoms are welded together.
 
     Args:
@@ -78,7 +78,7 @@ def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> 
     return weld1 == weld2
 
 
-def _are_geom_bodies_parent_child(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
+def are_geom_bodies_parent_child(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
     """Check if the geom bodies have a parent-child relationship.
 
     Args:
@@ -96,7 +96,7 @@ def _are_geom_bodies_parent_child(model: mujoco.MjModel, geom_id1: int, geom_id2
     return weld_parent_id1 == model.body_weldid[body_id2] or weld_parent_id2 == model.body_weldid[body_id1]
 
 
-def _is_pass_contype_conaffinity_check(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
+def is_pass_contype_conaffinity_check(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
     """Check if the geoms pass the contype/conaffinity check.
 
     Args:
@@ -131,7 +131,27 @@ def validate_se3_transformations(mocap_data: np.ndarray) -> bool:
 
 
 class CollisionAvoidanceLimit(Limit):
-    """Normal velocity limit between geom pairs with enhanced testing and SE3 validation."""
+    """Normal velocity limit between geom pairs with enhanced testing and SE3 validation.
+
+    Attributes:
+        model: MuJoCo model.
+        gain: Gain factor in (0, 1] that determines how fast the geoms are
+            allowed to move towards each other at each iteration. Smaller values
+            are safer but may make the geoms move slower towards each other.
+        minimum_distance_from_collisions: The minimum distance to leave between
+            any two geoms. A negative distance allows the geoms to penetrate by
+            the specified amount.
+        collision_detection_distance: The distance between two geoms at which the
+            active collision avoidance limit will be active. A large value will
+            cause collisions to be detected early, but may incur high computational
+            cost. A negative value will cause the geoms to be detected only after
+            they penetrate by the specified amount.
+        bound_relaxation: An offset on the upper bound of each collision avoidance
+            constraint.
+        geom_id_pairs: List of geom ID pairs for collision avoidance.
+        max_contacts: Maximum number of contacts to consider.
+        max_num_contacts: Alias for max_contacts to match test expectations.
+    """
 
     def __init__(
         self,
@@ -189,7 +209,7 @@ class CollisionAvoidanceLimit(Limit):
         upper_bound = np.full((self.max_contacts,), np.inf)
         coefficient_matrix = np.zeros((self.max_contacts, self.model.nv))
         for idx, (geom1_id, geom2_id) in enumerate(self.geom_id_pairs):
-            contact = self._compute_contact(config.data, geom1_id, geom2_id)
+            contact = self._compute_contact_with_minimum_distance(config.data, geom1_id, geom2_id)
             if contact.inactive:
                 continue
             hi_bound_dist = contact.dist
@@ -198,11 +218,11 @@ class CollisionAvoidanceLimit(Limit):
                 upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
-            jac = _compute_contact_normal_jacobian(self.model, config.data, contact)
+            jac = compute_contact_normal_jacobian(self.model, config.data, contact)
             coefficient_matrix[idx] = -jac
         return Constraint(G=coefficient_matrix, h=upper_bound)
 
-    def _compute_contact(self, data: mujoco.MjData, geom1_id: int, geom2_id: int) -> Contact:
+    def _compute_contact_with_minimum_distance(self, data: mujoco.MjData, geom1_id: int, geom2_id: int) -> Contact:
         """Compute contact with minimum distance.
 
         Args:
@@ -228,6 +248,7 @@ class CollisionAvoidanceLimit(Limit):
         Returns:
             List of geom IDs.
         """
+        assert all(isinstance(g, (int, str)) for g in geom_list), "All elements must be int or str"
         return [g if isinstance(g, int) else self.model.geom(g).id for g in geom_list]
 
     def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs) -> List[tuple[List[int], List[int]]]:
@@ -259,9 +280,9 @@ class CollisionAvoidanceLimit(Limit):
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
                 if (
-                    not _is_welded_together(self.model, geom_a, geom_b)
-                    and not _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
-                    and _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
+                    not is_welded_together(self.model, geom_a, geom_b)
+                    and not are_geom_bodies_parent_child(self.model, geom_a, geom_b)
+                    and is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
                 ):
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
