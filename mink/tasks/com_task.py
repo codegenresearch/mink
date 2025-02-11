@@ -99,7 +99,7 @@ class ComTask(Task):
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Center-of-mass task error vector.
+            Center-of-mass task error vector :math:`e(q)`.
 
         Raises:
             TargetNotSet: If the target CoM position has not been set.
@@ -111,19 +111,13 @@ class ComTask(Task):
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the CoM task Jacobian.
 
-        The task Jacobian is defined as:
-
-        .. math::
-
-            J(q) \in \mathbb{R}^{3 \times n_v}
-
-        where :math:`J(q)` is the Jacobian matrix and :math:`n_v` is the number of degrees of freedom.
+        The task Jacobian :math:`J(q)` is the derivative of the CoM position with respect to the configuration :math:`q`.
 
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Center-of-mass task Jacobian.
+            Center-of-mass task Jacobian :math:`J(q)`.
 
         Raises:
             TargetNotSet: If the target CoM position has not been set.
