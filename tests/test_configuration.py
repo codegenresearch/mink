@@ -3,6 +3,7 @@
 import numpy as np
 from absl.testing import absltest
 from robot_descriptions.loaders.mujoco import load_robot_description
+import mujoco
 
 import mink
 
@@ -53,17 +54,17 @@ class TestConfiguration(absltest.TestCase):
             world_T_site.rotation().as_matrix(), expected_xmat
         )
 
-    def test_site_transform_raises_error_if_frame_name_is_invalid(self):
+    def test_site_jacobian_raises_error_if_frame_name_is_invalid(self):
         """Raise an error when the requested frame does not exist."""
         configuration = mink.Configuration(self.model)
         with self.assertRaises(mink.InvalidFrame):
-            configuration.get_transform_frame_to_world("invalid_name", "site")
+            configuration.get_frame_jacobian("invalid_name", "site")
 
-    def test_site_transform_raises_error_if_frame_type_is_invalid(self):
+    def test_site_jacobian_raises_error_if_frame_type_is_invalid(self):
         """Raise an error when the requested frame type is invalid."""
         configuration = mink.Configuration(self.model)
         with self.assertRaises(mink.UnsupportedFrame):
-            configuration.get_transform_frame_to_world("name_does_not_matter", "joint")
+            configuration.get_frame_jacobian("name_does_not_matter", "joint")
 
     def test_update_raises_error_if_keyframe_is_invalid(self):
         """Raise an error when the request keyframe does not exist."""
@@ -91,11 +92,11 @@ class TestConfiguration(absltest.TestCase):
     def test_check_limits(self):
         """Check that an error is raised iff a joint limit is exceeded."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
-        configuration.check_limits()
+        configuration.check_limits(safety_break=0.01)
         self.q_ref[0] += 1e4  # Move configuration out of bounds.
         configuration.update(q=self.q_ref)
         with self.assertRaises(mink.NotWithinConfigurationLimits):
-            configuration.check_limits()
+            configuration.check_limits(safety_break=0.01)
 
     def test_check_limits_free_joints(self):
         """Check that free joints are not limited."""
@@ -111,19 +112,7 @@ class TestConfiguration(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         configuration = mink.Configuration(model)
-        configuration.check_limits()
-
-    def test_frame_jacobian_raises_error_if_frame_name_is_invalid(self):
-        """Raise an error when the requested frame does not exist."""
-        configuration = mink.Configuration(self.model)
-        with self.assertRaises(mink.InvalidFrame):
-            configuration.frame_jacobian("invalid_name", "site")
-
-    def test_frame_jacobian_raises_error_if_frame_type_is_invalid(self):
-        """Raise an error when the requested frame type is invalid."""
-        configuration = mink.Configuration(self.model)
-        with self.assertRaises(mink.UnsupportedFrame):
-            configuration.frame_jacobian("name_does_not_matter", "joint")
+        configuration.check_limits(safety_break=0.01)
 
 
 if __name__ == "__main__":
