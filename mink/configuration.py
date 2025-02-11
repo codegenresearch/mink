@@ -56,13 +56,18 @@ class Configuration:
     def update(self, q: Optional[np.ndarray] = None) -> None:
         """Run forward kinematics.
 
+        This method updates the kinematic state of the model. If a configuration vector `q`
+        is provided, it overrides the internal `data.qpos` with this vector. The method then
+        calls `mj_kinematics` to compute the forward kinematics and `mj_comPos` to update
+        the center of mass positions.
+
         Args:
             q: Optional configuration vector to override internal data.qpos with.
         """
         if q is not None:
             self.data.qpos = q
-        mujoco.mj_kinematics(self.model, self.data)
-        mujoco.mj_comPos(self.model, self.data)
+        mujoco.mj_kinematics(self.model, self.data)  # Compute forward kinematics
+        mujoco.mj_comPos(self.model, self.data)      # Update center of mass positions
 
     def update_from_keyframe(self, key_name: str) -> None:
         """Update the configuration from a keyframe.
@@ -228,10 +233,10 @@ class Configuration:
 
     @property
     def nv(self) -> int:
-        """The dimension of the tangent space."""
+        """Dimension of the tangent space."""
         return self.model.nv
 
     @property
     def nq(self) -> int:
-        """The dimension of the configuration space."""
+        """Dimension of the configuration space."""
         return self.model.nq
