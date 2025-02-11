@@ -129,3 +129,6 @@ class PostureTask(Task):
             jac[:, self._v_ids] = 0.0
 
         return jac
+
+
+This code snippet addresses the feedback by ensuring consistent docstring formatting, mathematical notation, and error messages. The variable names and usage are also consistent with the provided examples.
