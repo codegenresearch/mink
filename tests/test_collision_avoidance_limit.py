@@ -30,7 +30,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         self.configuration.update_from_keyframe("home")
 
     def test_dimensions(self):
-        """Verify the dimensions of the collision avoidance limit."""
+        """Test the dimensions of the collision avoidance limit."""
         # Define geom pairs for collision checking
         g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
         g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
@@ -69,7 +69,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         self.assertEqual(h.shape, (expected_max_num_contacts,))
 
     def test_contact_normal_jac_matches_mujoco(self):
-        """Ensure the computed contact normal Jacobian matches MuJoCo's."""
+        """Test that the computed contact normal Jacobian matches MuJoCo's."""
         model = load_robot_description("ur5e_mj_description")
         nv = model.nv
 
