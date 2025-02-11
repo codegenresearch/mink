@@ -1,9 +1,7 @@
 """Tests for configuration_limit.py.
 
 This module contains tests for the ConfigurationLimit class, which defines
-inequality constraints on joint configurations in a robot model. The tests
-verify the correct initialization, dimensionality, and behavior of the
-ConfigurationLimit object under various conditions.
+inequality constraints on joint configurations in a robot model.
 """
 
 import mujoco
@@ -18,12 +16,7 @@ from mink.utils import get_freejoint_dims
 
 
 class TestConfigurationLimit(absltest.TestCase):
-    """Test suite for the ConfigurationLimit class.
-
-    This class contains several test methods to verify the functionality of the
-    ConfigurationLimit class, including initialization, dimensionality checks,
-    and behavior with different model configurations.
-    """
+    """Test suite for the ConfigurationLimit class."""
 
     @classmethod
     def setUpClass(cls):
@@ -34,7 +27,7 @@ class TestConfigurationLimit(absltest.TestCase):
         """Initialize a Configuration object and a VelocityLimit object for testing."""
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        # NOTE: These velocities are arbitrary and do not match real hardware.
+        # NOTE(kevin): These velocities are arbitrary and do not match real hardware.
         self.velocities = {
             self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
         }
@@ -58,8 +51,8 @@ class TestConfigurationLimit(absltest.TestCase):
     def test_indices(self):
         """Test that the indices of the velocity-limited joints are correct."""
         limit = ConfigurationLimit(self.model)
-        expected_indices = np.arange(6, self.model.nv)
-        self.assertTrue(np.allclose(limit.indices, expected_indices))
+        expected = np.arange(6, self.model.nv)
+        self.assertTrue(np.allclose(limit.indices, expected))
 
     def test_model_with_no_limit(self):
         """Test behavior with a model that has no velocity limits."""
@@ -67,6 +60,9 @@ class TestConfigurationLimit(absltest.TestCase):
         empty_bounded = ConfigurationLimit(empty_model)
         self.assertEqual(len(empty_bounded.indices), 0)
         self.assertIsNone(empty_bounded.projection_matrix)
+        G, h = empty_bounded.compute_qp_inequalities(self.configuration, 1e-3)
+        self.assertIsNone(G)
+        self.assertIsNone(h)
 
     def test_model_with_subset_of_velocities_limited(self):
         """Test behavior with a model that has a subset of velocity-limited joints."""
