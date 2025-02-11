@@ -24,3 +24,753 @@ class TestTask(absltest.TestCase):
 
 if __name__ == "__main__":
     absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Test the Task class for proper error handling."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.0, lm_damping=-1.0)
+
+
+if __name__ == "__main__":
+    absltest.main()
+
+
+
+from absl.testing import absltest
+
+from mink.tasks.exceptions import InvalidDamping, InvalidGain
+from mink.tasks.task import Task
+
+
+class TestTask(absltest.TestCase):
+    """Tests for the Task class."""
+
+    def setUp(self):
+        """Prepare test fixture."""
+        Task.__abstractmethods__ = set()
+
+    def test_task_throws_error_if_gain_negative(self):
+        """Test Task raises InvalidGain for negative gain."""
+        with self.assertRaises(InvalidGain):
+            Task(cost=0.0, gain=-0.5)
+
+    def test_task_throws_error_if_lm_damping_negative(self):
+        """Test Task raises InvalidDamping for negative lm_damping."""
+        with self.assertRaises(InvalidDamping):
+            Task(cost=0.0, gain=1.
