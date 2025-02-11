@@ -1,4 +1,4 @@
-"""This module defines an inequality constraint on joint positions in a robot model, ignoring floating base joints."""
+"""Inequality constraint on joint positions in a robot model, ignoring floating base joints."""
 
 import mujoco
 import numpy as np
@@ -10,7 +10,9 @@ from .limit import Constraint, Limit
 
 
 class ConfigurationLimit(Limit):
-    """Inequality constraint on joint positions in a robot model, ignoring floating base joints.
+    """Inequality constraint on joint positions in a robot model.
+
+    Floating base joints are ignored.
 
     Attributes:
         indices: Indices of the degrees of freedom that are limited.
@@ -42,21 +44,21 @@ class ConfigurationLimit(Limit):
                 f"{self.__class__.__name__} gain must be in the range (0, 1]"
             )
 
-        index_list: list[int] = []  # List to store DoF indices that are limited.
+        jnt_id_list: list[int] = []  # List to store DoF indices that are limited.
         lower = np.full(model.nq, -mujoco.mjMAXVAL)
         upper = np.full(model.nq, mujoco.mjMAXVAL)
         for jnt in range(model.njnt):
             jnt_type = model.jnt_type[jnt]
-            qpos_dim = qpos_width(jnt_type)
+            jnt_dim = qpos_width(jnt_type)
             jnt_range = model.jnt_range[jnt]
             padr = model.jnt_qposadr[jnt]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE or not model.jnt_limited[jnt]:
                 continue  # Skip free joints and joints without limits.
-            lower[padr : padr + qpos_dim] = jnt_range[0] + min_distance_from_limits
-            upper[padr : padr + qpos_dim] = jnt_range[1] - min_distance_from_limits
-            index_list.extend(range(model.jnt_dofadr[jnt], model.jnt_dofadr[jnt] + qpos_dim))
+            lower[padr : padr + jnt_dim] = jnt_range[0] + min_distance_from_limits
+            upper[padr : padr + jnt_dim] = jnt_range[1] - min_distance_from_limits
+            jnt_id_list.extend(range(model.jnt_dofadr[jnt], model.jnt_dofadr[jnt] + jnt_dim))
 
-        self.indices = np.array(index_list)
+        self.indices = np.array(jnt_id_list)
         self.indices.setflags(write=False)
 
         dim = len(self.indices)
