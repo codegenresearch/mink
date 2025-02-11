@@ -74,20 +74,18 @@ if __name__ == "__main__":
     model, data = configuration.model, configuration.data
 
     # Define tasks for the left and right end effectors
-    tasks = [
-        mink.FrameTask(
-            frame_name="l_iiwa/attachment_site",
-            frame_type="site",
-            position_cost=2.0,
-            orientation_cost=1.0,
-        ),
-        mink.FrameTask(
-            frame_name="r_iiwa/attachment_site",
-            frame_type="site",
-            position_cost=2.0,
-            orientation_cost=1.0,
-        ),
-    ]
+    left_ee_task = mink.FrameTask(
+        frame_name="l_iiwa/attachment_site",
+        frame_type="site",
+        position_cost=2.0,
+        orientation_cost=1.0,
+    )
+    right_ee_task = mink.FrameTask(
+        frame_name="r_iiwa/attachment_site",
+        frame_type="site",
+        position_cost=2.0,
+        orientation_cost=1.0,
+    )
 
     # Define collision pairs for collision avoidance
     collision_pairs = [
@@ -118,6 +116,8 @@ if __name__ == "__main__":
     r_y_des = np.array([0.392, 0.392, 0.6])
     A = l_y_des.copy()
     B = r_y_des.copy()
+    l_dy_des = np.zeros(3)
+    r_dy_des = np.zeros(3)
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -151,12 +151,12 @@ if __name__ == "__main__":
             # Update task targets
             T_wt_left = mink.SE3.from_mocap_name(model, data, "l_target")
             T_wt_right = mink.SE3.from_mocap_name(model, data, "r_target")
-            tasks[0].set_target(T_wt_left)
-            tasks[1].set_target(T_wt_right)
+            left_ee_task.set_target(T_wt_left)
+            right_ee_task.set_target(T_wt_right)
 
             # Solve inverse kinematics and integrate the result
             vel = mink.solve_ik(
-                configuration, tasks, rate.dt, solver, 1e-2, False, limits=limits
+                configuration, [left_ee_task, right_ee_task], rate.dt, solver, 1e-2, False, limits=limits
             )
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
