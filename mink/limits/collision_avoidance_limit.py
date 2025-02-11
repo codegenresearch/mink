@@ -97,8 +97,7 @@ class CollisionAvoidanceLimit(Limit):
         bound_relaxation: An offset on the upper bound of each collision avoidance
             constraint.
         geom_id_pairs: List of geom ID pairs for collision avoidance.
-        max_contacts: Maximum number of contacts to consider.
-        max_num_contacts: Alias for max_contacts to match test expectations.
+        max_num_contacts: Maximum number of contacts to consider.
     """
 
     def __init__(
@@ -141,8 +140,7 @@ class CollisionAvoidanceLimit(Limit):
         self.collision_detection_distance = collision_detection_distance
         self.bound_relaxation = bound_relaxation
         self.geom_id_pairs = self._construct_geom_id_pairs(geom_pairs)
-        self.max_contacts = len(self.geom_id_pairs)
-        self.max_num_contacts = self.max_contacts  # Added to match the test expectation
+        self.max_num_contacts = len(self.geom_id_pairs)
 
     def compute_qp_inequalities(self, config: Configuration, dt: float) -> Constraint:
         """Compute quadratic programming inequalities.
@@ -154,8 +152,8 @@ class CollisionAvoidanceLimit(Limit):
         Returns:
             Pair (G, h) representing the inequality constraint as G * delta_q <= h.
         """
-        upper_bound = np.full((self.max_contacts,), np.inf)
-        coefficient_matrix = np.zeros((self.max_contacts, self.model.nv))
+        upper_bound = np.full((self.max_num_contacts,), np.inf)
+        coefficient_matrix = np.zeros((self.max_num_contacts, self.model.nv))
         for idx, (geom1_id, geom2_id) in enumerate(self.geom_id_pairs):
             contact = self._compute_contact_with_minimum_distance(config.data, geom1_id, geom2_id)
             if contact.inactive:
@@ -187,7 +185,7 @@ class CollisionAvoidanceLimit(Limit):
         )
         return Contact(dist, fromto, geom1_id, geom2_id, self.collision_detection_distance)
 
-    def _homogenize_geom_ids(self, geom_list: GeomSequence) -> List[int]:
+    def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
         """Convert geom list to IDs.
 
         Args:
@@ -210,8 +208,8 @@ class CollisionAvoidanceLimit(Limit):
         """
         geom_id_pairs = []
         for pair in collision_pairs:
-            id_pair_A = self._homogenize_geom_ids(pair[0])
-            id_pair_B = self._homogenize_geom_ids(pair[1])
+            id_pair_A = self._homogenize_geom_id_list(pair[0])
+            id_pair_B = self._homogenize_geom_id_list(pair[1])
             geom_id_pairs.append((list(set(id_pair_A)), list(set(id_pair_B))))
         return geom_id_pairs
 
