@@ -15,7 +15,10 @@ if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Setup IK.
+    ## =================== ##
+    ## Setup IK.
+    ## =================== ##
+
     configuration = mink.Configuration(model)
 
     feet = ["FL", "FR", "HR", "HL"]
@@ -29,15 +32,15 @@ if __name__ == "__main__":
 
     posture_task = mink.PostureTask(model, cost=1e-5)
 
-    feet_tasks = [
-        mink.FrameTask(
+    feet_tasks = []
+    for foot in feet:
+        task = mink.FrameTask(
             frame_name=foot,
             frame_type="geom",
             position_cost=1.0,
             orientation_cost=0.0,
         )
-        for foot in feet
-    ]
+        feet_tasks.append(task)
 
     eef_task = mink.FrameTask(
         frame_name="EE",
@@ -47,6 +50,8 @@ if __name__ == "__main__":
     )
 
     tasks = [base_task, posture_task, *feet_tasks, eef_task]
+
+    ## =================== ##
 
     base_mid = model.body("body_target").mocapid[0]
     feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
@@ -85,14 +90,12 @@ if __name__ == "__main__":
                 vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
 
-                pos_achieved = all(
-                    np.linalg.norm(task.compute_error(configuration)[:3]) <= pos_threshold
-                    for task in [eef_task, base_task, *feet_tasks]
-                )
-                ori_achieved = all(
-                    np.linalg.norm(task.compute_error(configuration)[3:]) <= ori_threshold
-                    for task in [eef_task, base_task, *feet_tasks]
-                )
+                pos_achieved = True
+                ori_achieved = True
+                for task in [eef_task, base_task, *feet_tasks]:
+                    err = task.compute_error(configuration)
+                    pos_achieved &= np.linalg.norm(err[:3]) <= pos_threshold
+                    ori_achieved &= np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
                     break
 
