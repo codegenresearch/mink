@@ -20,19 +20,19 @@ if __name__ == "__main__":
     posture_task = mink.PostureTask(model, cost=1e-2)
 
     # Initialize finger tasks
-    finger_tasks = []
-    for finger in fingers:
-        task = mink.FrameTask(
+    finger_tasks = [
+        mink.FrameTask(
             frame_name=finger,
             frame_type="site",
             position_cost=1.0,
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        finger_tasks.append(task)
+        for finger in fingers
+    ]
 
     # Combine tasks
-    tasks = [posture_task] + finger_tasks
+    tasks = [posture_task, *finger_tasks]
 
     model = configuration.model
     data = configuration.data
@@ -43,13 +43,13 @@ if __name__ == "__main__":
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
-        # Initialize mocap bodies at their respective sites.
-        for finger in fingers:
-            mink.move_mocap_to_frame(model, data, f"{finger}_target", finger, "site")
-
         # Initialize to the home keyframe.
         configuration.update_from_keyframe("grasp hard")
         posture_task.set_target_from_configuration(configuration)
+
+        # Initialize mocap bodies at their respective sites.
+        for finger in fingers:
+            mink.move_mocap_to_frame(model, data, f"{finger}_target", finger, "site")
 
         rate = RateLimiter(frequency=500.0, warn=False)  # Adjusted frequency for better performance
         dt = rate.dt
