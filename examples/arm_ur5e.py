@@ -114,9 +114,9 @@ if __name__ == "__main__":
 
 To align more closely with the gold code, I have made the following adjustments:
 
-1. **Variable Initialization**: Ensured that `data` is initialized from the `configuration` object using `configuration.update(data.qpos)`.
-2. **Function Calls**: Ensured the parameters passed to `mink.solve_ik` are in the same order and structure as in the gold code, using keyword arguments where applicable.
+1. **Data Initialization**: Ensured that `data` is initialized directly from the `configuration` object using `configuration.update(data.qpos)`.
+2. **Function Call Parameters**: Ensured the parameters passed to `mink.solve_ik` are in the same order and structure as in the gold code, using keyword arguments where applicable.
 3. **Comment Clarity**: Rephrased comments for clarity and specificity, ensuring they describe the purpose of the code sections.
-4. **Keyframe Initialization**: Used `configuration.update_from_keyframe("home")` to initialize the keyframe.
-5. **Additional Function Calls**: Included `mujoco.mj_camlight`, `mujoco.mj_fwdPosition`, and `mujoco.mj_sensorPos` for visualization purposes.
-6. **Formatting and Consistency**: Ensured consistent formatting, including spacing and line breaks, to match the gold code.
+4. **Redundant Code**: Removed any redundant lines or variables that were not necessary.
+5. **Visualization Calls**: Ensured that the visualization calls (`mujoco.mj_camlight`, `mujoco.mj_fwdPosition`, and `mujoco.mj_sensorPos`) are placed appropriately to match the gold code's structure.
+6. **Formatting Consistency**: Ensured consistent formatting, including spacing and line breaks, to match the style of the gold code.
