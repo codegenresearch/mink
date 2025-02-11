@@ -18,11 +18,11 @@ class VelocityLimit(Limit):
     Floating base joints are ignored.
 
     Attributes:
-        indices: Tangent indices corresponding to velocity-limited joints. Shape (nb,)
+        indices: Tangent indices corresponding to velocity-limited joints.
         limit: Maximum allowed velocity magnitude for velocity-limited joints, in
-            [m]/[s] for slide joints and [rad]/[s] for hinge joints. Shape (nb,)
+            [m]/[s] for slide joints and [rad]/[s] for hinge joints.
         projection_matrix: Projection from tangent space to subspace with
-            velocity-limited joints. Shape (nb, nv)
+            velocity-limited joints.
     """
 
     indices: np.ndarray
@@ -48,15 +48,15 @@ class VelocityLimit(Limit):
             jnt_type = model.jnt_type[jid]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
                 raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
-            vdim = dof_width(jnt_type)
-            vadr = model.jnt_dofadr[jid]
+            jnt_dim = dof_width(jnt_type)
+            jnt_id = model.jnt_dofadr[jid]
             max_vel = np.atleast_1d(max_vel)
-            if max_vel.shape != (vdim,):
+            if max_vel.shape != (jnt_dim,):
                 raise LimitDefinitionError(
-                    f"Joint {joint_name} must have a limit of shape ({vdim},). "
+                    f"Joint {joint_name} must have a limit of shape ({jnt_dim},). "
                     f"Got: {max_vel.shape}"
                 )
-            index_list.extend(range(vadr, vadr + vdim))
+            index_list.extend(range(jnt_id, jnt_id + jnt_dim))
             limit_list.extend(max_vel.tolist())
 
         self.indices = np.array(index_list)
@@ -64,8 +64,8 @@ class VelocityLimit(Limit):
         self.limit = np.array(limit_list)
         self.limit.setflags(write=False)
 
-        nb = len(self.indices)
-        self.projection_matrix = np.eye(model.nv)[self.indices] if nb > 0 else None
+        dim = len(self.indices)
+        self.projection_matrix = np.eye(model.nv)[self.indices] if dim > 0 else None
 
     def compute_qp_inequalities(
         self, configuration: Configuration, dt: float
