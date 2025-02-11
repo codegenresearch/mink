@@ -77,11 +77,11 @@ class Configuration:
             key_name (str): The name of the keyframe.
 
         Raises:
-            exceptions.InvalidKeyframe: If no key named `key` was found in the model.
+            ValueError: If no key named `key` was found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise exceptions.InvalidKeyframe(key_name, self.model)
+            raise ValueError(f"No key named '{key_name}' found in the model.")
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
@@ -122,12 +122,20 @@ class Configuration:
     def get_frame_jacobian(self, frame_name: str, frame_type: str) -> np.ndarray:
         """Compute the Jacobian matrix of a frame velocity.
 
+        Denoting our frame by :math:`B` and the world frame by :math:`W`, the
+        Jacobian matrix :math:`{}_B J_{WB}` is related to the body velocity
+        :math:`{}_B v_{WB}` by:
+
+        .. math::
+
+            {}_B v_{WB} = {}_B J_{WB} \\dot{q}
+
         Args:
             frame_name (str): Name of the frame in the MJCF.
             frame_type (str): Type of frame. Can be a geom, a body, or a site.
 
         Returns:
-            np.ndarray: Jacobian matrix of the frame.
+            np.ndarray: Jacobian matrix :math:`{}_B J_{WB}` of the frame.
 
         Raises:
             exceptions.UnsupportedFrame: If the frame type is not supported.
@@ -209,7 +217,7 @@ class Configuration:
         return q
 
     def integrate_inplace(self, velocity: np.ndarray, dt: float) -> None:
-        """Integrate a velocity and update the current configuration in place.
+        """Integrate a velocity and update the current configuration inplace.
 
         Args:
             velocity (np.ndarray): The velocity in tangent space.
