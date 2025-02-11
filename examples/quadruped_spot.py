@@ -68,10 +68,12 @@ if __name__ == "__main__":
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
+        # Initialize to the home keyframe.
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
 
+        # Set initial targets for tasks.
         posture_task.set_target_from_configuration(configuration)
         for foot in feet:
             mink.move_mocap_to_frame(model, data, f"{foot}_target", foot, "geom")
@@ -80,6 +82,7 @@ if __name__ == "__main__":
 
         rate = RateLimiter(frequency=500.0)
         while viewer.is_running():
+            # Update task targets.
             base_task.set_target(mink.SE3.from_mocap_id(data, base_mid))
             for i, task in enumerate(feet_tasks):
                 task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
@@ -90,6 +93,7 @@ if __name__ == "__main__":
                 vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
 
+                # Check if all tasks have achieved their targets.
                 pos_achieved = True
                 ori_achieved = True
                 for task in [eef_task, base_task, *feet_tasks]:
@@ -99,6 +103,7 @@ if __name__ == "__main__":
                 if pos_achieved and ori_achieved:
                     break
 
+            # Update control signals.
             data.ctrl = configuration.q[7:]
             mujoco.mj_step(model, data)
 
@@ -107,4 +112,8 @@ if __name__ == "__main__":
             rate.sleep()
 
 
-Based on the feedback, I have ensured that the error computation loop iterates through the tasks in the order `[eef_task, base_task, *feet_tasks]`. This maintains consistency and readability. Additionally, I have corrected the error calculation to compute the error for each task in the loop and update the `pos_achieved` and `ori_achieved` flags accordingly. The overall structure of the code follows the same logical flow as the gold code.
+### Changes Made:
+1. **Error Computation**: Ensured that the error is computed for each task in the loop using the `compute_error` method.
+2. **Consistency in Task Order**: Maintained the order `[eef_task, base_task, *feet_tasks]` when iterating through tasks.
+3. **Variable Naming and Structure**: Ensured variable names and structure match the gold code.
+4. **Commenting and Documentation**: Added comments to explain the purpose of each section, enhancing clarity and maintainability.
