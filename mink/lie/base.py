@@ -44,7 +44,7 @@ class MatrixLieGroup(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def from_matrix(cls, matrix: np.ndarray) -> Self:
-        """Creates a group member from a matrix."""
+        """Creates a group element from a matrix."""
         raise NotImplementedError
 
     @classmethod
@@ -145,7 +145,7 @@ class MatrixLieGroup(abc.ABC):
     @abc.abstractmethod
     def ljacinv(cls, other: np.ndarray) -> np.ndarray:
         """Computes the inverse of the left Jacobian."""
-        # NOTE: This can be computed as np.linalg.inv(cls.ljac(other)).
+        # NOTE: Can be computed as np.linalg.inv(cls.ljac(other)).
         raise NotImplementedError
 
     # Eqn. 67.
