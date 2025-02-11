@@ -17,7 +17,7 @@ from mink.utils import get_body_geom_ids
 
 
 class TestCollisionAvoidanceLimit(absltest.TestCase):
-    """Test suite for the CollisionAvoidanceLimit class."""
+    """Test CollisionAvoidanceLimit class."""
 
     @classmethod
     def setUpClass(cls):
@@ -30,42 +30,34 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         self.configuration.update_from_keyframe("home")
 
     def test_dimensions(self):
-        """Verify the dimensions of the collision avoidance limit constraints."""
-        geom_ids_wrist_2 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
-        geom_ids_upper_arm = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
+        """Verify dimensions of collision avoidance limit constraints."""
+        g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
+        g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
 
         bound_relaxation = -1e-3
-        collision_limit = CollisionAvoidanceLimit(
+        limit = CollisionAvoidanceLimit(
             model=self.model,
-            geom_pairs=[(geom_ids_wrist_2, geom_ids_upper_arm)],
+            geom_pairs=[(g1, g2)],
             bound_relaxation=bound_relaxation,
         )
 
         # Filter out non-colliding geoms and calculate expected number of contacts.
-        colliding_geoms_wrist_2 = [
-            geom_id
-            for geom_id in geom_ids_wrist_2
-            if self.model.geom_conaffinity[geom_id] != 0 and self.model.geom_contype[geom_id] != 0
-        ]
-        colliding_geoms_upper_arm = [
-            geom_id
-            for geom_id in geom_ids_upper_arm
-            if self.model.geom_conaffinity[geom_id] != 0 and self.model.geom_contype[geom_id] != 0
-        ]
-        expected_max_contacts = len(list(itertools.product(colliding_geoms_wrist_2, colliding_geoms_upper_arm)))
-        self.assertEqual(collision_limit.max_num_contacts, expected_max_contacts)
+        g1_coll = [g for g in g1 if self.model.geom_conaffinity[g] and self.model.geom_contype[g]]
+        g2_coll = [g for g in g2 if self.model.geom_conaffinity[g] and self.model.geom_contype[g]]
+        expected_max_contacts = len(list(itertools.product(g1_coll, g2_coll)))
+        self.assertEqual(limit.max_num_contacts, expected_max_contacts)
 
-        G_matrix, h_vector = collision_limit.compute_qp_inequalities(self.configuration, 1e-3)
+        G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
 
         # Validate the upper bound and constraint dimensions.
-        self.assertTrue(np.all(h_vector >= bound_relaxation))
-        self.assertEqual(G_matrix.shape, (expected_max_contacts, self.model.nv))
-        self.assertEqual(h_vector.shape, (expected_max_contacts,))
+        self.assertTrue(np.all(h >= bound_relaxation))
+        self.assertEqual(G.shape, (expected_max_contacts, self.model.nv))
+        self.assertEqual(h.shape, (expected_max_contacts,))
 
     def test_contact_normal_jacobian_matches_mujoco(self):
-        """Ensure the computed contact normal Jacobian matches MuJoCo's output."""
+        """Ensure computed contact normal Jacobian matches MuJoCo's output."""
         model = load_robot_description("ur5e_mj_description")
-        num_dof = model.nv
+        nv = model.nv
 
         # Configure model options for contact normal computation.
         model.opt.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
@@ -81,22 +73,22 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         mujoco.mj_forward(model, data)
         self.assertGreater(data.ncon, 1)
 
-        for contact_index in range(data.ncon):
+        for i in range(data.ncon):
             # Retrieve MuJoCo's contact normal Jacobian.
-            contact = data.contact[contact_index]
-            start_idx = contact.efc_address * num_dof
-            end_idx = start_idx + num_dof
+            contact = data.contact[i]
+            start_idx = contact.efc_address * nv
+            end_idx = start_idx + nv
             mujoco_jacobian = data.efc_J[start_idx:end_idx]
 
             # Manually compute the contact Jacobian.
-            normal_vector = contact.frame[:3]
-            distance = contact.dist
-            from_to = np.empty((6,), dtype=np.float64)
-            from_to[3:] = contact.pos - 0.5 * distance * normal_vector
-            from_to[:3] = contact.pos + 0.5 * distance * normal_vector
+            normal = contact.frame[:3]
+            dist = contact.dist
+            fromto = np.empty((6,), dtype=np.float64)
+            fromto[3:] = contact.pos - 0.5 * dist * normal
+            fromto[:3] = contact.pos + 0.5 * dist * normal
             contact_info = Contact(
-                dist=distance,
-                fromto=from_to,
+                dist=dist,
+                fromto=fromto,
                 geom1=contact.geom1,
                 geom2=contact.geom2,
                 distmax=np.inf,
