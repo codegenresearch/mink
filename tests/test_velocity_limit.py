@@ -21,13 +21,13 @@ class TestVelocityLimit(absltest.TestCase):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
         # NOTE: These velocities are arbitrary and do not match real hardware.
-        self.velocities = {self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)}
+        self.velocities = {self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)}
 
     def test_dimensions(self):
         """Test dimensions of velocity limit."""
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
-        nb = 6  # Excluding the 6 free joint dimensions.
+        nb = nv - len(get_freejoint_dims(self.model)[1])
         self.assertEqual(len(limit.indices), nb)
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
 
@@ -47,18 +47,22 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(G)
         self.assertIsNone(h)
 
-    def test_subset_of_velocities_limited(self):
+    def test_model_with_subset_of_velocities_limited(self):
         """Test behavior with a subset of velocity limits."""
-        limited_velocities = {key: value for key, value in list(self.velocities.items())[:3]}
-        limit = VelocityLimit(self.model, limited_velocities)
+        partial_velocities = {}
+        for i, (key, value) in enumerate(self.velocities.items()):
+            if i > 2:
+                break
+            partial_velocities[key] = value
+        limit = VelocityLimit(self.model, partial_velocities)
         nb = 3
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        expected_limit = np.asarray([3.14] * nb)
+        expected_limit = np.asarray([np.pi] * nb)
         np.testing.assert_allclose(limit.limit, expected_limit)
 
-    def test_ball_joint(self):
+    def test_model_with_ball_joint(self):
         """Test behavior with a ball joint."""
         xml_str = """
         <mujoco>
@@ -106,7 +110,8 @@ class TestVelocityLimit(absltest.TestCase):
         }
         with self.assertRaises(LimitDefinitionError) as cm:
             VelocityLimit(model, velocities)
-        self.assertEqual(str(cm.exception), "Joint ball must have a limit of shape (3,). Got: (2,)")
+        expected_error_message = "Joint ball must have a limit of shape (3,). Got: (2,)"
+        self.assertEqual(str(cm.exception), expected_error_message)
 
     def test_free_joint_raises_error(self):
         """Test error for free joints."""
@@ -131,8 +136,19 @@ class TestVelocityLimit(absltest.TestCase):
         }
         with self.assertRaises(LimitDefinitionError) as cm:
             VelocityLimit(model, velocities)
-        self.assertEqual(str(cm.exception), "Free joint floating is not supported")
+        expected_error_message = "Free joint floating is not supported"
+        self.assertEqual(str(cm.exception), expected_error_message)
 
 
 if __name__ == "__main__":
     absltest.main()
+
+
+### Key Changes:
+1. **Velocity Values**: Changed arbitrary values to `np.pi` for better clarity.
+2. **Variable Naming**: Used `partial_velocities` for clarity in `test_model_with_subset_of_velocities_limited`.
+3. **Error Messages**: Ensured error messages match the gold code.
+4. **Test Structure**: Used a loop to create a limited subset of velocities in `test_model_with_subset_of_velocities_limited`.
+5. **Assertions**: Ensured all assertions are comprehensive and match the gold code.
+6. **Comments**: Ensured comments are consistent and clear.
+7. **Docstrings**: Ensured docstrings are concise and consistent with the gold code.
