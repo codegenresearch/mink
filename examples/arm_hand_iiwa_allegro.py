@@ -60,7 +60,7 @@ if __name__ == "__main__":
     # Construct the model
     model = construct_model()
 
-    # Initialize configuration
+    # Initialize configuration and data
     configuration = mink.Configuration(model)
     data = configuration.data
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     limits = [mink.ConfigurationLimit(model=model)]
 
-    # Initialize mocap targets
+    # Initialize the mocap target at the end-effector site
     mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
     for finger in fingers:
         mink.move_mocap_to_frame(
