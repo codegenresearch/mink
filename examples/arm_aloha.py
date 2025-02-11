@@ -23,7 +23,10 @@ _JOINT_NAMES = [
 
 # Velocity limits for each joint, sourced from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_JOINT_VELOCITY_LIMITS = {joint: np.pi for joint in _JOINT_NAMES}
+_JOINT_VELOCITY_LIMITS = {}
+for joint in _JOINT_NAMES:
+    _JOINT_VELOCITY_LIMITS[f"left/{joint}"] = np.pi
+    _JOINT_VELOCITY_LIMITS[f"right/{joint}"] = np.pi
 
 
 def compensate_gravity(
@@ -59,30 +62,29 @@ if __name__ == "__main__":
 
     # Collect joint and actuator IDs for both arms.
     joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
-    velocity_limits = {name: _JOINT_VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
     configuration = mink.Configuration(model)
 
     # Define tasks for both arms and posture.
-    tasks = [
-        mink.FrameTask(
-            frame_name="left/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-        mink.FrameTask(
-            frame_name="right/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-        mink.PostureTask(model, cost=1e-4),
-    ]
+    l_ee_task = mink.FrameTask(
+        frame_name="left/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    r_ee_task = mink.FrameTask(
+        frame_name="right/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    posture_task = mink.PostureTask(model, cost=1e-4)
+
+    tasks = [l_ee_task, r_ee_task, posture_task]
 
     # Set up collision avoidance for specified geometries.
     left_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
@@ -102,11 +104,9 @@ if __name__ == "__main__":
     )
 
     # Define limits for configuration, velocity, and collision avoidance.
-    limits = [
-        mink.ConfigurationLimit(model=model),
-        mink.VelocityLimit(model, velocity_limits),
-        collision_avoidance_limit,
-    ]
+    config_limit = mink.ConfigurationLimit(model=model)
+    velocity_limit = mink.VelocityLimit(model, _JOINT_VELOCITY_LIMITS)
+    limits = [config_limit, velocity_limit, collision_avoidance_limit]
 
     # Mocap IDs for left and right targets.
     left_target_id = model.body("left/target").mocapid[0]
@@ -127,7 +127,7 @@ if __name__ == "__main__":
         mujoco.mj_resetDataKeyframe(model, data, model.key("neutral_pose").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
-        tasks[-1].set_target_from_configuration(configuration)
+        posture_task.set_target_from_configuration(configuration)
 
         # Position mocap targets at the end-effector sites.
         mink.move_mocap_to_frame(model, data, "left/target", "left/gripper", "site")
@@ -136,8 +136,8 @@ if __name__ == "__main__":
         rate_limiter = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
-            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Solve IK and integrate the solution.
             for _ in range(max_iterations):
@@ -152,10 +152,10 @@ if __name__ == "__main__":
                 configuration.integrate_inplace(velocity, rate_limiter.dt)
 
                 # Check if both arms have reached their targets.
-                left_error = tasks[0].compute_error(configuration)
+                left_error = l_ee_task.compute_error(configuration)
                 left_position_achieved = np.linalg.norm(left_error[:3]) <= position_threshold
                 left_orientation_achieved = np.linalg.norm(left_error[3:]) <= orientation_threshold
-                right_error = tasks[1].compute_error(configuration)
+                right_error = r_ee_task.compute_error(configuration)
                 right_position_achieved = np.linalg.norm(right_error[:3]) <= position_threshold
                 right_orientation_achieved = np.linalg.norm(right_error[3:]) <= orientation_threshold
                 if left_position_achieved and left_orientation_achieved and right_position_achieved and right_orientation_achieved:
