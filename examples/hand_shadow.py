@@ -50,7 +50,9 @@ if __name__ == "__main__":
         for finger in fingers:
             mink.move_mocap_to_frame(model, data, f"{finger}_target", finger, "site")
 
-        rate = RateLimiter(frequency=200.0, warn=False)  # Adjusted frequency to match gold code
+        rate = RateLimiter(frequency=500.0, warn=False)
+        dt = rate.dt
+        t = 0
         while viewer.is_running():
             # Update task targets.
             for finger, task in zip(fingers, finger_tasks):
@@ -65,3 +67,4 @@ if __name__ == "__main__":
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
+            t += dt
