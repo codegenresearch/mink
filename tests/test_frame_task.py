@@ -151,7 +151,6 @@ class TestFrameTask(absltest.TestCase):
         np.testing.assert_allclose(error, np.zeros(6))
 
     def test_unit_cost_qp_objective(self):
-        """Unit cost means the QP objective is exactly (J^T J, -e^T J)."""
         task = FrameTask(
             frame_name="pelvis",
             frame_type="body",
@@ -175,7 +174,6 @@ class TestFrameTask(absltest.TestCase):
         np.testing.assert_allclose(c, e.T @ J)
 
     def test_lm_damping_has_no_effect_at_target(self):
-        """Levenberg-Marquardt damping has no effect when the error is zero."""
         task = FrameTask(
             frame_name="pelvis",
             frame_type="body",
