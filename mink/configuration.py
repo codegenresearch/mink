@@ -218,15 +218,15 @@ class Configuration:
 
     @property
     def q(self) -> np.ndarray:
-        """Current configuration vector."""
+        """The current configuration vector."""
         return self.data.qpos.copy()
 
     @property
     def nv(self) -> int:
-        """Dimension of the tangent space."""
+        """The dimension of the tangent space."""
         return self.model.nv
 
     @property
     def nq(self) -> int:
-        """Dimension of the configuration space."""
+        """The dimension of the configuration space."""
         return self.model.nq
