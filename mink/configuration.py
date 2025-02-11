@@ -6,7 +6,7 @@ and enables easy access to kinematic quantities such as frame transforms and fra
 Jacobians.
 
 Frames are coordinate systems that can be attached to different elements of
-the robot model. mink supports frames of type `body`, `geom` and `site`.
+the robot model. mink supports frames of type `body`, `geom`, and `site`.
 
 Version: {version}
 """
@@ -50,7 +50,7 @@ class Configuration:
         Args:
             model: Mujoco model.
             q: Configuration to initialize from. If None, the configuration
-               is initialized to the reference configuration `qpos0`.
+               is initialized to the default configuration `qpos0`.
         """
         self.model = model
         self.data = mujoco.MjData(model)
@@ -60,7 +60,7 @@ class Configuration:
         """Run forward kinematics.
 
         Args:
-            q: Optional configuration vector to override internal data.qpos with.
+            q: Optional configuration vector to override the internal `qpos` with.
         """
         if q is not None:
             self.data.qpos = q
@@ -202,7 +202,7 @@ class Configuration:
         return q
 
     def integrate_inplace(self, velocity: np.ndarray, dt: float) -> None:
-        """Integrate a velocity and update the current configuration inplace.
+        """Integrate a velocity and update the current configuration in place.
 
         Args:
             velocity: The velocity in tangent space.
