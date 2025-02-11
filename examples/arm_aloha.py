@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Sequence, List, Dict
+from typing import Optional, Sequence
 
 import mujoco
 import mujoco.viewer
@@ -23,10 +23,7 @@ _JOINT_NAMES = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS: Dict[str, float] = {}
-for prefix in ["left", "right"]:
-    for joint in _JOINT_NAMES:
-        _VELOCITY_LIMITS[f"{prefix}/{joint}"] = np.pi
+_VELOCITY_LIMITS = {f"{prefix}/{joint}": np.pi for prefix in ["left", "right"] for joint in _JOINT_NAMES}
 
 
 def compensate_gravity(
@@ -47,7 +44,7 @@ def compensate_gravity(
             the applied forces in `data` are used.
     """
     qfrc_applied = data.qfrc_applied if qfrc_applied is None else qfrc_applied
-    qfrc_applied[:] = 0.0  # Reset forces from previous calls.
+    qfrc_applied[:] = 0.0  # Reset forces to avoid accumulation from previous calls.
     jac = np.empty((3, model.nv))
     for subtree_id in subtree_ids:
         total_mass = model.body_subtreemass[subtree_id]
@@ -64,11 +61,7 @@ if __name__ == "__main__":
     right_subtree_id = model.body("right/base_link").id
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names: List[str] = []
-    for prefix in ["left", "right"]:
-        for joint in _JOINT_NAMES:
-            name = f"{prefix}/{joint}"
-            joint_names.append(name)
+    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
