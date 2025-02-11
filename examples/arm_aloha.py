@@ -11,7 +11,7 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
 # Single arm joint names.
-_JOINT_NAMES: list[str] = [
+_JOINT_NAMES = [
     "waist",
     "shoulder",
     "elbow",
@@ -22,7 +22,7 @@ _JOINT_NAMES: list[str] = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS: dict[str, float] = {k: np.pi for k in _JOINT_NAMES}
+_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
 
 
 if __name__ == "__main__":
@@ -30,13 +30,13 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names: list[str] = []
-    velocity_limits: dict[str, float] = {}
+    joint_names = []
+    velocity_limits = {}
     for prefix in ["left", "right"]:
-        for joint in _JOINT_NAMES:
-            name = f"{prefix}/{joint}"
+        for n in _JOINT_NAMES:
+            name = f"{prefix}/{n}"
             joint_names.append(name)
-            velocity_limits[name] = _VELOCITY_LIMITS[joint]
+            velocity_limits[name] = _VELOCITY_LIMITS[n]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -61,26 +61,24 @@ if __name__ == "__main__":
         posture_task := mink.PostureTask(
             joint_names=joint_names,
             joint_positions={name: 0.0 for name in joint_names},
-            position_cost=0.1,
+            position_cost=1e-4,
         ),
     ]
+
+    # Set the posture task target from the current configuration.
+    posture_task.set_target(configuration)
 
     # Define collision avoidance between the following geoms:
     # - Geoms starting at subtree "right wrist" and "table".
     # - Geoms starting at subtree "left wrist" and "table".
     # - Geoms starting at subtree "right wrist" and "left wrist".
-    # - Geoms starting at subtree "right upper arm" and "table".
-    # - Geoms starting at subtree "left upper arm" and "table".
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
-    l_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
-    r_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),
-        (l_wrist_geoms + r_wrist_geoms, frame_geoms + ["table"]),
-        (l_upper_arm_geoms, frame_geoms + ["table"]),
-        (r_upper_arm_geoms, frame_geoms + ["table"]),
+        (l_wrist_geoms, frame_geoms + ["table"]),
+        (r_wrist_geoms, frame_geoms + ["table"]),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
@@ -100,8 +98,8 @@ if __name__ == "__main__":
     l_mid = model.body("left/target").mocapid[0]
     r_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
-    pos_threshold = 1e-3
-    ori_threshold = 1e-3
+    pos_threshold = 1e-2
+    ori_threshold = 1e-2
     max_iters = 2
 
     with mujoco.viewer.launch_passive(
@@ -132,7 +130,7 @@ if __name__ == "__main__":
                     rate.dt,
                     solver,
                     limits=limits,
-                    damping=1e-2,
+                    damping=1e-5,
                 )
                 configuration.integrate_inplace(vel, rate.dt)
 
