@@ -114,7 +114,11 @@ class SO3(MatrixLieGroup):
         return SO3(wxyz=wxyz)
 
     def as_matrix(self) -> np.ndarray:
-        """Convert the quaternion to a 3x3 rotation matrix."""
+        """Convert the quaternion to a 3x3 rotation matrix.
+
+        This method uses the MuJoCo function `mju_quat2Mat` to convert the quaternion
+        to a rotation matrix.
+        """
         mat = np.zeros(9, dtype=np.float64)
         mujoco.mju_quat2Mat(mat, self.wxyz)
         return mat.reshape(3, 3)
@@ -151,7 +155,10 @@ class SO3(MatrixLieGroup):
         return SO3(wxyz=self.wxyz / np.linalg.norm(self.wxyz))
 
     def apply(self, target: np.ndarray) -> np.ndarray:
-        """Apply the rotation to a 3D vector."""
+        """Apply the rotation to a 3D vector.
+
+        This method applies the rotation represented by the quaternion to a 3D vector.
+        """
         assert target.shape == (SO3.space_dim,)
         padded_target = np.concatenate([np.zeros(1, dtype=np.float64), target])
         return (self @ SO3(wxyz=padded_target) @ self.inverse()).wxyz[1:]
@@ -164,7 +171,10 @@ class SO3(MatrixLieGroup):
 
     @classmethod
     def exp(cls, tangent: np.ndarray) -> SO3:
-        """Exponential map from the tangent space to the manifold."""
+        """Exponential map from the tangent space to the manifold.
+
+        This method computes the exponential map of a tangent vector to the SO3 manifold.
+        """
         assert tangent.shape == (SO3.tangent_dim,)
         theta_squared = tangent @ tangent
         theta_pow_4 = theta_squared * theta_squared
@@ -181,7 +191,10 @@ class SO3(MatrixLieGroup):
         return SO3(wxyz=wxyz)
 
     def log(self) -> np.ndarray:
-        """Logarithmic map from the manifold to the tangent space."""
+        """Logarithmic map from the manifold to the tangent space.
+
+        This method computes the logarithmic map of a quaternion to the tangent space.
+        """
         w = self.wxyz[0]
         norm_sq = self.wxyz[1:] @ self.wxyz[1:]
         use_taylor = norm_sq < get_epsilon(norm_sq.dtype)
@@ -204,7 +217,10 @@ class SO3(MatrixLieGroup):
 
     @classmethod
     def ljac(cls, other: np.ndarray) -> np.ndarray:
-        """Left Jacobian of the exponential map."""
+        """Left Jacobian of the exponential map.
+
+        This method computes the left Jacobian of the exponential map for SO3.
+        """
         theta = np.sqrt(other @ other)
         use_taylor = theta < get_epsilon(theta.dtype)
         if use_taylor:
@@ -219,7 +235,10 @@ class SO3(MatrixLieGroup):
 
     @classmethod
     def ljacinv(cls, other: np.ndarray) -> np.ndarray:
-        """Inverse of the left Jacobian of the exponential map."""
+        """Inverse of the left Jacobian of the exponential map.
+
+        This method computes the inverse of the left Jacobian of the exponential map for SO3.
+        """
         theta = np.sqrt(other @ other)
         use_taylor = theta < get_epsilon(theta.dtype)
         if use_taylor:
