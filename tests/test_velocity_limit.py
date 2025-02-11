@@ -23,7 +23,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
         self.velocities = {
-            self.model.joint(i).name: np.pi for i in range(self.model.njnt) if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE
+            self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt) if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE
         }
 
     def test_projection_matrix_and_indices_dimensions(self):
@@ -46,13 +46,10 @@ class TestVelocityLimit(absltest.TestCase):
 
     def test_subset_of_velocity_limits(self):
         """Test the behavior when only a subset of joints have velocity limits."""
-        velocities = {
-            "wrist_1_joint": np.pi,
-            "wrist_2_joint": np.pi,
-            "wrist_3_joint": np.pi,
-        }
+        valid_joint_names = [self.model.joint(i).name for i in range(self.model.njnt) if self.model.jnt_type[i] != mujoco.mjtJoint.mjJNT_FREE]
+        velocities = {joint_name: 3.14 for joint_name in valid_joint_names[:3]}
         limit = VelocityLimit(self.model, velocities)
-        nb = 3
+        nb = len(velocities)
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
