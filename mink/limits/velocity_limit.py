@@ -64,8 +64,8 @@ class VelocityLimit(Limit):
         self.limit = np.array(limit_list)
         self.limit.setflags(write=False)
 
-        dim = len(self.indices)
-        self.projection_matrix = np.eye(model.nv)[self.indices] if dim > 0 else None
+        nb = len(self.indices)
+        self.projection_matrix = np.eye(model.nv)[self.indices] if nb > 0 else None
 
     def compute_qp_inequalities(
         self, configuration: Configuration, dt: float
@@ -90,7 +90,7 @@ class VelocityLimit(Limit):
         Returns:
             Pair :math:`(G, h)` representing the inequality constraint as
             :math:`G \Delta q \leq h`, where :math:`G` has shape (2n, nv) and :math:`h`
-            has shape (2n,). If there are no limits, returns an empty constraint.
+            has shape (2n,). Returns an empty constraint if there are no limits.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
