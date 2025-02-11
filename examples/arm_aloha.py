@@ -30,35 +30,40 @@ if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Collect joint and actuator IDs for both arms.
-    joint_ids = []
+    # Collect degrees of freedom (DOF) and actuator IDs for both arms.
+    dof_ids = []
     actuator_ids = []
     for prefix in ["left", "right"]:
         for name in JOINT_NAMES:
             full_name = f"{prefix}/{name}"
-            joint_ids.append(model.joint(full_name).id)
+            dof_ids.append(model.joint(full_name).id)
             actuator_ids.append(model.actuator(full_name).id)
-    joint_ids = np.array(joint_ids)
+    dof_ids = np.array(dof_ids)
     actuator_ids = np.array(actuator_ids)
 
     # Initialize the configuration object.
     configuration = mink.Configuration(model)
 
-    # Define tasks for the left and right end-effectors.
+    # Define tasks for the left and right end-effectors using the walrus operator.
     tasks = [
-        mink.FrameTask(
+        left_ee_task := mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        mink.FrameTask(
+        right_ee_task := mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
+        ),
+        posture_task := mink.PostureTask(
+            configuration=configuration,
+            position_cost=0.1,
+            orientation_cost=0.1,
         ),
     ]
 
@@ -68,7 +73,8 @@ if __name__ == "__main__":
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
         (left_wrist_geoms, right_wrist_geoms),
-        (left_wrist_geoms + right_wrist_geoms, frame_geoms + ["table"]),
+        (left_wrist_geoms, frame_geoms + ["table"]),
+        (right_wrist_geoms, frame_geoms + ["table"]),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
@@ -110,8 +116,8 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets to the current mocap positions.
-            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Solve inverse kinematics and integrate the solution.
             for _ in range(max_iters):
@@ -121,22 +127,22 @@ if __name__ == "__main__":
                     rate.dt,
                     solver,
                     limits=limits,
-                    damping=1e-3,
+                    damping=1e-2,  # Adjusted damping value to match gold code
                 )
                 configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if the tasks are achieved within the thresholds.
-                left_err = tasks[0].compute_error(configuration)
+                left_err = left_ee_task.compute_error(configuration)
                 left_pos_achieved = np.linalg.norm(left_err[:3]) <= pos_threshold
                 left_ori_achieved = np.linalg.norm(left_err[3:]) <= ori_threshold
-                right_err = tasks[1].compute_error(configuration)
+                right_err = right_ee_task.compute_error(configuration)
                 right_pos_achieved = np.linalg.norm(right_err[:3]) <= pos_threshold
                 right_ori_achieved = np.linalg.norm(right_err[3:]) <= ori_threshold
                 if left_pos_achieved and left_ori_achieved and right_pos_achieved and right_ori_achieved:
                     break
 
             # Apply the computed velocities to the actuators.
-            data.ctrl[actuator_ids] = configuration.q[joint_ids]
+            data.ctrl[actuator_ids] = configuration.q[dof_ids]
             mujoco.mj_step(model, data)
 
             # Update the viewer.
