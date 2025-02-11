@@ -11,8 +11,8 @@ from mink.limits import CollisionAvoidanceLimit
 from mink.utils import get_body_geom_ids
 
 
-class CollisionAvoidanceLimitTests(absltest.TestCase):
-    """Tests for the CollisionAvoidanceLimit class."""
+class TestCollisionAvoidanceLimit(absltest.TestCase):
+    """Test collision avoidance limit."""
 
     @classmethod
     def setUpClass(cls):
@@ -22,42 +22,61 @@ class CollisionAvoidanceLimitTests(absltest.TestCase):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("home")
 
-    def test_collision_avoidance_limit_dimensions(self):
-        geom_ids_wrist_2_link = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
-        geom_ids_upper_arm_link = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
+    def test_dimensions(self):
+        """Test the dimensions of the collision avoidance limit."""
+        g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
+        g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
 
         bound_relaxation = -1e-3
         limit = CollisionAvoidanceLimit(
             model=self.model,
-            geom_pairs=[(geom_ids_wrist_2_link, geom_ids_upper_arm_link)],
+            geom_pairs=[(g1, g2)],
             bound_relaxation=bound_relaxation,
         )
 
-        expected_max_contacts = self._calculate_expected_max_contacts(
-            geom_ids_wrist_2_link, geom_ids_upper_arm_link
-        )
+        # Filter out non-colliding geoms
+        g1_coll = self._filter_colliding_geoms(g1)
+        g2_coll = self._filter_colliding_geoms(g2)
+        expected_max_contacts = len(list(itertools.product(g1_coll, g2_coll)))
+
+        # Check the number of max expected contacts
         self.assertEqual(limit.max_num_contacts, expected_max_contacts)
 
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
 
-        self._assert_inequality_constraints(G, h, bound_relaxation, expected_max_contacts)
+        # The upper bound should always be >= relaxation bound
+        self.assertTrue(np.all(h >= bound_relaxation))
 
-    def _calculate_expected_max_contacts(self, geom_ids_1, geom_ids_2):
-        colliding_geoms_1 = self._filter_colliding_geoms(geom_ids_1)
-        colliding_geoms_2 = self._filter_colliding_geoms(geom_ids_2)
-        return len(list(itertools.product(colliding_geoms_1, colliding_geoms_2)))
+        # Check the inequality constraint dimensions
+        self.assertEqual(G.shape, (expected_max_contacts, self.model.nv))
+        self.assertEqual(h.shape, (expected_max_contacts,))
+
+    def test_contact_normal_jacobian(self):
+        """Test the contact normal Jacobian."""
+        g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
+        g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
+
+        bound_relaxation = -1e-3
+        limit = CollisionAvoidanceLimit(
+            model=self.model,
+            geom_pairs=[(g1, g2)],
+            bound_relaxation=bound_relaxation,
+        )
+
+        Jn = limit.contact_normal_jacobian(self.configuration)
+        nv = self.model.nv
+        expected_shape = (limit.max_num_contacts, nv)
+
+        # Check the shape of the contact normal Jacobian
+        self.assertEqual(Jn.shape, expected_shape)
 
     def _filter_colliding_geoms(self, geom_ids):
+        """Filter out non-colliding geoms based on conaffinity and contype."""
         return [
             g
             for g in geom_ids
             if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0
         ]
-
-    def _assert_inequality_constraints(self, G, h, bound_relaxation, expected_max_contacts):
-        self.assertTrue(np.all(h >= bound_relaxation))
-        self.assertEqual(G.shape, (expected_max_contacts, self.model.nv))
-        self.assertEqual(h.shape, (expected_max_contacts,))
 
 
 if __name__ == "__main__":
