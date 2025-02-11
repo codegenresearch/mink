@@ -1,5 +1,7 @@
 """Center-of-mass task implementation."""
 
+from __future__ import annotations
+
 from typing import Optional
 
 import mujoco
@@ -15,11 +17,10 @@ class ComTask(Task):
     """Regulate the center-of-mass (CoM) position of a robot.
 
     This task aims to align the robot's center of mass with a specified target position
-    in the world frame. The task is defined by a cost vector, a gain, and a Levenberg-Marquardt
-    damping factor.
+    in the world frame.
 
     Attributes:
-        target_com: Target position of the CoM in the world frame.
+        target_com: Target position of the CoM.
     """
 
     k: int = 3  # Dimension of the CoM position (x, y, z)
@@ -56,10 +57,10 @@ class ComTask(Task):
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"(identical cost for all coordinates) or ({self.k},). Got {cost.shape}"
+                f"(aka identical cost for all coordinates) or ({self.k},). Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
-            raise TaskDefinitionError(f"{self.__class__.__name__} cost must be non-negative")
+            raise TaskDefinitionError(f"{self.__class__.__name__} cost must be >= 0")
         self.cost[:] = cost
 
     def set_target(self, target_com: npt.ArrayLike) -> None:
