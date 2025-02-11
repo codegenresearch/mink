@@ -57,7 +57,7 @@ class ComTask(Task):
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"(aka identical cost for all coordinates) or ({self.k},). Got {cost.shape}"
+                f"or ({self.k},). Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
             raise TaskDefinitionError(f"{self.__class__.__name__} cost must be >= 0")
@@ -101,7 +101,7 @@ class ComTask(Task):
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Center-of-mass task error vector :math:`e(q)`.
+            Center-of-mass task error vector.
 
         Raises:
             TargetNotSet: If the target CoM position has not been set.
@@ -113,15 +113,14 @@ class ComTask(Task):
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the CoM task Jacobian.
 
-        The task Jacobian :math:`J(q) \in \mathbb{R}^{3 \times n_v}` is the
-        derivative of the CoM position with respect to the current configuration
-        :math:`q`.
+        The task Jacobian is the derivative of the CoM position with respect to the
+        current configuration.
 
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Center-of-mass task jacobian :math:`J(q)`.
+            Center-of-mass task Jacobian.
 
         Raises:
             TargetNotSet: If the target CoM position has not been set.
