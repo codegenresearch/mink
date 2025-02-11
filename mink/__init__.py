@@ -41,6 +41,8 @@ from .utils import (
     get_freejoint_dims,
     get_subtree_geom_ids,
     move_mocap_to_frame,
+    pose_from_mocap,
+    set_mocap_pose_from_frame,
 )
 
 __all__ = (
@@ -79,4 +81,6 @@ __all__ = (
     "move_mocap_to_frame",
     "get_subtree_geom_ids",
     "get_body_geom_ids",
+    "pose_from_mocap",
+    "set_mocap_pose_from_frame",
 )
