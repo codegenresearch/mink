@@ -57,13 +57,15 @@ def construct_model():
     )
 
 if __name__ == "__main__":
-    # IK settings
-    solver = "quadprog"
-
-    # Construct the model and initialize configuration
+    # Construct the model
     model = construct_model()
+
+    # Initialize configuration
     configuration = mink.Configuration(model)
     data = configuration.data
+
+    # IK settings
+    solver = "quadprog"
 
     # Initialize tasks
     end_effector_task = mink.FrameTask(
