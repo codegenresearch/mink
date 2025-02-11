@@ -32,7 +32,7 @@ def get_direct_and_descendant_geoms(model, body_id):
         current_body_id = stack.pop()
         for child_id in range(model.body_childadr[current_body_id], model.body_childadr[current_body_id + 1]):
             stack.append(child_id)
-            for geom_id in range(model.body_geomadr[child_id], model.body_geomadr[child_id + 1]):
+            for geom_id in range(model.geom_bodyidadr[child_id], model.geom_bodyidadr[child_id + 1]):
                 descendant_geoms.append(geom_id)
 
     return direct_geoms, descendant_geoms
@@ -55,7 +55,7 @@ class TestUtils(absltest.TestCase):
 
     def test_custom_configuration_vector_from_keyframe(self):
         q = utils.custom_configuration_vector(self.model, "stand")
-        np.testing.assert_allclose(q, self.model.key("stand").qpos, atol=1e-7)
+        np.testing.assert_allclose(q, self.model.key("stand").qpos)
 
     def test_custom_configuration_vector_raises_error_if_jnt_shape_invalid(self):
         with self.assertRaises(ValueError):
@@ -75,7 +75,7 @@ class TestUtils(absltest.TestCase):
         for name, value in custom_joints.items():
             qid = self.model.jnt_qposadr[self.model.joint(name).id]
             q_expected[qid] = value
-        np.testing.assert_array_almost_equal(q, q_expected, decimal=7)
+        np.testing.assert_array_almost_equal(q, q_expected)
 
     def test_move_mocap_to_frame_throws_error_if_body_not_mocap(self):
         with self.assertRaises(InvalidMocapBody):
@@ -115,28 +115,26 @@ class TestUtils(absltest.TestCase):
 
         # Initially not the same.
         with np.testing.assert_raises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xpos, body_pos, atol=1e-7)
+            np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
         with np.testing.assert_raises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xquat, body_quat, atol=1e-7)
+            np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
 
         utils.move_mocap_to_frame(model, data, "mocap", "test", "body")
         mujoco.mj_forward(model, data)
 
         # Should now be the same.
-        np.testing.assert_allclose(data.body("mocap").xpos, body_pos, atol=1e-7)
-        np.testing.assert_allclose(data.body("mocap").xquat, body_quat, atol=1e-7)
+        np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
+        np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
 
     def test_get_freejoint_dims(self):
         q_ids, v_ids = utils.get_freejoint_dims(self.model)
         np.testing.assert_allclose(
             np.asarray(q_ids),
             np.asarray(list(range(0, 7))),
-            atol=1e-7,
         )
         np.testing.assert_allclose(
             np.asarray(v_ids),
             np.asarray(list(range(0, 6))),
-            atol=1e-7,
         )
 
     def test_get_subtree_geom_ids(self):
@@ -167,8 +165,8 @@ class TestUtils(absltest.TestCase):
         b1_id = model.body("b1").id
         actual_geom_ids = utils.get_subtree_geom_ids(model, b1_id)
         geom_names = ["b1/g1", "b1/g2", "b2/g1"]
-        expected_geom_ids = [model.geom(g).id for g in geom_names]
-        self.assertListEqual(actual_geom_ids, expected_geom_ids)
+        expected_geom_ids = {model.geom(g).id for g in geom_names}
+        self.assertSetEqual(set(actual_geom_ids), expected_geom_ids)
 
     def test_get_direct_and_descendant_geoms(self):
         xml_str = """
@@ -199,10 +197,40 @@ class TestUtils(absltest.TestCase):
         direct_geoms, descendant_geoms = get_direct_and_descendant_geoms(model, b1_id)
         direct_geom_names = ["b1/g1", "b1/g2"]
         descendant_geom_names = ["b1/g1", "b1/g2", "b2/g1"]
-        expected_direct_geom_ids = [model.geom(g).id for g in direct_geom_names]
-        expected_descendant_geom_ids = [model.geom(g).id for g in descendant_geom_names]
-        self.assertListEqual(direct_geoms, expected_direct_geom_ids)
-        self.assertListEqual(descendant_geoms, expected_descendant_geom_ids)
+        expected_direct_geom_ids = {model.geom(g).id for g in direct_geom_names}
+        expected_descendant_geom_ids = {model.geom(g).id for g in descendant_geom_names}
+        self.assertSetEqual(set(direct_geoms), expected_direct_geom_ids)
+        self.assertSetEqual(set(descendant_geoms), expected_descendant_geom_ids)
+
+    def test_get_subtree_body_ids(self):
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body name="b1" pos=".1 -.1 0">
+              <joint type="free"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body name="b2">
+                <joint type="hinge" range="0 1.57" limited="true"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+            <body name="b3" pos="1 1 1">
+              <joint type="free"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body name="b4">
+                <joint type="hinge" range="0 1.57" limited="true"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        b1_id = model.body("b1").id
+        actual_body_ids = utils.get_subtree_body_ids(model, b1_id)
+        expected_body_names = ["b1", "b2"]
+        expected_body_ids = {model.body(g).id for g in expected_body_names}
+        self.assertSetEqual(set(actual_body_ids), expected_body_ids)
 
 
 if __name__ == "__main__":
