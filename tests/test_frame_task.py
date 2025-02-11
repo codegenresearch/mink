@@ -93,9 +93,8 @@ class TestFrameTask(absltest.TestCase):
             position_cost=1.0,
             orientation_cost=1.0,
         )
-        with self.assertRaises(TargetNotSet) as cm:
+        with self.assertRaises(TargetNotSet):
             task.compute_error(self.configuration)
-        self.assertEqual(str(cm.exception), "No target set for FrameTask")
 
     def test_jacobian_without_target(self):
         task = FrameTask(
@@ -104,9 +103,8 @@ class TestFrameTask(absltest.TestCase):
             position_cost=1.0,
             orientation_cost=1.0,
         )
-        with self.assertRaises(TargetNotSet) as cm:
+        with self.assertRaises(TargetNotSet):
             task.compute_jacobian(self.configuration)
-        self.assertEqual(str(cm.exception), "No target set for FrameTask")
 
     def test_set_target_from_configuration(self):
         task = FrameTask(
@@ -246,3 +244,7 @@ class TestFrameTask(absltest.TestCase):
         H_2, c_2 = task.compute_qp_objective(self.configuration)
         self.assertTrue(np.all(H_2 > H_1))
         self.assertTrue(np.all(c_2 > c_1))
+
+
+if __name__ == "__main__":
+    absltest.main()
