@@ -4,7 +4,7 @@ import mujoco.viewer
 import numpy as np
 from loop_rate_limiters import RateLimiter
 import mink
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Sequence
 
 _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
@@ -36,21 +36,21 @@ def get_joint_and_actuator_ids(model: mujoco.MjModel, joint_names: List[str]) ->
 
 def initialize_tasks(model: mujoco.MjModel) -> List[mink.FrameTask]:
     return [
-        l_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        r_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        posture_task := mink.PostureTask(model, cost=1e-4),
+        mink.PostureTask(model, cost=1e-4),
     ]
 
 
@@ -124,16 +124,31 @@ def compute_velocity_and_integrate(
             break
 
 
-def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, subtree_names: List[str]) -> np.ndarray:
-    gravity_compensation = np.zeros(model.nu)
-    for subtree_name in subtree_names:
-        subtree_id = model.body(subtree_name).id
-        subtree_geoms = mink.get_subtree_geom_ids(model, subtree_id)
-        for geom_id in subtree_geoms:
+def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, subtree_ids: Sequence[int], qfrc_applied: np.ndarray) -> None:
+    """
+    Compensate for gravity by computing the necessary forces for each subtree and applying them to qfrc_applied.
+
+    Args:
+        model (mujoco.MjModel): The MuJoCo model.
+        data (mujoco.MjData): The MuJoCo data.
+        subtree_ids (Sequence[int]): List of subtree IDs for which to compute gravity compensation.
+        qfrc_applied (np.ndarray): Array to which the computed gravity forces will be added.
+    """
+    for subtree_id in subtree_ids:
+        # Compute the total mass of the subtree
+        total_mass = 0.0
+        for geom_id in mink.get_subtree_geom_ids(model, subtree_id):
             geom = model.geom(geom_id)
-            mass = geom.mass
-            gravity_compensation += mass * model.opt.gravity
-    return gravity_compensation
+            total_mass += geom.mass
+
+        # Compute the Jacobian for the subtree
+        jacp = np.zeros((3, model.nv))
+        mujoco.mj_jacSubtreeCom(model, data, jacp, None, subtree_id)
+        jacp = jacp[:, data.qvel_start:model.nv]
+
+        # Compute the gravity compensation force
+        gravity_compensation = total_mass * model.opt.gravity
+        qfrc_applied += jacp.T @ gravity_compensation
 
 
 if __name__ == "__main__":
@@ -173,8 +188,9 @@ if __name__ == "__main__":
             )
 
             # Compensate for gravity
-            gravity_compensation = compensate_gravity(model, data, ["left/wrist_link", "right/wrist_link"])
-            data.ctrl[actuator_ids] = configuration.q[dof_ids] + gravity_compensation[actuator_ids]
+            qfrc_applied = np.zeros(model.nu)
+            compensate_gravity(model, data, [model.body("left/wrist_link").id, model.body("right/wrist_link").id], qfrc_applied)
+            data.qfrc_applied[actuator_ids] += qfrc_applied[actuator_ids]
 
             mujoco.mj_step(model, data)
 
