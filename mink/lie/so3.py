@@ -14,7 +14,7 @@ _INVERT_QUAT_SIGN = np.array([1.0, -1.0, -1.0, -1.0], dtype=np.float64)
 
 
 class RollPitchYaw(NamedTuple):
-    """Represents a rotation in 3D space using roll, pitch, and yaw angles in radians."""
+    """Struct containing roll, pitch, and yaw Euler angles."""
 
     roll: float
     pitch: float
@@ -25,10 +25,8 @@ class RollPitchYaw(NamedTuple):
 class SO3(MatrixLieGroup):
     """Special orthogonal group for 3D rotations.
 
-    Represents rotations in 3D space using quaternions. The internal parameterization is
-    (qw, qx, qy, qz), where qw is the scalar part and qx, qy, qz are the vector parts of the
-    quaternion. The tangent parameterization is (omega_x, omega_y, omega_z), representing
-    the angular velocity vector.
+    Internal parameterization is (qw, qx, qy, qz). Tangent parameterization is
+    (omega_x, omega_y, omega_z).
     """
 
     wxyz: np.ndarray
