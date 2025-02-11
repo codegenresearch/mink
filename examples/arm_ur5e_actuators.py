@@ -8,23 +8,39 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "universal_robots_ur5e" / "scene.xml"
+_XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 
 def setup_configuration_and_limits(model):
     configuration = mink.Configuration(model)
-    
-    end_effector_task = mink.FrameTask(
-        frame_name="attachment_site",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    
+
+    ## =================== ##
+    ## Setup IK.
+    ## =================== ##
+
+    tasks = [
+        end_effector_task := mink.FrameTask(
+            frame_name="attachment_site",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+    ]
+
+    # Enable collision avoidance between (wrist3, floor) and (wrist3, wall).
     wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
-    collision_pairs = [(wrist_3_geoms, ["floor", "wall"])]
-    collision_avoidance_limit = mink.CollisionAvoidanceLimit(model=model, geom_pairs=collision_pairs)
-    
+    collision_pairs = [
+        (wrist_3_geoms, ["floor", "wall"]),
+    ]
+    limits = [
+        mink.ConfigurationLimit(model=configuration.model),
+        mink.CollisionAvoidanceLimit(
+            model=configuration.model,
+            geom_pairs=collision_pairs,
+        ),
+    ]
+
+    # Set maximum velocities for each joint.
     max_velocities = {
         "shoulder_pan": np.pi,
         "shoulder_lift": np.pi,
@@ -34,22 +50,18 @@ def setup_configuration_and_limits(model):
         "wrist_3": np.pi,
     }
     velocity_limit = mink.VelocityLimit(model, max_velocities)
-    
-    limits = [
-        mink.ConfigurationLimit(model=configuration.model),
-        collision_avoidance_limit,
-        velocity_limit,
-    ]
-    
-    return configuration, [end_effector_task], limits
+    limits.append(velocity_limit)
+
+    return configuration, tasks, limits
 
 def main():
-    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
     configuration, tasks, limits = setup_configuration_and_limits(model)
     end_effector_task = tasks[0]
 
+    # IK settings.
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
@@ -63,13 +75,16 @@ def main():
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
 
+        # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
         rate = RateLimiter(frequency=500.0, warn=False)
         while viewer.is_running():
+            # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
+            # Compute velocity and integrate into the next configuration.
             for _ in range(max_iters):
                 vel = mink.solve_ik(
                     configuration, tasks, rate.dt, solver, damping=1e-3, limits=limits
@@ -84,6 +99,7 @@ def main():
             data.ctrl = configuration.q
             mujoco.mj_step(model, data)
 
+            # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
 
