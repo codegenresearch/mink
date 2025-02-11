@@ -36,13 +36,13 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": True,
-    "exclude-members": "__weakref__",
+    "inherited-members": None,
+    "exclude-members": "__weakref__,__init__",
 }
 
 # Autodoc type aliases
 autodoc_type_aliases = {
-    "ExampleType": "int",
+    "MyType": "int",
 }
 
 # Napoleon settings
