@@ -20,27 +20,24 @@ class TestVelocityLimit(absltest.TestCase):
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        # Use np.pi for clarity and consistency
-        self.velocities = {
-            self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)
-        }
+        self.velocities = {self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)}
 
-    def test_velocity_limit_dimensions(self):
-        """Test the dimensions of the velocity limit indices and projection matrix."""
+    def test_dimensions(self):
+        """Test dimensions of velocity limit indices and projection matrix."""
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
         nb = nv - len(get_freejoint_dims(self.model)[1])
         self.assertEqual(len(limit.indices), nb)
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
 
-    def test_velocity_limit_indices(self):
-        """Test the indices of the velocity-limited joints."""
+    def test_indices(self):
+        """Test indices of velocity-limited joints."""
         limit = VelocityLimit(self.model, self.velocities)
         expected = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
         self.assertTrue(np.allclose(limit.indices, expected))
 
-    def test_velocity_limit_no_limits(self):
-        """Test the behavior of VelocityLimit with a model that has no velocity limits."""
+    def test_no_limits(self):
+        """Test behavior with no velocity limits."""
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
         empty_bounded = VelocityLimit(empty_model)
         self.assertEqual(len(empty_bounded.indices), 0)
@@ -49,10 +46,10 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(G)
         self.assertIsNone(h)
 
-    def test_velocity_limit_subset(self):
-        """Test the behavior of VelocityLimit with a subset of joints having velocity limits."""
-        partial_velocities = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i < 3}
-        limit = VelocityLimit(self.model, partial_velocities)
+    def test_subset(self):
+        """Test behavior with a subset of velocity limits."""
+        limit_subset = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i < 3}
+        limit = VelocityLimit(self.model, limit_subset)
         nb = 3
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
@@ -63,8 +60,8 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(G.shape, (2 * nb, nv))
         self.assertEqual(h.shape, (2 * nb,))
 
-    def test_velocity_limit_ball_joint(self):
-        """Test the behavior of VelocityLimit with a model containing a ball joint."""
+    def test_ball_joint(self):
+        """Test behavior with a ball joint."""
         xml_str = """
         <mujoco>
           <worldbody>
@@ -89,8 +86,8 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(len(limit.indices), nb)
         self.assertEqual(limit.projection_matrix.shape, (nb, model.nv))
 
-    def test_velocity_limit_ball_joint_invalid_shape(self):
-        """Test that VelocityLimit raises an error for invalid velocity limit shapes."""
+    def test_ball_joint_invalid_shape(self):
+        """Test error for invalid velocity limit shape."""
         xml_str = """
         <mujoco>
           <worldbody>
@@ -111,11 +108,10 @@ class TestVelocityLimit(absltest.TestCase):
         }
         with self.assertRaises(LimitDefinitionError) as cm:
             VelocityLimit(model, velocities)
-        expected_error_message = "Joint ball must have a limit of shape (3,). Got: (2,)"
-        self.assertEqual(str(cm.exception), expected_error_message)
+        self.assertEqual(str(cm.exception), "Joint ball must have a limit of shape (3,). Got: (2,)")
 
-    def test_velocity_limit_free_joint(self):
-        """Test that VelocityLimit raises an error for free joints."""
+    def test_free_joint(self):
+        """Test error for free joints."""
         xml_str = """
         <mujoco>
           <worldbody>
@@ -137,8 +133,7 @@ class TestVelocityLimit(absltest.TestCase):
         }
         with self.assertRaises(LimitDefinitionError) as cm:
             VelocityLimit(model, velocities)
-        expected_error_message = "Free joint floating is not supported"
-        self.assertEqual(str(cm.exception), expected_error_message)
+        self.assertEqual(str(cm.exception), "Free joint floating is not supported")
 
 
 if __name__ == "__main__":
