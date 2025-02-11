@@ -22,11 +22,11 @@ class Contact:
     """Represents a contact between two geoms.
 
     Attributes:
-        dist: The distance between the two geoms.
-        fromto: An array containing the contact points of the two geoms.
-        geom1: The ID of the first geom.
-        geom2: The ID of the second geom.
-        distmax: The maximum distance before a collision is detected.
+        dist: Distance between the two geoms.
+        fromto: Array containing the contact points of the two geoms.
+        geom1: ID of the first geom.
+        geom2: ID of the second geom.
+        distmax: Maximum distance before a collision is detected.
     """
 
     dist: float
@@ -37,7 +37,7 @@ class Contact:
 
     @property
     def normal(self) -> np.ndarray:
-        """The normalized normal vector at the contact point."""
+        """Normalized normal vector at the contact point."""
         normal = self.fromto[3:] - self.fromto[:3]
         mujoco.mju_normalize3(normal)
         return normal
@@ -56,12 +56,12 @@ def compute_contact_normal_jacobian(
     """Computes the contact normal Jacobian for two geoms.
 
     Args:
-        model: The MuJoCo model.
-        data: The MuJoCo data.
-        contact: The contact between two geoms.
+        model: MuJoCo model.
+        data: MuJoCo data.
+        contact: Contact between two geoms.
 
     Returns:
-        The contact normal Jacobian.
+        Contact normal Jacobian.
     """
     geom1_body = model.geom_bodyid[contact.geom1]
     geom2_body = model.geom_bodyid[contact.geom2]
@@ -78,9 +78,9 @@ def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> 
     """Checks if two geoms are part of the same body or are welded together.
 
     Args:
-        model: The MuJoCo model.
-        geom_id1: The ID of the first geom.
-        geom_id2: The ID of the second geom.
+        model: MuJoCo model.
+        geom_id1: ID of the first geom.
+        geom_id2: ID of the second geom.
 
     Returns:
         True if the geoms are welded together, False otherwise.
@@ -98,9 +98,9 @@ def _are_geom_bodies_parent_child(
     """Checks if the geom bodies have a parent-child relationship.
 
     Args:
-        model: The MuJoCo model.
-        geom_id1: The ID of the first geom.
-        geom_id2: The ID of the second geom.
+        model: MuJoCo model.
+        geom_id1: ID of the first geom.
+        geom_id2: ID of the second geom.
 
     Returns:
         True if the bodies have a parent-child relationship, False otherwise.
@@ -123,9 +123,9 @@ def _is_pass_contype_conaffinity_check(
     """Checks if the geoms pass the contype/conaffinity check.
 
     Args:
-        model: The MuJoCo model.
-        geom_id1: The ID of the first geom.
-        geom_id2: The ID of the second geom.
+        model: MuJoCo model.
+        geom_id1: ID of the first geom.
+        geom_id2: ID of the second geom.
 
     Returns:
         True if the geoms pass the check, False otherwise.
@@ -214,11 +214,11 @@ class CollisionAvoidanceLimit(Limit):
         """Computes the quadratic programming inequalities for collision avoidance.
 
         Args:
-            configuration: The robot configuration.
-            dt: The integration timestep in seconds.
+            configuration: Robot configuration.
+            dt: Integration timestep in seconds.
 
         Returns:
-            A Constraint object representing the inequality constraint.
+            Constraint object representing the inequality constraint.
         """
         upper_bound = np.full((self.max_num_contacts,), np.inf)
         coefficient_matrix = np.zeros((self.max_num_contacts, self.model.nv))
@@ -248,12 +248,12 @@ class CollisionAvoidanceLimit(Limit):
         """Computes the contact with the minimum distance between two geoms.
 
         Args:
-            data: The MuJoCo data.
-            geom1_id: The ID of the first geom.
-            geom2_id: The ID of the second geom.
+            data: MuJoCo data.
+            geom1_id: ID of the first geom.
+            geom2_id: ID of the second geom.
 
         Returns:
-            A Contact object representing the contact between the two geoms.
+            Contact object representing the contact between the two geoms.
         """
         fromto = np.empty(6)
         dist = mujoco.mj_geomDistance(
@@ -272,10 +272,10 @@ class CollisionAvoidanceLimit(Limit):
         """Converts a list of geoms (specified by ID or name) to a list of IDs.
 
         Args:
-            geom_list: A sequence of geom identifiers (IDs or names).
+            geom_list: Sequence of geom identifiers (IDs or names).
 
         Returns:
-            A list of geom IDs.
+            List of geom IDs.
         """
         geom_ids = []
         for geom in geom_list:
@@ -290,10 +290,10 @@ class CollisionAvoidanceLimit(Limit):
         """Converts collision pairs to geom ID pairs.
 
         Args:
-            collision_pairs: A sequence of collision pairs.
+            collision_pairs: Sequence of collision pairs.
 
         Returns:
-            A list of geom ID pairs.
+            List of geom ID pairs.
         """
         geom_id_pairs = []
         for collision_pair in collision_pairs:
@@ -314,21 +314,22 @@ class CollisionAvoidanceLimit(Limit):
             3) Geoms that fail the contype-conaffinity check are ignored.
 
         Note:
-            1) If two bodies are kinematically welded together (no joints between them)
-                they are considered to be the same body within this function.
+            If two bodies are kinematically welded together (no joints between them),
+            they are considered to be the same body within this function.
 
         Args:
-            geom_pairs: A sequence of collision pairs.
+            geom_pairs: Sequence of collision pairs.
 
         Returns:
-            A list of geom ID pairs.
+            List of geom ID pairs.
         """
         geom_id_pairs = []
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
-                is_welded = _is_welded_together(self.model, geom_a, geom_b)
-                is_parent_child = _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
-                is_contype_conaffinity_pass = _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
-                if not is_welded and not is_parent_child and is_contype_conaffinity_pass:
+                if (
+                    not _is_welded_together(self.model, geom_a, geom_b)
+                    and not _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
+                    and _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
+                ):
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
