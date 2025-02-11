@@ -27,8 +27,8 @@ def _compute_qp_inequalities(
 ) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
     if limits is None:
         limits = [ConfigurationLimit(configuration.model)]
-    G_list: list[np.ndarray] = []
-    h_list: list[np.ndarray] = []
+    G_list = []
+    h_list = []
     for limit in limits:
         inequality = limit.compute_qp_inequalities(configuration, dt)
         if not inequality.inactive:
@@ -99,7 +99,26 @@ def solve_ik(
     configuration.check_limits(safety_break=safety_break)
     problem = build_ik(configuration, tasks, dt, damping, limits)
     result = qpsolvers.solve_problem(problem, solver=solver, **kwargs)
+    if result is None:
+        raise RuntimeError("QP solver failed to find a solution.")
     dq = result.x
     assert dq is not None
     v: np.ndarray = dq / dt
     return v
+
+
+def initialize_configuration(model):
+    """Initialize a configuration with default values."""
+    configuration = Configuration(model)
+    configuration.update(model.key("home").qpos)
+    return configuration
+
+
+def validate_task_target(task, configuration):
+    """Validate that the task target is set and reachable."""
+    if task.target is None:
+        raise ValueError("Task target is not set.")
+    try:
+        configuration.get_transform_frame_to_world(task.frame_name, task.frame_type)
+    except Exception as e:
+        raise ValueError(f"Task target is not reachable: {e}")
