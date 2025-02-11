@@ -45,7 +45,7 @@ class Configuration:
         model: mujoco.MjModel,
         q: Optional[np.ndarray] = None,
     ):
-        """Initialize the configuration.
+        """Constructor.
 
         Args:
             model: Mujoco model.
@@ -63,7 +63,7 @@ class Configuration:
             q: Optional configuration vector to override the internal `qpos` with.
 
         This method updates the configuration and computes the forward kinematics
-        to ensure that all kinematic quantities are up-to-date.
+        to ensure all kinematic quantities are up-to-date.
         """
         if q is not None:
             self.data.qpos = q
@@ -72,9 +72,6 @@ class Configuration:
 
     def update_from_keyframe(self, key_name: str) -> None:
         """Update the configuration from a keyframe.
-
-        Args:
-            key_name: The name of the keyframe.
 
         Raises:
             InvalidKeyframe: If no key named `key_name` is found in the model.
