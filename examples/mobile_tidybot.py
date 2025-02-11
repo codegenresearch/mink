@@ -95,6 +95,8 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "pinch_site_target", "pinch_site", "site")
 
         rate = RateLimiter(frequency=200.0, warn=False)
+        dt = rate.period
+        t = 0.0
 
         while viewer.is_running():
             # Update task target.
@@ -125,6 +127,7 @@ if __name__ == "__main__":
             else:
                 mujoco.mj_forward(model, data)
 
-            # Synchronize the viewer and sleep to maintain the desired frame rate.
+            # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
+            t += dt
