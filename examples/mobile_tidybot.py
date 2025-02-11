@@ -10,7 +10,7 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "stanford_tidybot" / "scene.xml"
+_XML = _HERE / "stanford_tidybot" / "scene.xml"
 
 
 @dataclass
@@ -26,16 +26,18 @@ class KeyCallback:
 
 
 if __name__ == "__main__":
-    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Define the joints to control.
-    # Base joints.
-    # Arm joints.
+    # Joints we wish to control.
+    # fmt: off
     joint_names = [
+        # Base joints.
         "joint_x", "joint_y", "joint_th",
+        # Arm joints.
         "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7",
     ]
+    # fmt: on
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -67,7 +69,7 @@ if __name__ == "__main__":
         mink.ConfigurationLimit(model),
     ]
 
-    # Inverse kinematics settings.
+    # IK settings.
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
@@ -93,11 +95,9 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "pinch_site_target", "pinch_site", "site")
 
         rate = RateLimiter(frequency=200.0, warn=False)
-        dt = rate.period
-        t = 0.0
 
         while viewer.is_running():
-            # Update the task target.
+            # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
             end_effector_task.set_target(T_wt)
 
@@ -105,11 +105,11 @@ if __name__ == "__main__":
             for i in range(max_iters):
                 if key_callback.fix_base:
                     vel = mink.solve_ik(
-                        configuration, [*tasks, damping_task], dt, solver, 1e-3
+                        configuration, [*tasks, damping_task], rate.dt, solver, 1e-3
                     )
                 else:
-                    vel = mink.solve_ik(configuration, tasks, dt, solver, 1e-3)
-                configuration.integrate_inplace(vel, dt)
+                    vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
+                configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if the target position and orientation are achieved.
                 err = end_effector_task.compute_error(configuration)
@@ -128,4 +128,3 @@ if __name__ == "__main__":
             # Synchronize the viewer and sleep to maintain the desired frame rate.
             viewer.sync()
             rate.sleep()
-            t += dt
