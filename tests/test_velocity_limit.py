@@ -7,6 +7,7 @@ from robot_descriptions.loaders.mujoco import load_robot_description
 
 from mink import Configuration
 from mink.limits import LimitDefinitionError, VelocityLimit
+from mink.utils import get_freejoint_dims
 
 
 class TestVelocityLimit(absltest.TestCase):
@@ -18,21 +19,17 @@ class TestVelocityLimit(absltest.TestCase):
 
     def setUp(self):
         self.configuration = Configuration(self.model)
-        self.configuration.update_from_keyframe("home")
+        self.configuration.update_from_keyframe("stand")  # Use 'stand' keyframe as in the gold code
         self.velocities = {
-            "shoulder_pan_joint": np.pi,
-            "shoulder_lift_joint": np.pi,
-            "elbow_joint": np.pi,
-            "wrist_1_joint": np.pi,
-            "wrist_2_joint": np.pi,
-            "wrist_3_joint": np.pi,
+            self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)
         }
 
     def test_projection_matrix_and_indices_dimensions(self):
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
-        self.assertEqual(limit.projection_matrix.shape, (nv, nv))
-        self.assertEqual(len(limit.indices), nv)
+        nb = nv - len(get_freejoint_dims(self.model)[1])
+        self.assertEqual(limit.projection_matrix.shape, (nb, nv))
+        self.assertEqual(len(limit.indices), nb)
 
     def test_no_velocity_limits(self):
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
