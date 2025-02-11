@@ -47,16 +47,21 @@ class VelocityLimit(Limit):
             jid = model.joint(joint_name).id
             jnt_type = model.jnt_type[jid]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
-                raise LimitDefinitionError(f"Free joint '{joint_name}' is not supported.")
-            jnt_dim = dof_width(jnt_type)
+                raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
+            vdim = dof_width(jnt_type)
             vadr = model.jnt_dofadr[jid]
             max_vel = np.atleast_1d(max_vel)
-            if max_vel.shape != (jnt_dim,):
+            if jnt_type == mujoco.mjtJoint.mjJNT_BALL and max_vel.shape != (3,):
                 raise LimitDefinitionError(
-                    f"Joint '{joint_name}' must have a limit of shape ({jnt_dim},). "
+                    f"Ball joint {joint_name} must have a limit of shape (3,). "
                     f"Got: {max_vel.shape}"
                 )
-            index_list.extend(range(vadr, vadr + jnt_dim))
+            elif max_vel.shape != (vdim,):
+                raise LimitDefinitionError(
+                    f"Joint {joint_name} must have a limit of shape ({vdim},). "
+                    f"Got: {max_vel.shape}"
+                )
+            index_list.extend(range(vadr, vadr + vdim))
             limit_list.extend(max_vel.tolist())
 
         self.indices = np.array(index_list)
