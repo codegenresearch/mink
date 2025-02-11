@@ -56,21 +56,18 @@ def compensate_gravity(
     - qfrc_applied (Optional[np.ndarray]): Array to store applied forces. Defaults to None.
     """
     if qfrc_applied is None:
-        qfrc_applied = np.zeros(model.nv)
+        qfrc_applied = data.qfrc_applied.copy()
 
     # Initialize Jacobian and COM position arrays
-    jacp = np.zeros((3, model.nv))
-    jacr = np.zeros((3, model.nv))
+    jac = np.zeros((3, model.nv))
     com_pos = np.zeros(3)
 
     # Compute the Jacobian and COM position for the subtree
-    mujoco.mj_jacSubtreeCom(model, data, jacp, jacr, com_pos, subtree_ids[0])
+    mujoco.mj_jacSubtreeCom(model, data, jac, None, com_pos, subtree_ids[0])
 
-    # Compute the total mass of the subtree
-    total_mass = sum(model.body_mass[id] for id in subtree_ids)
-
-    # Compute the gravity compensation force
-    gravity_compensation = -model.opt.gravity[2] * total_mass * jacp[:, :3]
+    # Compute the gravity compensation force using the subtree mass
+    subtree_mass = model.body_subtreemass[subtree_ids[0]]
+    gravity_compensation = -model.opt.gravity[2] * subtree_mass * jac[:, :3]
 
     # Apply the gravity compensation force to qfrc_applied
     qfrc_applied += gravity_compensation.flatten()
