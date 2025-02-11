@@ -5,7 +5,7 @@ from absl.testing import absltest
 from robot_descriptions.loaders.mujoco import load_robot_description
 
 from mink import SE3, SO3, Configuration
-from mink.tasks import FrameTask, TargetNotSet, TaskDefinitionError
+from mink.tasks import FrameTask, TargetNotSet, TaskDefinitionError, InvalidTarget
 
 
 class TestFrameTask(absltest.TestCase):
@@ -37,38 +37,54 @@ class TestFrameTask(absltest.TestCase):
         np.testing.assert_array_equal(task.cost, np.array([1, 2, 3, 5, 6, 7]))
 
     def test_task_raises_error_if_cost_dim_invalid(self):
-        with self.assertRaises(TaskDefinitionError):
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=[1.0, 2.0],
                 orientation_cost=2.0,
             )
+        self.assertEqual(
+            str(cm.exception),
+            "FrameTask position_cost must be a scalar or a vector of shape (3,). Got (2,)",
+        )
 
-        with self.assertRaises(TaskDefinitionError):
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=7.0,
                 orientation_cost=[2.0, 5.0],
             )
+        self.assertEqual(
+            str(cm.exception),
+            "FrameTask orientation_cost must be a scalar or a vector of shape (3,). Got (2,)",
+        )
 
     def test_task_raises_error_if_cost_negative(self):
-        with self.assertRaises(TaskDefinitionError):
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=1.0,
                 orientation_cost=-1.0,
             )
+        self.assertEqual(
+            str(cm.exception),
+            "FrameTask orientation_cost must be >= 0",
+        )
 
-        with self.assertRaises(TaskDefinitionError):
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=[1.0, 1.5],
                 orientation_cost=[-1, 2, 3],
             )
+        self.assertEqual(
+            str(cm.exception),
+            "FrameTask orientation_cost must be >= 0",
+        )
 
     def test_error_without_target(self):
         task = FrameTask(
