@@ -11,15 +11,15 @@ _XML = _HERE / "shadow_hand" / "scene_left.xml"
 
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+
     configuration = mink.Configuration(model)
 
-    # Define fingers
     fingers = ["thumb", "first", "middle", "ring", "little"]
 
-    # Initialize posture task
-    posture_task = mink.PostureTask(model, cost=1e-2)
+    tasks = [
+        posture_task := mink.PostureTask(model, cost=1e-2),
+    ]
 
-    # Initialize finger tasks
     finger_tasks = []
     for finger in fingers:
         task = mink.FrameTask(
@@ -30,12 +30,7 @@ if __name__ == "__main__":
             lm_damping=1.0,
         )
         finger_tasks.append(task)
-
-    # Combine tasks
-    tasks = [
-        posture_task,
-        *finger_tasks,
-    ]
+    tasks.extend(finger_tasks)
 
     model = configuration.model
     data = configuration.data
