@@ -1,8 +1,25 @@
 # Configuration file for the Sphinx documentation builder.
+# For the full list of built-in configuration values, see the documentation:
+# https://www.sphinx-doc.org/en/master/usage/configuration.html
+
+# -- Project information -----------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+
+import toml
+from pathlib import Path
 
 project = "mink"
 copyright = "2024, Kevin Zakka"
 author = "Kevin Zakka"
+
+# Retrieve the project version from pyproject.toml
+pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+pyproject = toml.load(pyproject_path)
+version = pyproject["tool"]["poetry"]["version"]
+release = version
+
+# -- General configuration ---------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -31,6 +48,9 @@ pygments_style = "sphinx"
 autodoc_type_aliases = {
     "npt.ArrayLike": "ArrayLike",
 }
+
+# -- Options for HTML output -------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"
 htmlhelp_basename = "minkdoc"
