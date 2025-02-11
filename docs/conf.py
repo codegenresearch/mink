@@ -32,20 +32,25 @@ napoleon_numpy_docstring = False
 napoleon_use_rtype = False
 
 # Autodoc configuration
-autodoc_typehints = "description"
+autodoc_typehints = "both"
 autodoc_class_signature = "separated"
 autodoc_default_options = {
     "members": True,
     "undoc-members": True,
     "show-inheritance": True,
+    "member-order": "bysource",
+    "inherited-members": True,
+    "exclude-members": "__weakref__",
 }
 
 # Autodoc type aliases
-autodoc_type_aliases = {}
+autodoc_type_aliases = {
+    "MyType": "int",
+}
 
 # -- Options for HTML Output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"
 
-htmlhelp_basename = "mink_documentation"
+htmlhelp_basename = "minkdoc"
