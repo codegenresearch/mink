@@ -44,6 +44,11 @@ class Task(abc.ABC):
     for additional low-pass filtering. A gain of 1.0 corresponds to dead-beat control,
     which aims to converge as fast as possible, but might be unstable. Lower values
     cause the task to converge more slowly, similar to low-pass filtering.
+
+    The Levenberg-Marquardt (LM) damping parameter is used to regularize the task
+    when the error is large, helping to handle infeasible targets. Increasing this
+    value can make the task less jerky under unfeasible targets, but it also slows
+    down the task.
     """
 
     def __init__(
@@ -58,10 +63,14 @@ class Task(abc.ABC):
             cost: Cost vector with the same dimension as the error of the task.
             gain: Task gain alpha in [0, 1] for additional low-pass filtering. Defaults
                 to 1.0 (no filtering) for dead-beat control.
-            lm_damping: Unitless scale of the Levenberg-Marquardt (only when the error
-                is large) regularization term, which helps when targets are infeasible.
-                Increase this value if the task is too jerky under unfeasible targets, but
-                beware that a larger damping slows down the task.
+            lm_damping: Unitless scale of the Levenberg-Marquardt regularization term,
+                which helps when targets are infeasible. Increase this value if the task
+                is too jerky under unfeasible targets, but beware that a larger damping
+                slows down the task.
+
+        Raises:
+            InvalidGain: If `gain` is not in the range [0, 1].
+            InvalidDamping: If `lm_damping` is negative.
         """
         if not 0.0 <= gain <= 1.0:
             raise InvalidGain("`gain` must be in the range [0, 1]")
