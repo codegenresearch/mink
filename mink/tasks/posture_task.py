@@ -68,7 +68,8 @@ class PostureTask(Task):
         self.target_q = None
 
         # Determine the indices of the free joint dimensions, if any
-        self._v_ids = np.asarray(v_ids) if (v_ids := get_freejoint_dims(model)[1]) else None
+        _, v_ids = get_freejoint_dims(model)
+        self._v_ids = np.asarray(v_ids) if v_ids else None
 
         # Set the number of degrees of freedom and total number of joint angles
         self.k = model.nv
@@ -101,7 +102,7 @@ class PostureTask(Task):
     def compute_error(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the posture task error.
 
-        The error is defined as the difference between the target posture and the current posture:
+        The error is defined as:
 
         .. math::
 
