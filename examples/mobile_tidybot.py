@@ -10,7 +10,7 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML = _HERE / "stanford_tidybot" / "scene.xml"
+_XML_PATH = _HERE / "stanford_tidybot" / "scene.xml"
 
 
 @dataclass
@@ -26,23 +26,20 @@ class KeyCallback:
 
 
 if __name__ == "__main__":
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
     data = mujoco.MjData(model)
 
-    # Joints we wish to control.
-    # fmt: off
+    # Define the joints to control.
     joint_names = [
-        # Base joints.
-        "joint_x", "joint_y", "joint_th",
-        # Arm joints.
-        "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7",
+        "joint_x", "joint_y", "joint_th",  # Base joints
+        "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7",  # Arm joints
     ]
-    # fmt: on
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
     configuration = mink.Configuration(model)
 
+    # Define tasks for inverse kinematics.
     end_effector_task = mink.FrameTask(
         frame_name="pinch_site",
         frame_type="site",
@@ -68,11 +65,11 @@ if __name__ == "__main__":
         mink.ConfigurationLimit(model),
     ]
 
-    # IK settings.
+    # Inverse kinematics settings.
     solver = "quadprog"
-    pos_threshold = 1e-4
-    ori_threshold = 1e-4
-    max_iters = 20
+    position_threshold = 1e-4
+    orientation_threshold = 1e-4
+    max_iterations = 20
 
     key_callback = KeyCallback()
 
@@ -93,40 +90,40 @@ if __name__ == "__main__":
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "pinch_site_target", "pinch_site", "site")
 
-        rate = RateLimiter(frequency=200.0, warn=False)
-        dt = rate.period
-        t = 0.0
+        rate_limiter = RateLimiter(frequency=200.0)
+        time_step = rate_limiter.period
+        current_time = 0.0
+
         while viewer.is_running():
-            # Update task target.
-            T_wt = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
-            end_effector_task.set_target(T_wt)
+            # Update the task target.
+            target_pose = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
+            end_effector_task.set_target(target_pose)
 
             # Compute velocity and integrate into the next configuration.
-            for i in range(max_iters):
+            for _ in range(max_iterations):
                 if key_callback.fix_base:
-                    vel = mink.solve_ik(
-                        configuration, [*tasks, damping_task], rate.dt, solver, 1e-3
+                    velocity = mink.solve_ik(
+                        configuration, [*tasks, damping_task], time_step, solver, 1e-3
                     )
                 else:
-                    vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
-                configuration.integrate_inplace(vel, rate.dt)
+                    velocity = mink.solve_ik(configuration, tasks, time_step, solver, 1e-3)
+                configuration.integrate_inplace(velocity, time_step)
 
-                # Exit condition.
-                pos_achieved = True
-                ori_achieved = True
-                err = end_effector_task.compute_error(configuration)
-                pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
-                ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
-                if pos_achieved and ori_achieved:
+                # Check if the target position and orientation are achieved.
+                error = end_effector_task.compute_error(configuration)
+                position_achieved = np.linalg.norm(error[:3]) <= position_threshold
+                orientation_achieved = np.linalg.norm(error[3:]) <= orientation_threshold
+                if position_achieved and orientation_achieved:
                     break
 
+            # Update the control signals.
             if not key_callback.pause:
                 data.ctrl[actuator_ids] = configuration.q[dof_ids]
                 mujoco.mj_step(model, data)
             else:
                 mujoco.mj_forward(model, data)
 
-            # Visualize at fixed FPS.
+            # Synchronize the viewer and sleep to maintain the desired frame rate.
             viewer.sync()
-            rate.sleep()
-            t += dt
+            rate_limiter.sleep()
+            current_time += time_step
