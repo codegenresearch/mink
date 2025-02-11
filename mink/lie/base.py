@@ -9,10 +9,10 @@ class MatrixLieGroup(abc.ABC):
     """Interface definition for matrix Lie groups.
 
     Attributes:
-        matrix_dim: Dimension of the square matrix output.
-        parameters_dim: Dimension of the underlying parameters.
+        matrix_dim: Dimension of the square matrix.
+        parameters_dim: Dimension of the parameters.
         tangent_dim: Dimension of the tangent space.
-        space_dim: Dimension of the coordinates that can be transformed.
+        space_dim: Dimension of the space.
     """
 
     matrix_dim: int
@@ -27,24 +27,24 @@ class MatrixLieGroup(abc.ABC):
     def __matmul__(self, other: np.ndarray) -> np.ndarray: ...
 
     def __matmul__(self, other: Union[Self, np.ndarray]) -> Union[Self, np.ndarray]:
-        """Overload of the @ operator to support both group composition and matrix application."""
+        """Overload of the @ operator for group composition and matrix application."""
         if isinstance(other, np.ndarray):
             return self.apply(target=other)
         assert isinstance(other, MatrixLieGroup)
         return self.multiply(other=other)
 
-    # Factory methods.
+    # Factory
 
     @classmethod
     @abc.abstractmethod
     def identity(cls) -> Self:
-        """Returns the identity element of the group."""
+        """Returns the identity element."""
         raise NotImplementedError
 
     @classmethod
     @abc.abstractmethod
     def from_matrix(cls, matrix: np.ndarray) -> Self:
-        """Creates a group member from its matrix representation."""
+        """Creates a group member from a matrix."""
         raise NotImplementedError
 
     @classmethod
@@ -53,7 +53,7 @@ class MatrixLieGroup(abc.ABC):
         """Draws a uniform sample from the group."""
         raise NotImplementedError
 
-    # Accessor methods.
+    # Accessors
 
     @abc.abstractmethod
     def as_matrix(self) -> np.ndarray:
@@ -62,67 +62,67 @@ class MatrixLieGroup(abc.ABC):
 
     @abc.abstractmethod
     def parameters(self) -> np.ndarray:
-        """Returns the underlying parameter representation of the transformation."""
+        """Returns the underlying parameters."""
         raise NotImplementedError
 
-    # Group operations.
+    # Operations
 
     @abc.abstractmethod
     def apply(self, target: np.ndarray) -> np.ndarray:
-        """Applies the group action to a point or set of points."""
+        """Applies the group action to a point."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def multiply(self, other: Self) -> Self:
-        """Composes this transformation with another transformation."""
+        """Composes this transformation with another."""
         raise NotImplementedError
 
     @classmethod
     @abc.abstractmethod
     def exp(cls, tangent: np.ndarray) -> Self:
-        """Computes the exponential map of a tangent vector, resulting in a group element."""
+        """Computes the exponential map."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def log(self) -> np.ndarray:
-        """Computes the logarithmic map of the transformation, resulting in a tangent vector."""
+        """Computes the logarithmic map."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def adjoint(self) -> np.ndarray:
-        """Computes the adjoint representation of the transformation."""
+        """Computes the adjoint."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def inverse(self) -> Self:
-        """Computes the inverse of the transformation."""
+        """Computes the inverse."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def normalize(self) -> Self:
-        """Normalizes the transformation to ensure it lies on the group manifold."""
+        """Normalizes the transformation."""
         raise NotImplementedError
 
-    # Right and left plus and minus operators.
+    # Plus and minus operators
 
-    # Equation 25.
+    # Eqn. 25
     def rplus(self, other: np.ndarray) -> Self:
-        """Applies a tangent vector to the transformation using the right plus operator."""
+        """Applies a tangent vector using the right plus operator."""
         return self @ self.exp(other)
 
-    # Equation 26.
+    # Eqn. 26
     def rminus(self, other: Self) -> np.ndarray:
-        """Computes the difference between two transformations using the right minus operator."""
+        """Computes the difference using the right minus operator."""
         return (other.inverse() @ self).log()
 
-    # Equation 27.
+    # Eqn. 27
     def lplus(self, other: np.ndarray) -> Self:
-        """Applies a tangent vector to the transformation using the left plus operator."""
+        """Applies a tangent vector using the left plus operator."""
         return self.exp(other) @ self
 
-    # Equation 28.
+    # Eqn. 28
     def lminus(self, other: Self) -> np.ndarray:
-        """Computes the difference between two transformations using the left minus operator."""
+        """Computes the difference using the left minus operator."""
         return (self @ other.inverse()).log()
 
     def plus(self, other: np.ndarray) -> Self:
@@ -133,33 +133,33 @@ class MatrixLieGroup(abc.ABC):
         """Alias for the right minus operator."""
         return self.rminus(other)
 
-    # Jacobian methods.
+    # Jacobians
 
     @classmethod
     @abc.abstractmethod
     def ljac(cls, other: np.ndarray) -> np.ndarray:
-        """Computes the left Jacobian of the exponential map."""
+        """Computes the left Jacobian."""
         raise NotImplementedError
 
     @classmethod
     @abc.abstractmethod
     def ljacinv(cls, other: np.ndarray) -> np.ndarray:
-        """Computes the inverse of the left Jacobian of the exponential map."""
+        """Computes the inverse of the left Jacobian."""
         # NOTE: This can be computed as np.linalg.inv(cls.ljac(other)).
         raise NotImplementedError
 
-    # Equation 67.
+    # Eqn. 67
     @classmethod
     def rjac(cls, other: np.ndarray) -> np.ndarray:
-        """Computes the right Jacobian of the exponential map."""
+        """Computes the right Jacobian."""
         return cls.ljac(-other)
 
     @classmethod
     def rjacinv(cls, other: np.ndarray) -> np.ndarray:
-        """Computes the inverse of the right Jacobian of the exponential map."""
+        """Computes the inverse of the right Jacobian."""
         return cls.ljacinv(-other)
 
-    # Equation 79.
+    # Eqn. 79
     def jlog(self) -> np.ndarray:
         """Computes the Jacobian of the logarithmic map."""
         return self.rjacinv(self.log())
