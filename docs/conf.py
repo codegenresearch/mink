@@ -31,6 +31,20 @@ pygments_style = "sphinx"
 napoleon_numpy_docstring = False
 napoleon_use_rtype = False
 
+# Autodoc options
+autodoc_typehints = "description"
+autodoc_class_signature = "separated"
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "show-inheritance": True,
+}
+
+# Type aliases
+autodoc_type_aliases = {
+    "Array": "np.ndarray",
+}
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
