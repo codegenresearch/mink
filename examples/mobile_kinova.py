@@ -52,7 +52,7 @@ if __name__ == "__main__":
         lm_damping=1.0,
     )
 
-    # When moving the base, mainly focus on the motion on the xy plane, minimize the rotation.
+    # When moving the base, mainly focus on the motion on the xy plane and minimize the rotation.
     posture_cost = np.zeros((model.nv,))
     posture_cost[2] = 1e-3
     posture_task = mink.PostureTask(model, cost=posture_cost)
@@ -116,8 +116,10 @@ if __name__ == "__main__":
 
                 # Exit condition.
                 err = end_effector_task.compute_error(configuration)
-                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
-                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
+                pos_achieved = True
+                ori_achieved = True
+                pos_achieved &= np.linalg.norm(err[:3]) <= pos_threshold
+                ori_achieved &= np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
                     break
 
