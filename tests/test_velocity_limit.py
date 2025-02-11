@@ -78,7 +78,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(len(limit.indices), nb)
         self.assertEqual(limit.projection_matrix.shape, (nb, model.nv))
 
-    def test_ball_joint_invalid_velocity_limit_shape(self):
+    def test_ball_joint_invalid_limit_shape(self):
         xml_str = """
         <mujoco>
           <worldbody>
