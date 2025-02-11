@@ -31,15 +31,15 @@ if __name__ == "__main__":
 
     posture_task = mink.PostureTask(model, cost=1e-5)
 
-    feet_tasks = [
-        mink.FrameTask(
+    feet_tasks = []
+    for foot in feet:
+        task = mink.FrameTask(
             frame_name=foot,
             frame_type="geom",
             position_cost=1.0,
             orientation_cost=0.0,
         )
-        for foot in feet
-    ]
+        feet_tasks.append(task)
 
     eef_task = mink.FrameTask(
         frame_name="EE",
@@ -86,17 +86,15 @@ if __name__ == "__main__":
 
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
-                vel = mink.solve_ik(configuration, tasks, rate.dt, solver, damping=1e-3)
+                vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
 
-                pos_achieved = all(
-                    np.linalg.norm(task.compute_error(configuration)[:3]) <= pos_threshold
-                    for task in [eef_task, base_task, *feet_tasks]
-                )
-                ori_achieved = all(
-                    np.linalg.norm(task.compute_error(configuration)[3:]) <= ori_threshold
-                    for task in [eef_task, base_task, *feet_tasks]
-                )
+                pos_achieved = True
+                ori_achieved = True
+                for task in [eef_task, base_task, *feet_tasks]:
+                    err = task.compute_error(configuration)
+                    pos_achieved &= np.linalg.norm(err[:3]) <= pos_threshold
+                    ori_achieved &= np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
                     break
 
