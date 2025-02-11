@@ -22,7 +22,7 @@ class FrameTask(Task):
     Attributes:
         frame_name: Name of the frame to regulate, typically a body, geom, or site in the robot model.
         frame_type: Type of the frame, which can be 'body', 'geom', or 'site'.
-        transform_target_to_world: Target pose of the frame in the world frame.
+        transform_target_to_world: Desired pose of the frame in the world frame.
     """
 
     k: int = 6
@@ -136,9 +136,9 @@ class FrameTask(Task):
         r"""
         Compute the frame task error.
 
-        The error is a twist :math:`e(q) \in \mathfrak{se}(3)` expressed in the local frame, i.e.,
-        it is a body twist. It is computed by taking the right-minus difference between the target
-        pose :math:`T_{0t}` and the current frame pose :math:`T_{0b}`:
+        The error is a twist :math:`e(q) \in \mathfrak{se}(3)` expressed in the local frame,
+        i.e., it is a body twist. It is computed by taking the right-minus difference between
+        the target pose :math:`T_{0t}` and the current frame pose :math:`T_{0b}`:
 
         .. math::
 
@@ -170,6 +170,15 @@ class FrameTask(Task):
         the sensitivity of the task error to changes in the robot configuration. The Jacobian is
         derived from the error computation, ensuring that the task error is minimized with respect
         to the configuration.
+
+        Specifically, the Jacobian is calculated as:
+
+        .. math::
+
+            J(q) = -T_{tb}^{\log} \cdot J_b
+
+        where :math:`T_{tb}` is the relative transform from the target frame to the current frame,
+        and :math:`J_b` is the Jacobian of the frame in the body frame.
 
         Args:
             configuration: Robot configuration :math:`q`.
