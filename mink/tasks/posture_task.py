@@ -21,10 +21,11 @@ class PostureTask(Task):
     affected by this task.
 
     Attributes:
-        target_q: Target configuration for the robot's joints.
+        target_q: Target joint configuration.
     """
 
     target_q: Optional[np.ndarray]
+    _v_ids: Optional[np.ndarray]
 
     def __init__(
         self,
@@ -55,14 +56,14 @@ class PostureTask(Task):
         self.target_q = None
 
         # Identify the indices of free joint dimensions
-        _, free_joint_indices = get_freejoint_dims(model)
-        self._v_ids = np.asarray(free_joint_indices) if free_joint_indices else None
+        _, v_ids_or_none = get_freejoint_dims(model)
+        self._v_ids = np.asarray(v_ids_or_none) if v_ids_or_none else None
 
         self.k = model.nv
         self.nq = model.nq
 
     def set_target(self, target_q: npt.ArrayLike) -> None:
-        """Set the target posture for the robot.
+        """Set the target posture.
 
         Args:
             target_q: Desired joint configuration.
@@ -78,7 +79,7 @@ class PostureTask(Task):
         self.target_q = target_q.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
-        """Set the target posture from the current configuration of the robot.
+        """Set the target posture from the current configuration.
 
         Args:
             configuration: Current configuration of the robot.
@@ -86,7 +87,7 @@ class PostureTask(Task):
         self.set_target(configuration.q)
 
     def compute_error(self, configuration: Configuration) -> np.ndarray:
-        r"""Compute the error between the current posture and the target posture.
+        r"""Compute the posture task error.
 
         The error is defined as:
 
@@ -123,7 +124,7 @@ class PostureTask(Task):
         return qvel
 
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
-        r"""Compute the Jacobian for the posture task.
+        r"""Compute the posture task Jacobian.
 
         The task Jacobian is the negative identity :math:`I_{n_v}`.
 
