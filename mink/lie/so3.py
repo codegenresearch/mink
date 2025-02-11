@@ -13,7 +13,8 @@ _IDENTITY_WXYZ = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)
 _INVERT_QUAT_SIGN = np.array([1.0, -1.0, -1.0, -1.0], dtype=np.float64)
 
 
-class RollPitchYaw(NamedTuple):
+@dataclass(frozen=True)
+class RollPitchYaw:
     """Struct containing roll, pitch, and yaw Euler angles.
 
     Attributes:
@@ -21,6 +22,9 @@ class RollPitchYaw(NamedTuple):
         pitch (float): Pitch angle in radians.
         yaw (float): Yaw angle in radians.
     """
+    roll: float
+    pitch: float
+    yaw: float
 
 
 @dataclass(frozen=True)
