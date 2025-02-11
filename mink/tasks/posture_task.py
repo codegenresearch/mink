@@ -2,9 +2,6 @@
 
 This module defines a task for regulating the joint angles of a robot towards a desired posture.
 A posture is defined as a vector of actuated joint angles, excluding floating-base coordinates.
-
-References:
-- For more information on the Mujoco library, see: https://mujoco.readthedocs.io/
 """
 
 from __future__ import annotations
@@ -64,9 +61,9 @@ class PostureTask(Task):
         )
         self.target_q = None
 
-        # Determine the indices of the free joint dimensions, if any
+        # Determine the indices of the free joint dimensions
         _, free_joint_ids = get_freejoint_dims(model)
-        self._v_ids = np.asarray(free_joint_ids) if free_joint_ids else None
+        self._v_ids = np.array(free_joint_ids) if free_joint_ids else None
 
         # Set the number of degrees of freedom and total number of joint angles
         self.k = model.nv
@@ -126,7 +123,6 @@ class PostureTask(Task):
             qpos1=configuration.q,
             qpos2=self.target_q,
         )
-        # NOTE: mj_differentiatePos calculates qpos2 ⊖ qpos1.
 
         # Set the error for free joint dimensions to zero
         if self._v_ids is not None:
