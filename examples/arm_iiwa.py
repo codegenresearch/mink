@@ -76,7 +76,7 @@ if __name__ == "__main__":
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
-            # Solve IK and update the robot configuration
+            # Compute velocity and integrate into the next configuration
             for i in range(max_iters):
                 vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, rate.dt)
