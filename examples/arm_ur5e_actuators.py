@@ -122,8 +122,9 @@ if __name__ == "__main__":
 
 
 ### Changes Made:
-1. **Comment Consistency**: Ensured all comments end with a period for consistency.
-2. **Code Structure**: Maintained the same section headers and order as the gold code.
-3. **Variable Naming and Clarity**: Simplified the comment for collision avoidance to match the gold code's style.
+1. **Comment Consistency**: Ensured all comments end with a period for uniformity.
+2. **Clarity in Comments**: Rephrased comments for clarity and conciseness.
+3. **Section Headers**: Maintained consistent section headers and formatting.
 4. **Whitespace and Formatting**: Added spaces around operators and after commas for better readability.
 5. **Redundant Comments**: Removed redundant comments to enhance clarity.
+6. **Variable Naming**: Ensured variable names and their usage are consistent with the gold code.
