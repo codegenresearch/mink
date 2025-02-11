@@ -22,7 +22,6 @@ class PostureTask(Task):
 
     Attributes:
         target_q: Target configuration for the robot's joints.
-        _v_ids: Indices of free joint dimensions.
     """
 
     target_q: Optional[np.ndarray]
@@ -57,7 +56,8 @@ class PostureTask(Task):
         self.target_q = None
 
         # Identify the indices of free joint dimensions
-        _, self._v_ids = get_freejoint_dims(model)
+        _, v_ids_or_none = get_freejoint_dims(model)
+        self._v_ids = np.asarray(v_ids_or_none) if v_ids_or_none else None
 
         self.k = model.nv
         self.nq = model.nq
@@ -95,6 +95,8 @@ class PostureTask(Task):
 
             e(q) = q^* \ominus q
 
+        where :math:`q^*` is the target posture and :math:`q` is the current posture.
+
         Args:
             configuration: Current configuration of the robot.
 
@@ -126,7 +128,7 @@ class PostureTask(Task):
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the posture task Jacobian.
 
-        The task Jacobian is the negative identity :math:`I_{n_v}`.
+        The task Jacobian is the negative identity matrix :math:`-I_{n_v}`.
 
         Args:
             configuration: Current configuration of the robot.
