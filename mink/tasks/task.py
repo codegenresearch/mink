@@ -63,10 +63,10 @@ class Task(abc.ABC):
             cost: Cost vector with the same dimension as the error of the task.
             gain: Task gain :math:`\alpha` in [0, 1] for additional low-pass filtering.
                 Defaults to 1.0 (no filtering) for dead-beat control.
-            lm_damping: Unitless scale of the Levenberg-Marquardt (only when the error
-                is large) regularization term, which helps when targets are infeasible.
-                Increase this value if the task is too jerky under unfeasible targets, but
-                beware that a larger damping slows down the task.
+            lm_damping: Unitless scale of the Levenberg-Marquardt regularization term.
+                Helps when targets are infeasible. Increase this value if the task is too
+                jerky under unfeasible targets, but beware that a larger damping slows down
+                the task.
 
         Raises:
             InvalidGain: If `gain` is not in the range [0, 1].
