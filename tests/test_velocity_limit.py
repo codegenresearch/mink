@@ -20,7 +20,7 @@ class TestVelocityLimit(absltest.TestCase):
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        self.velocities = {self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)}
+        self.velocities = {self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)}
 
     def test_dimensions(self):
         """Test dimensions of velocity limit."""
@@ -46,15 +46,15 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(G)
         self.assertIsNone(h)
 
-    def test_subset(self):
+    def test_subset_of_velocities_limited(self):
         """Test behavior with a subset of velocity limits."""
-        limit_subset = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i < 3}
-        limit = VelocityLimit(self.model, limit_subset)
+        partial_velocities = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i < 3}
+        limit = VelocityLimit(self.model, partial_velocities)
         nb = 3
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        expected_limit = np.asarray([np.pi] * nb)
+        expected_limit = np.asarray([3.14] * nb)
         np.testing.assert_allclose(limit.limit, expected_limit)
 
     def test_ball_joint(self):
@@ -83,7 +83,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(len(limit.indices), nb)
         self.assertEqual(limit.projection_matrix.shape, (nb, model.nv))
 
-    def test_ball_joint_invalid_shape(self):
+    def test_ball_joint_invalid_limit_shape(self):
         """Test error for invalid velocity limit shape."""
         xml_str = """
         <mujoco>
@@ -107,7 +107,7 @@ class TestVelocityLimit(absltest.TestCase):
             VelocityLimit(model, velocities)
         self.assertEqual(str(cm.exception), "Joint ball must have a limit of shape (3,). Got: (2,)")
 
-    def test_free_joint(self):
+    def test_free_joint_raises_error(self):
         """Test error for free joints."""
         xml_str = """
         <mujoco>
