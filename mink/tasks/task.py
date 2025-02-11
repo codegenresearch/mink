@@ -57,9 +57,7 @@ class Task(abc.ABC):
         gain: float = 1.0,
         lm_damping: float = 0.0,
     ):
-        r"""Constructor for the Task class.
-
-        Initializes a kinematic task with specified cost, gain, and Levenberg-Marquardt damping.
+        r"""Initialize a kinematic task with specified cost, gain, and Levenberg-Marquardt damping.
 
         Args:
             cost: Cost vector with the same dimension as the error of the task.
@@ -143,7 +141,8 @@ class Task(abc.ABC):
         Returns:
             Pair :math:`(H(q), c(q))`, where :math:`H(q)` is the Hessian matrix
             and :math:`c(q)` is the linear vector, both in terms of the configuration
-            displacement :math:`\Delta q`.
+            displacement :math:`\Delta q`. The Hessian matrix :math:`H(q)` has shape
+            :math:`(n_v, n_v)` and the linear vector :math:`c(q)` has shape :math:`(n_v,)`.
         """
         J = self.compute_jacobian(configuration)  # (k, nv)
         e = -self.gain * self.compute_error(configuration)  # (k,)
