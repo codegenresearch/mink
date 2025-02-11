@@ -30,32 +30,32 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         self.configuration.update_from_keyframe("home")
 
     def test_dimensions(self):
-        """Verify dimensions of collision avoidance limit constraints."""
-        g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
-        g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
+        """Test dimensions of collision avoidance limit constraints."""
+        geom_ids_1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
+        geom_ids_2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
 
         bound_relaxation = -1e-3
         limit = CollisionAvoidanceLimit(
             model=self.model,
-            geom_pairs=[(g1, g2)],
+            geom_pairs=[(geom_ids_1, geom_ids_2)],
             bound_relaxation=bound_relaxation,
         )
 
         # Filter out non-colliding geoms and calculate expected number of contacts.
-        g1_coll = [g for g in g1 if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0]
-        g2_coll = [g for g in g2 if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0]
-        expected_max_num_contacts = len(list(itertools.product(g1_coll, g2_coll)))
-        self.assertEqual(limit.max_num_contacts, expected_max_num_contacts)
+        colliding_geoms_1 = [g for g in geom_ids_1 if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0]
+        colliding_geoms_2 = [g for g in geom_ids_2 if self.model.geom_conaffinity[g] != 0 and self.model.geom_contype[g] != 0]
+        expected_contacts = len(list(itertools.product(colliding_geoms_1, colliding_geoms_2)))
+        self.assertEqual(limit.max_num_contacts, expected_contacts)
 
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
 
         # Validate the upper bound and constraint dimensions.
         self.assertTrue(np.all(h >= bound_relaxation), "All elements of h should be >= bound relaxation.")
-        self.assertEqual(G.shape, (expected_max_num_contacts, self.model.nv), "G matrix shape mismatch.")
-        self.assertEqual(h.shape, (expected_max_num_contacts,), "h vector shape mismatch.")
+        self.assertEqual(G.shape, (expected_contacts, self.model.nv), "G matrix shape mismatch.")
+        self.assertEqual(h.shape, (expected_contacts,), "h vector shape mismatch.")
 
-    def test_contact_normal_jacobian_matches_mujoco(self):
-        """Ensure computed contact normal Jacobian matches MuJoCo's output."""
+    def test_contact_normal_jacobian(self):
+        """Test computed contact normal Jacobian matches MuJoCo's output."""
         model = load_robot_description("ur5e_mj_description")
         nv = model.nv
 
@@ -78,7 +78,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
             contact = data.contact[i]
             start_idx = contact.efc_address * nv
             end_idx = start_idx + nv
-            efc_J = data.efc_J[start_idx:end_idx]
+            mujoco_jacobian = data.efc_J[start_idx:end_idx]
 
             # Manually compute the contact Jacobian.
             normal = contact.frame[:3]
@@ -96,7 +96,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
             computed_jacobian = compute_contact_normal_jacobian(model, data, contact_info)
 
             # Compare the computed Jacobian with MuJoCo's.
-            np.testing.assert_allclose(computed_jacobian, efc_J, atol=1e-7, err_msg="Computed Jacobian does not match MuJoCo's Jacobian.")
+            np.testing.assert_allclose(computed_jacobian, mujoco_jacobian, atol=1e-7, err_msg="Computed Jacobian does not match MuJoCo's Jacobian.")
 
 
 if __name__ == "__main__":
