@@ -7,7 +7,7 @@ from mink.lie import utils
 
 
 class TestUtils(absltest.TestCase):
-    def test_skew_raises_assertion_error_for_non_3d_input(self):
+    def test_skew_throws_assertion_error_for_non_3d_input(self):
         with self.assertRaises(AssertionError):
             utils.skew(np.zeros((5,)))
 
