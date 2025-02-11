@@ -5,18 +5,20 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # -- Project Information -----------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "mink"
 copyright = "2024, Kevin Zakka"
 author = "Kevin Zakka"
 
 # -- General Configuration ---------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 # List of Sphinx extensions to enable
 extensions = [
     "sphinx.ext.autodoc",  # Automatically generate documentation from docstrings
     "sphinx.ext.coverage",  # Check for documentation coverage
-    "sphinx-mathjax-offline",  # Use MathJax for rendering math equations offline
+    "sphinx.ext.mathjax",  # Use MathJax for rendering math equations
     "sphinx.ext.napoleon",  # Support for Google and NumPy style docstrings
     "sphinx_favicon",  # Add favicons to the documentation
 ]
@@ -38,7 +40,7 @@ napoleon_numpy_docstring = False  # Do not use NumPy style docstrings
 napoleon_use_rtype = False  # Do not include the return type in the docstring
 
 # Configuration for the autodoc extension
-autodoc_typehints = "description"
+autodoc_typehints = "both"
 autodoc_class_signature = "separated"
 autodoc_default_options = {
     "members": True,
@@ -51,10 +53,11 @@ autodoc_default_options = {
 
 # Type aliases for autodoc
 autodoc_type_aliases = {
-    "ArrayLike": "npt.ArrayLike",
+    "npt.ArrayLike": "ArrayLike",
 }
 
 # -- Options for HTML Output -------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 # Theme to use for HTML and HTML Help pages
 html_theme = "sphinx_rtd_theme"
