@@ -87,7 +87,7 @@ if __name__ == "__main__":
     # Construct the model
     model = construct_model()
 
-    # Create the configuration and data
+    # Create the configuration
     configuration = mink.Configuration(model)
     data = configuration.data
 
@@ -96,21 +96,21 @@ if __name__ == "__main__":
     left_mid = model.body("l_target").mocapid[0]
     right_mid = model.body("r_target").mocapid[0]
 
-    # Define tasks
+    # Define tasks using assignment expressions for better readability
     tasks = [
-        mink.FrameTask(
+        base_task := mink.FrameTask(
             frame_name="base",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
         ),
-        mink.FrameTask(
+        left_ee_task := mink.FrameTask(
             frame_name="l_ur5e/attachment_site",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
         ),
-        mink.FrameTask(
+        right_ee_task := mink.FrameTask(
             frame_name="r_ur5e/attachment_site",
             frame_type="site",
             position_cost=1.0,
@@ -143,15 +143,15 @@ if __name__ == "__main__":
         while viewer.is_running():
             # Update mocap positions
             data.mocap_pos[base_mid][2] = 0.3 * np.sin(2.0 * t)
-            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "base_target"))
+            base_task.set_target(mink.SE3.from_mocap_name(model, data, "base_target"))
 
             data.mocap_pos[left_mid][1] = 0.5 + 0.2 * np.sin(2.0 * t)
             data.mocap_pos[left_mid][2] = 0.2
-            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "l_target"))
+            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "l_target"))
 
             data.mocap_pos[right_mid][1] = 0.5 + 0.2 * np.sin(2.0 * t)
             data.mocap_pos[right_mid][2] = 0.2
-            tasks[2].set_target(mink.SE3.from_mocap_name(model, data, "r_target"))
+            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "r_target"))
 
             # Solve IK and integrate
             vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-2)
@@ -164,4 +164,4 @@ if __name__ == "__main__":
             t += rate.dt
 
 
-This code snippet addresses the feedback by ensuring consistent initialization order, removing redundant assignments, adding comments for clarity, maintaining consistent formatting, and ensuring variable names are descriptive.
+This code snippet addresses the feedback by ensuring consistent variable initialization, using assignment expressions for better readability, maintaining consistent naming, adding comments for clarity, removing redundant code, ensuring consistent formatting, and reviewing the main loop structure.
