@@ -19,40 +19,40 @@ if __name__ == "__main__":
 
     # Initialize tasks in the specified order
     tasks = [
-        posture_task := mink.PostureTask(model, cost=1.0),
         pelvis_orientation_task := mink.FrameTask(
             frame_name="pelvis",
             frame_type="body",
             position_cost=0.0,
             orientation_cost=10.0,
         ),
+        posture_task := mink.PostureTask(model, cost=1.0),
         com_task := mink.ComTask(cost=200.0),
     ]
 
     # Initialize foot tasks
-    feet_tasks = []
-    for foot in feet:
-        task = mink.FrameTask(
+    feet_tasks = [
+        mink.FrameTask(
             frame_name=foot,
             frame_type="site",
             position_cost=200.0,
             orientation_cost=10.0,
             lm_damping=1.0,
         )
-        feet_tasks.append(task)
+        for foot in feet
+    ]
     tasks.extend(feet_tasks)
 
     # Initialize hand tasks
-    hand_tasks = []
-    for hand in hands:
-        task = mink.FrameTask(
+    hand_tasks = [
+        mink.FrameTask(
             frame_name=hand,
             frame_type="site",
             position_cost=200.0,
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        hand_tasks.append(task)
+        for hand in hands
+    ]
     tasks.extend(hand_tasks)
 
     # Get mocap IDs for COM, feet, and hands
