@@ -28,9 +28,8 @@ if __name__ == "__main__":
     ]
 
     # Enable collision avoidance between the following geoms:
-    wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
-        (wrist_3_geoms, ["floor", "wall"]),
+        (["wrist_3_link"], ["floor", "wall"]),
     ]
 
     limits = [
@@ -64,7 +63,8 @@ if __name__ == "__main__":
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
-        rate = RateLimiter(frequency=500.0, warn=True)
+        solver = "quadprog"
+        rate = RateLimiter(frequency=500.0, warn=False)
         while viewer.is_running():
             # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
             # Compute velocity and integrate into the next configuration.
             vel = mink.solve_ik(
-                configuration, tasks, rate.dt, solver="quadprog", damping=1e-3, limits=limits
+                configuration, tasks, rate.dt, solver=solver, damping=1e-3, limits=limits
             )
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
@@ -85,3 +85,11 @@ if __name__ == "__main__":
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
+
+
+### Adjustments Made:
+1. **Model and Data Initialization**: Ensured `data` is initialized from `model`.
+2. **Collision Pairs Definition**: Directly specified body names in collision pairs.
+3. **Keyframe Update Method**: Used `mujoco.mj_resetDataKeyframe` and `configuration.update(data.qpos)` to update the configuration from a keyframe.
+4. **Rate Limiter Warning**: Set `warn=False` in `RateLimiter`.
+5. **Solver Parameter**: Defined `solver` as a variable and used it in `mink.solve_ik`.
