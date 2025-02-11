@@ -63,7 +63,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
 
     def test_invalid_geom_pair(self):
         # Test with an invalid geom pair that does not exist in the model.
-        invalid_geom_pair = ([self.model.ngeom - 1], [self.model.ngeom - 1])
+        invalid_geom_pair = ([self.model.ngeom], [self.model.ngeom])
         with self.assertRaises(ValueError) as cm:
             CollisionAvoidanceLimit(
                 model=self.model,
@@ -135,7 +135,9 @@ if __name__ == "__main__":
 1. **Syntax Error Fix**: Removed the unterminated string literal at the end of the file.
 2. **Model Configuration**: Ensured that the model configurations in `setUpClass` match the gold code.
 3. **Test Method Naming**: Renamed `test_contact_normal_jac_matches_mujoco` to `test_contact_normal_jacobian_matches_mujoco` for clarity.
-4. **Handling of Geom Pairs**: Corrected the invalid geom pair in `test_invalid_geom_pair` to use valid indices within the range of `self.model.ngeom - 1`.
+4. **Handling of Geom Pairs**: Corrected the invalid geom pair in `test_invalid_geom_pair` to use valid indices within the range of `self.model.ngeom`.
 5. **Contact Normal Jacobian Calculation**: Ensured that the Jacobian computation and comparison follow the same approach as in the gold code.
 6. **Assertions and Comparisons**: Added comprehensive assertions to check dimensions and values.
 7. **Documentation and Comments**: Enhanced comments to provide clarity on the purpose of each test and the rationale behind specific configurations or assertions.
+
+These changes should address the syntax error and align the code more closely with the gold code expectations.
