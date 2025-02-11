@@ -20,16 +20,12 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     ## =================== ##
-    ## Setup IK Configuration ##
+    ## Setup IK ##
     ## =================== ##
     configuration = mink.Configuration(model)
 
-    # Define foot names
     feet = ["FL", "FR", "HR", "HL"]
 
-    ## =================== ##
-    ## Define Tasks for IK ##
-    ## =================== ##
     base_task = mink.FrameTask(
         frame_name="body",
         frame_type="body",
@@ -110,7 +106,7 @@ if __name__ == "__main__":
                 # Check if position and orientation goals are achieved
                 pos_achieved = True
                 ori_achieved = True
-                for task in [eef_task, base_task, *feet_tasks]:
+                for task in tasks:
                     err = task.compute_error(configuration)
                     pos_achieved &= bool(np.linalg.norm(err[:3]) <= pos_threshold)
                     ori_achieved &= bool(np.linalg.norm(err[3:]) <= ori_threshold)
