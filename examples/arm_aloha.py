@@ -33,13 +33,7 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Collect joint and actuator IDs for both arms.
-    joint_names: list[str] = []
-    velocity_limits: dict[str, float] = {}
-    for prefix in ["left", "right"]:
-        for n in _JOINT_NAMES:
-            name = f"{prefix}/{n}"
-            joint_names.append(name)
-            velocity_limits[name] = _VELOCITY_LIMITS[n]
+    joint_names = [f"{prefix}/{name}" for prefix in ["left", "right"] for name in _JOINT_NAMES]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -47,30 +41,29 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
 
     # Define IK tasks for both arms' end effectors.
-    tasks = [
-        l_ee_task := mink.FrameTask(
-            frame_name="left/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-        r_ee_task := mink.FrameTask(
-            frame_name="right/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-    ]
+    left_ee_task = mink.FrameTask(
+        frame_name="left/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    right_ee_task = mink.FrameTask(
+        frame_name="right/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    tasks = [left_ee_task, right_ee_task]
 
     # Enable collision avoidance between the wrists and the table, and between the two wrists.
-    l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
-    r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
+    left_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
+    right_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
-        (l_wrist_geoms, r_wrist_geoms),
-        (l_wrist_geoms + r_wrist_geoms, frame_geoms + ["table"]),
+        (left_wrist_geoms, right_wrist_geoms),
+        (left_wrist_geoms + right_wrist_geoms, frame_geoms + ["table"]),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
@@ -82,13 +75,13 @@ if __name__ == "__main__":
     # Define the limits for IK.
     limits = [
         mink.ConfigurationLimit(model=model),
-        mink.VelocityLimit(model, velocity_limits),
+        mink.VelocityLimit(model, _VELOCITY_LIMITS),
         collision_avoidance_limit,
     ]
 
     # Get mocap IDs for both arms' targets.
-    l_mid = model.body("left/target").mocapid[0]
-    r_mid = model.body("right/target").mocapid[0]
+    left_mid = model.body("left/target").mocapid[0]
+    right_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
@@ -112,8 +105,8 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
-            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
@@ -128,13 +121,13 @@ if __name__ == "__main__":
                 configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if both end effectors have reached their targets.
-                l_err = l_ee_task.compute_error(configuration)
-                l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
-                l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = r_ee_task.compute_error(configuration)
-                r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
-                r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
-                if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
+                left_err = left_ee_task.compute_error(configuration)
+                left_pos_achieved = np.linalg.norm(left_err[:3]) <= pos_threshold
+                left_ori_achieved = np.linalg.norm(left_err[3:]) <= ori_threshold
+                right_err = right_ee_task.compute_error(configuration)
+                right_pos_achieved = np.linalg.norm(right_err[:3]) <= pos_threshold
+                right_ori_achieved = np.linalg.norm(right_err[3:]) <= ori_threshold
+                if left_pos_achieved and left_ori_achieved and right_pos_achieved and right_ori_achieved:
                     print(f"Exiting after {i} iterations.")
                     break
 
