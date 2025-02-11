@@ -23,7 +23,7 @@ class TestConfigurationLimit(absltest.TestCase):
         self.configuration.update_from_keyframe("stand")
         # NOTE(kevin): These velocities are arbitrary and do not match real hardware.
         self.velocities = {
-            self.model.joint(i).name: mujoco.mjMAXVAL for i in range(1, self.model.njnt)
+            self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
         }
         self.vel_limit = VelocityLimit(self.model, self.velocities)
 
@@ -50,10 +50,14 @@ class TestConfigurationLimit(absltest.TestCase):
         empty_bounded = ConfigurationLimit(empty_model)
         self.assertEqual(len(empty_bounded.indices), 0)
         self.assertIsNone(empty_bounded.projection_matrix)
+        G, h = empty_bounded.compute_qp_inequalities(self.configuration, 1e-3)
+        self.assertIsNone(G)
+        self.assertIsNone(h)
 
     def test_model_with_subset_of_velocities_limited(self):
         xml_str = """
         <mujoco>
+          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="hinge" name="hinge_unlimited"/>
@@ -72,10 +76,13 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+        self.assertTrue(np.allclose(limit.lower, np.array([0.0])))
+        self.assertTrue(np.allclose(limit.upper, np.array([1.57])))
 
     def test_freejoint_ignored(self):
         xml_str = """
         <mujoco>
+          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="free" name="floating"/>
@@ -94,6 +101,8 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+        self.assertTrue(np.allclose(limit.lower, np.array([0.0])))
+        self.assertTrue(np.allclose(limit.upper, np.array([1.57])))
 
     def test_far_from_limit(self, tol=1e-10):
         """Limit has no effect when the configuration is far away."""
@@ -103,12 +112,12 @@ class TestConfigurationLimit(absltest.TestCase):
         limit = ConfigurationLimit(model)
         G, h = limit.compute_qp_inequalities(configuration, dt=dt)
         velocities = {
-            "shoulder_pan_joint": mujoco.mjMAXVAL,
-            "shoulder_lift_joint": mujoco.mjMAXVAL,
-            "elbow_joint": mujoco.mjMAXVAL,
-            "wrist_1_joint": mujoco.mjMAXVAL,
-            "wrist_2_joint": mujoco.mjMAXVAL,
-            "wrist_3_joint": mujoco.mjMAXVAL,
+            "shoulder_pan_joint": np.pi,
+            "shoulder_lift_joint": np.pi,
+            "elbow_joint": np.pi,
+            "wrist_1_joint": np.pi,
+            "wrist_2_joint": np.pi,
+            "wrist_3_joint": np.pi,
         }
         vel_limit = VelocityLimit(model, velocities)
         self.assertLess(np.max(+G @ vel_limit.limit * dt - h), -tol)
