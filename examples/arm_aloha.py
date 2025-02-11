@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Optional, Sequence, List, Dict
 
 import mujoco
 import mujoco.viewer
@@ -23,7 +23,10 @@ _JOINT_NAMES = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {f"{prefix}/{joint}": np.pi for prefix in ["left", "right"] for joint in _JOINT_NAMES}
+_VELOCITY_LIMITS: Dict[str, float] = {}
+for prefix in ["left", "right"]:
+    for joint in _JOINT_NAMES:
+        _VELOCITY_LIMITS[f"{prefix}/{joint}"] = np.pi
 
 
 def compensate_gravity(
@@ -37,8 +40,11 @@ def compensate_gravity(
     Args:
         model: Mujoco model.
         data: Mujoco data.
-        subtree_ids: List of subtree ids. Gravity compensation forces will be applied to all bodies in these subtrees.
-        qfrc_applied: Optional array to store the computed forces. If not provided, the applied forces in `data` are used.
+        subtree_ids: List of subtree ids. A subtree is defined as the kinematic tree
+            starting at the body and including all its descendants. Gravity
+            compensation forces will be applied to all bodies in the subtree.
+        qfrc_applied: Optional array to store the computed forces. If not provided,
+            the applied forces in `data` are used.
     """
     qfrc_applied = data.qfrc_applied if qfrc_applied is None else qfrc_applied
     qfrc_applied[:] = 0.0  # Reset forces from previous calls.
@@ -46,7 +52,7 @@ def compensate_gravity(
     for subtree_id in subtree_ids:
         total_mass = model.body_subtreemass[subtree_id]
         mujoco.mj_jacSubtreeCom(model, data, jac, subtree_id)
-        qfrc_applied[:] -= model.opt.gravity * total_mass * jac
+        qfrc_applied[:] -= model.opt.gravity @ (total_mass * jac)
 
 
 if __name__ == "__main__":
@@ -58,7 +64,11 @@ if __name__ == "__main__":
     right_subtree_id = model.body("right/base_link").id
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
+    joint_names: List[str] = []
+    for prefix in ["left", "right"]:
+        for joint in _JOINT_NAMES:
+            name = f"{prefix}/{joint}"
+            joint_names.append(name)
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
