@@ -46,10 +46,10 @@ class VelocityLimit(Limit):
         for joint_name, max_vel in velocities.items():
             jid = model.joint(joint_name).id
             jnt_type = model.jnt_type[jid]
-            vdim = dof_width(jnt_type)
-            vadr = model.jnt_dofadr[jid]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
                 raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
+            vdim = dof_width(jnt_type)
+            vadr = model.jnt_dofadr[jid]
             max_vel = np.atleast_1d(max_vel)
             if max_vel.shape != (vdim,):
                 raise LimitDefinitionError(
@@ -64,8 +64,8 @@ class VelocityLimit(Limit):
         self.limit = np.array(limit_list)
         self.limit.setflags(write=False)
 
-        dim = len(self.indices)
-        self.projection_matrix = np.eye(model.nv)[self.indices] if dim > 0 else None
+        nb = len(self.indices)
+        self.projection_matrix = np.eye(model.nv)[self.indices] if nb > 0 else None
 
     def compute_qp_inequalities(
         self, configuration: Configuration, dt: float
@@ -78,7 +78,7 @@ class VelocityLimit(Limit):
 
             -v_{\text{max}} \cdot dt \leq \Delta q \leq v_{\text{max}} \cdot dt
 
-        where :math:`v_{max} \in {\cal T}` is the robot's velocity limit
+        where :math:`v_{\text{max}} \in {\cal T}` is the robot's velocity limit
         vector and :math:`\Delta q \in T_q({\cal C})` is the displacement in the
         tangent space at :math:`q`. See the :ref:`derivations` section for
         more information.
@@ -89,7 +89,8 @@ class VelocityLimit(Limit):
 
         Returns:
             Pair :math:`(G, h)` representing the inequality constraint as
-            :math:`G \Delta q \leq h`, or ``None`` if there is no limit.
+            :math:`G \Delta q \leq h`, where :math:`G` has shape (2n, nv) and
+            :math:`h` has shape (2n,), or ``None`` if there is no limit.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
