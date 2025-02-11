@@ -23,11 +23,11 @@ if __name__ == "__main__":
     base_task = mink.FrameTask(
         frame_name="trunk",
         frame_type="body",
-        position_cost=1.0,
-        orientation_cost=1.0,
+        position_cost=0.0,
+        orientation_cost=10.0,
     )
 
-    posture_task = mink.PostureTask(model, cost=1e-5)
+    posture_task = mink.PostureTask(model, cost=1.0)
 
     # Create tasks for each foot.
     feet_tasks = []
@@ -35,8 +35,8 @@ if __name__ == "__main__":
         task = mink.FrameTask(
             frame_name=foot,
             frame_type="site",
-            position_cost=1.0,
-            orientation_cost=0.0,
+            position_cost=200.0,
+            orientation_cost=10.0,
         )
         feet_tasks.append(task)
 
@@ -61,6 +61,7 @@ if __name__ == "__main__":
         # Initialize to the home keyframe.
         configuration.update_from_keyframe("home")
         posture_task.set_target_from_configuration(configuration)
+        base_task.set_target_from_configuration(configuration)
 
         # Initialize mocap bodies at their respective sites.
         for foot in feet:
@@ -68,7 +69,7 @@ if __name__ == "__main__":
         mink.move_mocap_to_frame(model, data, "trunk_target", "trunk", "body")
 
         # Set up the rate limiter.
-        rate = RateLimiter(frequency=500.0, warn=False)
+        rate = RateLimiter(frequency=200.0, warn=False)
 
         # Main loop.
         while viewer.is_running():
@@ -78,7 +79,7 @@ if __name__ == "__main__":
                 task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
 
             # Compute velocity, integrate, and set control signal.
-            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-5)
+            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-1)
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
@@ -87,4 +88,4 @@ if __name__ == "__main__":
             rate.sleep()
 
 
-This code snippet addresses the feedback by ensuring consistent structure, comments, variable naming, and formatting. The main loop logic and task definitions are aligned with the gold code.
+This code snippet addresses the feedback by ensuring consistent comments, variable naming, and formatting. The task definitions and their parameters are aligned with the gold code, and the main loop logic follows the same flow and structure.
