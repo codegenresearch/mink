@@ -7,44 +7,49 @@ from loop_rate_limiters import RateLimiter
 
 import mink
 
+# File: ur5e_inverse_kinematics.py
+# Description: This script sets up and runs inverse kinematics for the UR5e robot using Mujoco.
+# It includes collision avoidance and velocity limits.
+
 _HERE = Path(__file__).parent
 _XML = _HERE / "universal_robots_ur5e" / "scene.xml"
 
-
 if __name__ == "__main__":
+    # Load the Mujoco model from XML
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    ## =================== ##
-    ## Setup IK.
-    ## =================== ##
-
+    # Setup Inverse Kinematics (IK)
     configuration = mink.Configuration(model)
 
-    tasks = [
-        end_effector_task := mink.FrameTask(
-            frame_name="attachment_site",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-    ]
+    # Define the end-effector task
+    end_effector_task = mink.FrameTask(
+        frame_name="attachment_site",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    tasks = [end_effector_task]
 
-    # Enable collision avoidance between (wrist3, floor) and (wrist3, wall).
+    # Define collision pairs for collision avoidance
     wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
         (wrist_3_geoms, ["floor", "wall"]),
     ]
 
-    limits = [
-        mink.ConfigurationLimit(model=configuration.model),
-        mink.CollisionAvoidanceLimit(
-            model=configuration.model,
-            geom_pairs=collision_pairs,
-        ),
-    ]
+    # Define limits for IK
+    configuration_limit = mink.ConfigurationLimit(model=configuration.model)
+    collision_avoidance_limit = mink.CollisionAvoidanceLimit(
+        model=configuration.model,
+        geom_pairs=collision_pairs,
+    )
 
+    # Validate collision pairs
+    if not collision_avoidance_limit.validate():
+        raise ValueError("Invalid collision pairs provided for collision avoidance.")
+
+    # Define velocity limits
     max_velocities = {
         "shoulder_pan": np.pi,
         "shoulder_lift": np.pi,
@@ -54,37 +59,43 @@ if __name__ == "__main__":
         "wrist_3": np.pi,
     }
     velocity_limit = mink.VelocityLimit(model, max_velocities)
-    limits.append(velocity_limit)
 
-    ## =================== ##
+    # Validate velocity limits
+    if not velocity_limit.validate():
+        raise ValueError("Invalid velocity limits provided.")
 
-    mid = model.body("target").mocapid[0]
+    limits = [configuration_limit, collision_avoidance_limit, velocity_limit]
 
-    # IK settings.
+    # IK settings
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
     max_iters = 20
 
+    # Launch the Mujoco viewer
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
+        # Reset to home position
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
 
-        # Initialize the mocap target at the end-effector site.
+        # Initialize the mocap target at the end-effector site
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
+        # Setup rate limiter
         rate = RateLimiter(frequency=500.0)
+
+        # Main loop
         while viewer.is_running():
-            # Update task target.
+            # Update task target
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
-            # Compute velocity and integrate into the next configuration.
+            # Compute velocity and integrate into the next configuration
             for i in range(max_iters):
                 vel = mink.solve_ik(
                     configuration, tasks, rate.dt, solver, damping=1e-3, limits=limits
@@ -94,11 +105,13 @@ if __name__ == "__main__":
                 pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
                 ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
                 if pos_achieved and ori_achieved:
+                    print(f"Exiting after {i} iterations.")
                     break
 
+            # Update control signals
             data.ctrl = configuration.q
             mujoco.mj_step(model, data)
 
-            # Visualize at fixed FPS.
+            # Visualize at fixed FPS
             viewer.sync()
             rate.sleep()
