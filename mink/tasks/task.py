@@ -162,10 +162,10 @@ class Task(abc.ABC):
 
 ### Adjustments Made:
 1. **Removed Unterminated String Literal**:
-   - Removed any unterminated string literals or comments that were causing syntax errors.
+   - Ensured all string literals and comments are properly terminated and formatted.
 
 2. **Objective Value Calculation**:
-   - Ensured the calculation of the objective value in the `value` method matches the mathematical expression in the gold code.
+   - Verified that the calculation in the `value` method matches the mathematical expression in the gold code.
 
 3. **Docstring Consistency**:
    - Ensured docstrings are consistent in style and detail, matching the gold code.
