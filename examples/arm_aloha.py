@@ -22,7 +22,7 @@ _JOINT_NAMES = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {f"{prefix}/{joint}": np.pi for prefix in ["left", "right"] for joint in _JOINT_NAMES}
+_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
 
 
 def construct_model(xml_path):
@@ -96,31 +96,52 @@ def setup_collision_avoidance(model):
     )
 
 
+def initialize_tasks():
+    """
+    Initializes the end-effector tasks for the left and right arms.
+
+    Returns:
+        list[mink.FrameTask]: List of end-effector tasks.
+    """
+    tasks = [
+        mink.FrameTask(
+            frame_name="left/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+        mink.FrameTask(
+            frame_name="right/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+    ]
+    return tasks
+
+
 def main():
     model = construct_model(_XML.as_posix())
     data = mujoco.MjData(model)
 
+    # Initialize joint names and velocity limits.
+    joint_names = []
+    velocity_limits = {}
+    for prefix in ["left", "right"]:
+        for joint in _JOINT_NAMES:
+            name = f"{prefix}/{joint}"
+            joint_names.append(name)
+            velocity_limits[name] = _VELOCITY_LIMITS[joint]
+
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
     dof_ids, actuator_ids = get_dof_and_actuator_ids(model, joint_names)
 
     configuration = mink.Configuration(model)
 
     # Define tasks for left and right end-effectors.
-    l_ee_task = mink.FrameTask(
-        frame_name="left/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    r_ee_task = mink.FrameTask(
-        frame_name="right/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
+    tasks = initialize_tasks()
 
     # Define posture task.
     posture_task = mink.PostureTask(
@@ -135,7 +156,7 @@ def main():
     # Define configuration limits.
     limits = [
         mink.ConfigurationLimit(model=model),
-        mink.VelocityLimit(model, _VELOCITY_LIMITS),
+        mink.VelocityLimit(model, velocity_limits),
         collision_avoidance_limit,
     ]
 
@@ -145,10 +166,10 @@ def main():
 
     # Solver and error thresholds.
     solver = "quadprog"
-    pos_threshold = 1e-4
-    ori_threshold = 1e-4
-    max_iters = 20
-    damping = 1e-3
+    pos_threshold = 1e-3  # Adjusted to match gold code
+    ori_threshold = 1e-3  # Adjusted to match gold code
+    max_iters = 10  # Adjusted to match gold code
+    damping = 1e-2  # Adjusted to match gold code
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -166,6 +187,8 @@ def main():
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
+            l_ee_task = tasks[0]
+            r_ee_task = tasks[1]
             l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
             r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
@@ -176,7 +199,7 @@ def main():
             for _ in range(max_iters):
                 vel = mink.solve_ik(
                     configuration,
-                    [l_ee_task, r_ee_task, posture_task],
+                    tasks + [posture_task],
                     rate.dt,
                     solver,
                     limits=limits,
