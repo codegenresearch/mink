@@ -27,9 +27,6 @@ class Contact:
         geom1: ID of the first geom.
         geom2: ID of the second geom.
         distmax: Maximum allowed distance between the two geoms.
-
-    References:
-        This class is used to represent contacts in the collision avoidance limit.
     """
 
     dist: float
@@ -47,7 +44,7 @@ class Contact:
 
     @property
     def inactive(self) -> bool:
-        """Indicates if the contact is inactive, i.e., the distance is equal to the maximum allowed distance."""
+        """Indicates if the contact is inactive."""
         return self.dist == self.distmax
 
 
