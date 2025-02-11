@@ -36,14 +36,14 @@ def construct_model():
     left_iiwa.find("key", "home").remove()
     left_site.attach(left_iiwa)
     for i, g in enumerate(left_iiwa.worldbody.find_all("geom")):
-        g.name = f"l_geom_{i}"
+        g.name = f"geom_{i}"
 
     right_iiwa = mjcf.from_path(_XML_PATH.as_posix())
     right_iiwa.model = "r_iiwa"
     right_iiwa.find("key", "home").remove()
     right_site.attach(right_iiwa)
     for i, g in enumerate(right_iiwa.worldbody.find_all("geom")):
-        g.name = f"r_geom_{i}"
+        g.name = f"geom_{i}"
 
     body = root.worldbody.add("body", name="l_target", mocap=True)
     body.add(
@@ -71,15 +71,16 @@ def construct_model():
 if __name__ == "__main__":
     model = construct_model()
     configuration = mink.Configuration(model)
+    model, data = configuration.model, configuration.data
 
     tasks = [
-        mink.FrameTask(
+        left_ee_task := mink.FrameTask(
             frame_name="l_iiwa/attachment_site",
             frame_type="site",
             position_cost=2.0,
             orientation_cost=1.0,
         ),
-        mink.FrameTask(
+        right_ee_task := mink.FrameTask(
             frame_name="r_iiwa/attachment_site",
             frame_type="site",
             position_cost=2.0,
@@ -110,48 +111,46 @@ if __name__ == "__main__":
 
     l_y_des = np.array([0.392, -0.392, 0.6])
     r_y_des = np.array([0.392, 0.392, 0.6])
+    A = l_y_des.copy()
+    B = r_y_des.copy()
     l_dy_des = np.zeros(3)
     r_dy_des = np.zeros(3)
 
     with mujoco.viewer.launch_passive(
-        model=model, data=configuration.data, show_left_ui=False, show_right_ui=False
+        model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
         viewer.opt.frame = mujoco.mjtFrame.mjFRAME_SITE
 
         mink.move_mocap_to_frame(
-            model, configuration.data, "l_target", "l_iiwa/attachment_site", "site"
+            model, data, "l_target", "l_iiwa/attachment_site", "site"
         )
         mink.move_mocap_to_frame(
-            model, configuration.data, "r_target", "r_iiwa/attachment_site", "site"
+            model, data, "r_target", "r_iiwa/attachment_site", "site"
         )
 
-        rate = RateLimiter(frequency=60.0, warn=True)
+        rate = RateLimiter(frequency=60.0, warn=False)
         t = 0.0
         while viewer.is_running():
             mu = (1 + np.cos(t)) / 2
             l_y_des[:] = (
-                l_y_des
-                + (r_y_des - l_y_des + 0.2 * np.array([0, 0, np.sin(mu * np.pi) ** 2])) * mu
+                A + (B - A + 0.2 * np.array([0, 0, np.sin(mu * np.pi) ** 2])) * mu
             )
             r_y_des[:] = (
-                r_y_des
-                + (l_y_des - r_y_des + 0.2 * np.array([0, 0, -np.sin(mu * np.pi) ** 2])) * mu
+                B + (A - B + 0.2 * np.array([0, 0, -np.sin(mu * np.pi) ** 2])) * mu
             )
-            configuration.data.mocap_pos[left_mid] = l_y_des
-            configuration.data.mocap_pos[right_mid] = r_y_des
+            data.mocap_pos[left_mid] = l_y_des
+            data.mocap_pos[right_mid] = r_y_des
 
             # Update task targets.
-            T_wt_left = mink.SE3.from_mocap_name(model, configuration.data, "l_target")
-            tasks[0].set_target(T_wt_left)
-            T_wt_right = mink.SE3.from_mocap_name(model, configuration.data, "r_target")
-            tasks[1].set_target(T_wt_right)
+            left_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "l_target"))
+            right_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "r_target"))
 
             vel = mink.solve_ik(
                 configuration, tasks, rate.dt, solver, 1e-2, False, limits=limits
             )
             configuration.integrate_inplace(vel, rate.dt)
-            mujoco.mj_camlight(model, configuration.data)
+            mujoco.mj_camlight(model, data)
 
             viewer.sync()
             rate.sleep()
