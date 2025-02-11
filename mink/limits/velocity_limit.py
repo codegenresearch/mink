@@ -18,11 +18,11 @@ class VelocityLimit(Limit):
     Floating base joints are ignored.
 
     Attributes:
-        indices: Tangent indices corresponding to velocity-limited joints. Shape: (n,)
+        indices: Tangent indices corresponding to velocity-limited joints. Shape (nb,)
         limit: Maximum allowed velocity magnitude for velocity-limited joints, in
-            [m]/[s] for slide joints and [rad]/[s] for hinge joints. Shape: (n,)
+            [m]/[s] for slide joints and [rad]/[s] for hinge joints. Shape (nb,)
         projection_matrix: Projection from tangent space to subspace with
-            velocity-limited joints. Shape: (n, nv)
+            velocity-limited joints. Shape (nb, nv)
     """
 
     indices: np.ndarray
@@ -78,8 +78,8 @@ class VelocityLimit(Limit):
 
             -v_{\text{max}} \cdot dt \leq \Delta q \leq v_{\text{max}} \cdot dt
 
-        where :math:`v_{\text{max}} \in {\cal T}` is the robot's velocity limit
-        vector and :math:`\Delta q \in T_q({\cal C})` is the displacement in the
+        where :math:`v_{\text{max}} \in \mathbb{R}^{nb}` is the robot's velocity limit
+        vector and :math:`\Delta q \in \mathbb{R}^{nv}` is the displacement in the
         tangent space at :math:`q`. See the :ref:`derivations` section for
         more information.
 
@@ -89,8 +89,8 @@ class VelocityLimit(Limit):
 
         Returns:
             Pair :math:`(G, h)` representing the inequality constraint as
-            :math:`G \Delta q \leq h`, where :math:`G` has shape (2n, nv) and
-            :math:`h` has shape (2n,), or ``None`` if there is no limit.
+            :math:`G \Delta q \leq h`, where :math:`G` has shape (2nb, nv) and
+            :math:`h` has shape (2nb,), or ``None`` if there is no limit.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
