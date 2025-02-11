@@ -29,20 +29,20 @@ source_suffix = {".rst": "restructuredtext"}
 pygments_style = "sphinx"
 
 # Autodoc configuration
-autodoc_typehints = "both"
+autodoc_typehints = "description"
 autodoc_class_signature = "separated"
 autodoc_default_options = {
     "members": True,
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": True,
+    "inherited-members": None,
     "exclude-members": "__weakref__,__init__",
 }
 
 # Autodoc type aliases
 autodoc_type_aliases = {
-    "ExampleType": "int",
+    "MyType": "int",
 }
 
 # Napoleon settings
