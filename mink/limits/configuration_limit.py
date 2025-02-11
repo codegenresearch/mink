@@ -38,9 +38,9 @@ class ConfigurationLimit(Limit):
                 f"{self.__class__.__name__} gain must be in the range (0, 1]"
             )
 
-        index_list = []  # DoF indices that are limited.
-        lower = np.full(model.nq, -mujoco.mjMAXVAL)
-        upper = np.full(model.nq, mujoco.mjMAXVAL)
+        index_list: list[int] = []  # DoF indices that are limited.
+        lower = np.full((model.nq,), -mujoco.mjMAXVAL)
+        upper = np.full((model.nq,), mujoco.mjMAXVAL)
         for jnt in range(model.njnt):
             jnt_type = model.jnt_type[jnt]
             qpos_dim = qpos_width(jnt_type)
@@ -97,7 +97,7 @@ class ConfigurationLimit(Limit):
             return Constraint()
 
         # Upper.
-        delta_q_max = np.zeros(self.model.nv)
+        delta_q_max = np.zeros((self.model.nv,))
         mujoco.mj_differentiatePos(
             m=self.model,
             qvel=delta_q_max,
@@ -107,7 +107,7 @@ class ConfigurationLimit(Limit):
         )
 
         # Lower.
-        delta_q_min = np.zeros(self.model.nv)
+        delta_q_min = np.zeros((self.model.nv,))
         mujoco.mj_differentiatePos(
             m=self.model,
             qvel=delta_q_min,
