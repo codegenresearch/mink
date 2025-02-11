@@ -29,7 +29,6 @@ class PostureTask(Task):
     """
 
     target_q: Optional[np.ndarray]
-    _v_ids: Optional[np.ndarray]
     k: int
     nq: int
 
@@ -63,7 +62,7 @@ class PostureTask(Task):
 
         # Determine the indices of the free joint dimensions
         _, free_joint_ids = get_freejoint_dims(model)
-        self._v_ids = np.array(free_joint_ids) if free_joint_ids else None
+        self._v_ids: Optional[np.ndarray] = np.array(free_joint_ids) if free_joint_ids else None
 
         # Set the number of degrees of freedom and total number of joint angles
         self.k = model.nv
