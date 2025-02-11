@@ -38,7 +38,7 @@ def move_mocap_to_frame(
     mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
 
 
-def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
+def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
     """Get all floating joint configuration and tangent indices.
 
     Args:
@@ -48,8 +48,8 @@ def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
         A (q_ids, v_ids) pair containing all floating joint indices in the
         configuration and tangent spaces respectively.
     """
-    q_ids: List[int] = []
-    v_ids: List[int] = []
+    q_ids: list[int] = []
+    v_ids: list[int] = []
     for j in range(model.njnt):
         if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE:
             qadr = model.jnt_qposadr[j]
@@ -86,21 +86,21 @@ def custom_configuration_vector(
         mujoco.mj_resetData(model, data)
 
     q = data.qpos.copy()
-    for joint_name, value in kwargs.items():
-        joint = model.joint(joint_name)
-        qid = joint.qposadr
-        qdim = consts.qpos_width(model.jnt_type[joint.id])
+    for name, value in kwargs.items():
+        jid = model.joint(name).id
+        qid = model.jnt_qposadr[jid]
+        qdim = consts.qpos_width(model.jnt_type[jid])
         value = np.atleast_1d(value)
         if value.shape != (qdim,):
             raise ValueError(
-                f"Joint {joint_name} should have a qpos value of {qdim} but "
+                f"Joint {name} should have a qpos value of {qdim} but "
                 f"got {value.shape}"
             )
         q[qid:qid + qdim] = value
     return q
 
 
-def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
     """Get all geoms belonging to subtree starting at a given body.
 
     Args:
@@ -121,7 +121,7 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     return geom_ids
 
 
-def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
     """Get all geoms belonging to a given body.
 
     Args:
@@ -136,7 +136,7 @@ def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
     return list(range(geom_start, geom_end))
 
 
-def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
     """Get all body IDs in the subtree starting from a given body.
 
     Args:
@@ -180,7 +180,7 @@ def apply_gravity_compensation(
     return data.qfrc_bias.copy()
 
 
-def get_joint_limits(model: mujoco.MjModel) -> Dict[str, Tuple[float, float]]:
+def get_joint_limits(model: mujoco.MjModel) -> dict[str, tuple[float, float]]:
     """Retrieve the limits for each joint in the model.
 
     Args:
@@ -191,9 +191,9 @@ def get_joint_limits(model: mujoco.MjModel) -> Dict[str, Tuple[float, float]]:
     """
     joint_limits = {}
     for j in range(model.njnt):
-        joint_name = model.joint(j).name
+        name = model.joint(j).name
         if model.jnt_limited[j]:
             lower_limit = model.jnt_range[j, 0]
             upper_limit = model.jnt_range[j, 1]
-            joint_limits[joint_name] = (lower_limit, upper_limit)
+            joint_limits[name] = (lower_limit, upper_limit)
     return joint_limits
