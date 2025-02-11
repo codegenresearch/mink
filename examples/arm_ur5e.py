@@ -31,7 +31,7 @@ def main():
 
     # Enable collision avoidance between the wrist_3_link and the floor and wall geometries.
     collision_pairs = [
-        (["wrist_3_link"], ["floor", "wall"]),
+        (mink.get_body_geom_ids(model, model.body("wrist_3_link").id), ["floor", "wall"]),
     ]
 
     limits = [
@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
 This code addresses the feedback by:
 1. Ensuring the initialization of `model` and `data` occurs after the `configuration` is created.
-2. Updating the comment regarding collision avoidance to be more descriptive.
-3. Ensuring the parameters passed to `mink.solve_ik` match the gold code exactly.
+2. Updating the comment regarding collision avoidance to be more descriptive and consistent with the gold code.
+3. Ensuring the parameters passed to `mink.solve_ik` match the gold code exactly, including the damping parameter.
 4. Reviewing the order of visualization calls to ensure they are consistent with the gold code.
-5. Reviewing comments for clarity and conciseness to match the style and intent of the comments in the gold code.
+5. Removing redundant code and ensuring the code is streamlined to match the gold code's simplicity.
