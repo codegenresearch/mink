@@ -11,7 +11,7 @@ from mink.lie.se3 import SE3
 
 
 class TestUtils(absltest.TestCase):
-    """Test utility functions with gravity compensation and subtree handling."""
+    """Test utility functions."""
 
     @classmethod
     def setUpClass(cls):
@@ -21,15 +21,15 @@ class TestUtils(absltest.TestCase):
         self.data = mujoco.MjData(self.model)
         self.q0 = self.data.qpos.copy()
 
-    def test_custom_configuration_vector_throws_error_if_keyframe_invalid(self):
+    def test_custom_configuration_vector_invalid_keyframe(self):
         with self.assertRaises(InvalidKeyframe):
             utils.custom_configuration_vector(self.model, "stand123")
 
     def test_custom_configuration_vector_from_keyframe(self):
         q = utils.custom_configuration_vector(self.model, "stand")
-        np.testing.assert_allclose(q, self.model.key("stand").qpos)
+        np.testing.assert_array_almost_equal(q, self.model.key("stand").qpos)
 
-    def test_custom_configuration_vector_raises_error_if_jnt_shape_invalid(self):
+    def test_custom_configuration_vector_invalid_joint_shape(self):
         with self.assertRaises(ValueError):
             utils.custom_configuration_vector(
                 self.model,
@@ -47,9 +47,9 @@ class TestUtils(absltest.TestCase):
         for name, value in custom_joints.items():
             qid = self.model.jnt_qposadr[self.model.joint(name).id]
             q_expected[qid] = value
-        np.testing.assert_allclose(q, q_expected)
+        np.testing.assert_array_almost_equal(q, q_expected)
 
-    def test_move_mocap_to_frame_throws_error_if_body_not_mocap(self):
+    def test_move_mocap_to_frame_invalid_body(self):
         with self.assertRaises(InvalidMocapBody):
             utils.move_mocap_to_frame(
                 self.model,
@@ -87,24 +87,24 @@ class TestUtils(absltest.TestCase):
 
         # Initially not the same.
         with np.testing.assert_raises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
+            np.testing.assert_array_almost_equal(data.body("mocap").xpos, body_pos)
         with np.testing.assert_raises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
+            np.testing.assert_array_almost_equal(data.body("mocap").xquat, body_quat)
 
         utils.move_mocap_to_frame(model, data, "mocap", "test", "body")
         mujoco.mj_forward(model, data)
 
         # Should now be the same.
-        np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
-        np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
+        np.testing.assert_array_almost_equal(data.body("mocap").xpos, body_pos)
+        np.testing.assert_array_almost_equal(data.body("mocap").xquat, body_quat)
 
     def test_get_freejoint_dims(self):
         q_ids, v_ids = utils.get_freejoint_dims(self.model)
-        np.testing.assert_allclose(
+        np.testing.assert_array_almost_equal(
             np.asarray(q_ids),
             np.asarray(list(range(0, 7))),
         )
-        np.testing.assert_allclose(
+        np.testing.assert_array_almost_equal(
             np.asarray(v_ids),
             np.asarray(list(range(0, 6))),
         )
@@ -215,8 +215,8 @@ class TestUtils(absltest.TestCase):
         transform = utils.get_subtree_transform(model, data, b1_id)
         expected_translation = data.body("b1").xpos
         expected_rotation = SE3.from_matrix(data.body("b1").xmat)
-        np.testing.assert_allclose(transform.translation(), expected_translation)
-        np.testing.assert_allclose(transform.rotation().as_matrix(), expected_rotation.as_matrix())
+        np.testing.assert_array_almost_equal(transform.translation(), expected_translation)
+        np.testing.assert_array_almost_equal(transform.rotation().as_matrix(), expected_rotation.as_matrix())
 
 
 if __name__ == "__main__":
