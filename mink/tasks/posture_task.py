@@ -24,9 +24,6 @@ from .task import Task
 class PostureTask(Task):
     """Regulate the joint angles of the robot towards a desired posture.
 
-    A posture is a vector of actuated joint angles. Floating-base coordinates are not
-    affected by this task.
-
     Attributes:
         target_q: Target configuration for the robot's joint angles.
         _v_ids: Indices of the free joint dimensions, if any.
@@ -68,8 +65,8 @@ class PostureTask(Task):
         self.target_q = None
 
         # Determine the indices of the free joint dimensions, if any
-        _, v_ids = get_freejoint_dims(model)
-        self._v_ids = np.asarray(v_ids) if v_ids else None
+        _, free_joint_ids = get_freejoint_dims(model)
+        self._v_ids = np.asarray(free_joint_ids) if free_joint_ids else None
 
         # Set the number of degrees of freedom and total number of joint angles
         self.k = model.nv
