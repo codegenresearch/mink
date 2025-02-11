@@ -1,24 +1,23 @@
 # Configuration file for the Sphinx documentation builder.
 #
-# This file configures the Sphinx documentation generator for the mink project.
-# For more information, see the Sphinx documentation:
+# For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Project Information -----------------------------------------------------
+# -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "mink"
 copyright = "2024, Kevin Zakka"
 author = "Kevin Zakka"
 
-# -- General Configuration ---------------------------------------------------
+# -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 # List of Sphinx extensions to enable
 extensions = [
     "sphinx.ext.autodoc",  # Automatically generate documentation from docstrings
     "sphinx.ext.coverage",  # Check for documentation coverage
-    "sphinx.ext.mathjax",  # Use MathJax for rendering math equations
+    "sphinx-mathjax-offline",  # Use MathJax for rendering math equations offline
     "sphinx.ext.napoleon",  # Support for Google and NumPy style docstrings
     "sphinx_favicon",  # Add favicons to the documentation
 ]
@@ -47,8 +46,8 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": True,
-    "exclude-members": "__weakref__",
+    "inherited-members": None,
+    "exclude-members": "__init__, __weakref__",
 }
 
 # Type aliases for autodoc
@@ -56,7 +55,7 @@ autodoc_type_aliases = {
     "npt.ArrayLike": "ArrayLike",
 }
 
-# -- Options for HTML Output -------------------------------------------------
+# -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 # Theme to use for HTML and HTML Help pages
