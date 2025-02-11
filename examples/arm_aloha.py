@@ -24,9 +24,7 @@ _JOINT_NAMES = [
 ]
 
 # Velocity limits for each joint, sourced from the Interbotix vx300s URDF.
-_VELOCITY_LIMITS = {}
-for name in _JOINT_NAMES:
-    _VELOCITY_LIMITS[name] = np.pi
+_VELOCITY_LIMITS = {name: np.pi for name in _JOINT_NAMES}
 
 
 if __name__ == "__main__":
@@ -34,8 +32,14 @@ if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Collect joint and actuator IDs for both arms.
-    joint_names: list[str] = [f"{prefix}/{name}" for prefix in ["left", "right"] for name in _JOINT_NAMES]
+    # Collect joint and actuator IDs for both arms and initialize velocity limits.
+    joint_names = []
+    velocity_limits = {}
+    for prefix in ["left", "right"]:
+        for name in _JOINT_NAMES:
+            joint_full_name = f"{prefix}/{name}"
+            joint_names.append(joint_full_name)
+            velocity_limits[joint_full_name] = _VELOCITY_LIMITS[name]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -43,21 +47,22 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
 
     # Define IK tasks for both arms' end effectors.
-    l_ee_task = mink.FrameTask(
-        frame_name="left/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    r_ee_task = mink.FrameTask(
-        frame_name="right/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    tasks = [l_ee_task, r_ee_task]
+    tasks = [
+        l_ee_task := mink.FrameTask(
+            frame_name="left/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+        r_ee_task := mink.FrameTask(
+            frame_name="right/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+    ]
 
     # Enable collision avoidance between the wrists and the table, and between the two wrists.
     # Collision pairs:
@@ -80,7 +85,7 @@ if __name__ == "__main__":
     # Define the limits for IK.
     limits = [
         mink.ConfigurationLimit(model=model),
-        mink.VelocityLimit(model, _VELOCITY_LIMITS),
+        mink.VelocityLimit(model, velocity_limits),
         collision_avoidance_limit,
     ]
 
@@ -128,12 +133,11 @@ if __name__ == "__main__":
                 # Check if both end effectors have reached their targets.
                 l_err = l_ee_task.compute_error(configuration)
                 r_err = r_ee_task.compute_error(configuration)
-                if (
-                    np.linalg.norm(l_err[:3]) <= pos_threshold
-                    and np.linalg.norm(l_err[3:]) <= ori_threshold
-                    and np.linalg.norm(r_err[:3]) <= pos_threshold
-                    and np.linalg.norm(r_err[3:]) <= ori_threshold
-                ):
+                l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
+                l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
+                r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
+                r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
+                if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
                     print(f"Exiting after {i} iterations.")
                     break
 
