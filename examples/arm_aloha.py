@@ -9,7 +9,7 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
 # Single arm joint names.
-_JOINT_NAMES = [
+_JOINT_NAMES: list[str] = [
     "waist",
     "shoulder",
     "elbow",
@@ -20,13 +20,23 @@ _JOINT_NAMES = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
+_VELOCITY_LIMITS: dict[str, float] = {k: np.pi for k in _JOINT_NAMES}
 
 
-def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData) -> None:
-    """Compensate for gravity by setting the control to the gravity forces."""
-    mujoco.mj_rneUnconstrained(model, data)
-    data.ctrl[:] = data.qfrc_grav
+def compensate_gravity(
+    model: mujoco.MjModel,
+    data: mujoco.MjData,
+    subtree_ids: list[int],
+    qfrc_applied: np.ndarray = None,
+) -> None:
+    """Compensate for gravity by setting the control to the gravity forces for specified subtrees."""
+    if qfrc_applied is None:
+        qfrc_applied = np.zeros(model.nv)
+    mujoco.mj_rneUnconstrained(model, data, qfrc_applied)
+    for subtree_id in subtree_ids:
+        qfrc_applied[model.body(subtree_id).dofadr:model.body(subtree_id).dofadr + model.body(subtree_id).dof]
+        += data.qfrc_grav[model.body(subtree_id).dofadr:model.body(subtree_id).dofadr + model.body(subtree_id).dof]
+    data.ctrl[:] = qfrc_applied
 
 
 def test_body_ids(model: mujoco.MjModel) -> None:
@@ -48,8 +58,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = []
-    velocity_limits = {}
+    joint_names: list[str] = []
+    velocity_limits: dict[str, float] = {}
     for prefix in ["left", "right"]:
         for n in _JOINT_NAMES:
             name = f"{prefix}/{n}"
@@ -109,7 +119,12 @@ if __name__ == "__main__":
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
-    max_iters = 20
+    max_iters = 5
+
+    # Define subtree IDs for gravity compensation
+    left_base_subtree_id = model.body("left/base_link").id
+    right_base_subtree_id = model.body("right/base_link").id
+    subtree_ids = [left_base_subtree_id, right_base_subtree_id]
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -159,7 +174,7 @@ if __name__ == "__main__":
                     break
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
-            compensate_gravity(model, data)
+            compensate_gravity(model, data, subtree_ids)
 
             mujoco.mj_step(model, data)
 
