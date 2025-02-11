@@ -27,6 +27,9 @@ class Contact:
         geom1: ID of the first geom.
         geom2: ID of the second geom.
         distmax: Maximum allowed distance between the two geoms.
+
+    References:
+        This class is used to represent contacts in the collision avoidance limit.
     """
 
     dist: float
