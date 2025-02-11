@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List, Tuple
 
 import mujoco
 import numpy as np
@@ -14,20 +14,30 @@ def move_mocap_to_frame(
     frame_name: str,
     frame_type: str,
 ) -> None:
-    """Initialize mocap body pose at a desired frame.
+    """Set the mocap body pose to match a specified frame.
 
     Args:
         model: Mujoco model.
         data: Mujoco data.
-        mocap_name: The name of the mocap body.
-        frame_name: The desired frame name.
-        frame_type: The desired frame type. Can be "body", "geom" or "site".
+        mocap_name: Name of the mocap body.
+        frame_name: Name of the target frame.
+        frame_type: Type of the target frame ("body", "geom", or "site").
+
+    Raises:
+        InvalidMocapBody: If the specified mocap body does not exist.
+        ValueError: If the specified frame type is not supported.
     """
     mocap_id = model.body(mocap_name).mocapid[0]
     if mocap_id == -1:
         raise InvalidMocapBody(mocap_name, model)
 
+    if frame_type not in consts.SUPPORTED_FRAMES:
+        raise ValueError(f"Unsupported frame type: {frame_type}. Supported types: {consts.SUPPORTED_FRAMES}")
+
     obj_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
+    if obj_id == -1:
+        raise ValueError(f"Frame '{frame_name}' of type '{frame_type}' not found in the model.")
+
     xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
     xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
 
@@ -35,18 +45,18 @@ def move_mocap_to_frame(
     mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
 
 
-def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
-    """Get all floating joint configuration and tangent indices.
+def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
+    """Retrieve indices of all floating joints in configuration and tangent spaces.
 
     Args:
         model: Mujoco model.
 
     Returns:
-        A (q_ids, v_ids) pair containing all floating joint indices in the
-        configuration and tangent spaces respectively.
+        A tuple (q_ids, v_ids) where q_ids are the configuration space indices and
+        v_ids are the tangent space indices of all floating joints.
     """
-    q_ids: list[int] = []
-    v_ids: list[int] = []
+    q_ids: List[int] = []
+    v_ids: List[int] = []
     for j in range(model.njnt):
         if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE:
             qadr = model.jnt_qposadr[j]
@@ -61,18 +71,20 @@ def custom_configuration_vector(
     key_name: Optional[str] = None,
     **kwargs,
 ) -> np.ndarray:
-    """Generate a configuration vector where named joints have specific values.
+    """Create a configuration vector with specific joint values.
 
     Args:
         model: Mujoco model.
-        key_name: Optional keyframe name to initialize the configuration vector from.
-            Otherwise, the default pose `qpos0` is used.
-        kwargs: Custom values for joint coordinates.
+        key_name: Optional keyframe name to initialize the configuration vector.
+            If None, the default pose `qpos0` is used.
+        **kwargs: Custom values for joint coordinates.
 
     Returns:
-        Configuration vector where named joints have the values specified in
-            keyword arguments, and other joints have their neutral value or value
-            defined in the keyframe if provided.
+        Configuration vector with specified joint values and default values for others.
+
+    Raises:
+        InvalidKeyframe: If the specified keyframe does not exist.
+        ValueError: If a joint value does not match the expected dimension.
     """
     data = mujoco.MjData(model)
     if key_name is not None:
@@ -82,6 +94,7 @@ def custom_configuration_vector(
         mujoco.mj_resetDataKeyframe(model, data, key_id)
     else:
         mujoco.mj_resetData(model, data)
+
     q = data.qpos.copy()
     for name, value in kwargs.items():
         jid = model.joint(name).id
@@ -90,85 +103,71 @@ def custom_configuration_vector(
         value = np.atleast_1d(value)
         if value.shape != (jnt_dim,):
             raise ValueError(
-                f"Joint {name} should have a qpos value of {jnt_dim,} but "
-                f"got {value.shape}"
+                f"Joint {name} should have a qpos value of shape {jnt_dim,} but got {value.shape}"
             )
         q[qid : qid + jnt_dim] = value
     return q
 
 
-def get_body_body_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get immediate children bodies belonging to a given body.
+def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+    """Retrieve all geom IDs belonging to the subtree starting at a given body.
 
     Args:
         model: Mujoco model.
-        body_id: ID of body.
+        body_id: ID of the body where the subtree starts.
 
     Returns:
-        A list containing all child body ids.
+        A list of geom IDs in the subtree.
     """
-    return [
-        i
-        for i in range(model.nbody)
-        if model.body_parentid[i] == body_id
-        and body_id != i  # Exclude the body itself.
-    ]
+
+    def gather_geoms(current_body_id: int) -> List[int]:
+        geoms: List[int] = []
+        geom_start = model.body_geomadr[current_body_id]
+        geom_end = geom_start + model.body_geomnum[current_body_id]
+        geoms.extend(range(geom_start, geom_end))
+        children = [i for i in range(model.nbody) if model.body_parentid[i] == current_body_id]
+        for child_id in children:
+            geoms.extend(gather_geoms(child_id))
+        return geoms
+
+    return gather_geoms(body_id)
 
 
-def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get all bodies belonging to subtree starting at a given body.
-
-    Args:
-        model: Mujoco model.
-        body_id: ID of body where subtree starts.
-
-    Returns:
-        A list containing all subtree body ids.
-    """
-    body_ids: list[int] = []
-    stack = [body_id]
-    while stack:
-        body_id = stack.pop()
-        body_ids.append(body_id)
-        stack += get_body_body_ids(model, body_id)
-    return body_ids
-
-
-def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get immediate geoms belonging to a given body.
-
-    Here, immediate geoms are those directly attached to the body and not its
-    descendants.
+def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+    """Retrieve all geom IDs belonging to a specific body.
 
     Args:
         model: Mujoco model.
-        body_id: ID of body.
+        body_id: ID of the body.
 
     Returns:
-        A list containing all body geom ids.
+        A list of geom IDs for the specified body.
     """
     geom_start = model.body_geomadr[body_id]
     geom_end = geom_start + model.body_geomnum[body_id]
     return list(range(geom_start, geom_end))
 
 
-def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get all geoms belonging to subtree starting at a given body.
-
-    Here, a subtree is defined as the kinematic tree starting at the body and including
-    all its descendants.
+def apply_gravity_compensation(
+    model: mujoco.MjModel,
+    data: mujoco.MjData,
+    q: np.ndarray,
+    qdot: np.ndarray,
+) -> np.ndarray:
+    """Compute gravity compensation torques for the given configuration.
 
     Args:
         model: Mujoco model.
-        body_id: ID of body where subtree starts.
+        data: Mujoco data.
+        q: Configuration vector.
+        qdot: Velocity vector.
 
     Returns:
-        A list containing all subtree geom ids.
+        Gravity compensation torques.
     """
-    geom_ids: list[int] = []
-    stack = [body_id]
-    while stack:
-        body_id = stack.pop()
-        geom_ids.extend(get_body_geom_ids(model, body_id))
-        stack += get_body_body_ids(model, body_id)
-    return geom_ids
+    data.qpos[:] = q
+    data.qvel[:] = qdot
+    mujoco.mj_kinematics(model, data)
+    mujoco.mj_comPos(model, data)
+    mujoco.mj_rneUnconstrained(model, data)
+    return data.qfrc_bias.copy()
