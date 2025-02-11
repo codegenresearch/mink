@@ -46,10 +46,10 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(G)
         self.assertIsNone(h)
 
-    def test_subset(self):
+    def test_subset_of_velocities_limited(self):
         """Test behavior with a subset of velocity limits."""
-        limit_subset = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i < 3}
-        limit = VelocityLimit(self.model, limit_subset)
+        partial_velocities = {key: value for key, value in list(self.velocities.items())[:3]}
+        limit = VelocityLimit(self.model, partial_velocities)
         nb = 3
         nv = self.model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
@@ -83,7 +83,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(len(limit.indices), nb)
         self.assertEqual(limit.projection_matrix.shape, (nb, model.nv))
 
-    def test_ball_joint_invalid_shape(self):
+    def test_ball_joint_invalid_limit_shape(self):
         """Test error for invalid velocity limit shape."""
         xml_str = """
         <mujoco>
@@ -107,7 +107,7 @@ class TestVelocityLimit(absltest.TestCase):
             VelocityLimit(model, velocities)
         self.assertEqual(str(cm.exception), "Joint ball must have a limit of shape (3,). Got: (2,)")
 
-    def test_free_joint(self):
+    def test_free_joint_raises_error(self):
         """Test error for free joints."""
         xml_str = """
         <mujoco>
