@@ -19,7 +19,10 @@ if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Setup Inverse Kinematics (IK)
+    ## =================== ##
+    ## Setup IK.
+    ## =================== ##
+
     configuration = mink.Configuration(model)
 
     # Define the end-effector task
@@ -46,17 +49,26 @@ if __name__ == "__main__":
             model=configuration.model,
             geom_pairs=collision_pairs,
         ),
-        mink.VelocityLimit(model, {
-            "shoulder_pan": np.pi,
-            "shoulder_lift": np.pi,
-            "elbow": np.pi,
-            "wrist_1": np.pi,
-            "wrist_2": np.pi,
-            "wrist_3": np.pi,
-        }),
     ]
 
-    # IK settings
+    # Define maximum velocities for each joint
+    max_velocities = {
+        "shoulder_pan": np.pi,
+        "shoulder_lift": np.pi,
+        "elbow": np.pi,
+        "wrist_1": np.pi,
+        "wrist_2": np.pi,
+        "wrist_3": np.pi,
+    }
+
+    # Append velocity limit to the limits list
+    velocity_limit = mink.VelocityLimit(model, max_velocities)
+    limits.append(velocity_limit)
+
+    ## =================== ##
+    ## IK settings.
+    ## =================== ##
+
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
