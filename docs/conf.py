@@ -5,19 +5,17 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-from pathlib import Path
 import toml
+from pathlib import Path
 
 project = "mink"
 copyright = "2024, Kevin Zakka"
 author = "Kevin Zakka"
 
 # Retrieve the project version from pyproject.toml
-pyproject_path: Path = Path(__file__).absolute().parent.parent / "pyproject.toml"
+pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
 pyproject = toml.load(pyproject_path)
-version: str = pyproject["tool"]["poetry"]["version"]
-if not version.isalpha():
-    version = "v" + version
+version = pyproject["tool"]["poetry"]["version"]
 release = version
 
 # -- General configuration ---------------------------------------------------
