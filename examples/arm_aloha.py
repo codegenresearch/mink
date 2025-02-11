@@ -23,7 +23,7 @@ _JOINT_NAMES = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {f"{prefix}/{joint}": np.pi for prefix in ["left", "right"] for joint in _JOINT_NAMES}
+_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
 
 
 def compensate_gravity(
@@ -49,7 +49,7 @@ def compensate_gravity(
     for subtree_id in subtree_ids:
         total_mass = model.body_subtreemass[subtree_id]
         mujoco.mj_jacSubtreeCom(model, data, jac, subtree_id)
-        qfrc_applied[:] -= model.opt.gravity @ (total_mass * jac)
+        qfrc_applied[:] -= (total_mass * jac) @ model.opt.gravity
 
 
 if __name__ == "__main__":
@@ -61,7 +61,13 @@ if __name__ == "__main__":
     right_subtree_id = model.body("right/base_link").id
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
+    joint_names = []
+    velocity_limits = {}
+    for prefix in ["left", "right"]:
+        for joint in _JOINT_NAMES:
+            name = f"{prefix}/{joint}"
+            joint_names.append(name)
+            velocity_limits[name] = _VELOCITY_LIMITS[joint]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
@@ -104,7 +110,7 @@ if __name__ == "__main__":
 
     limits = [
         mink.ConfigurationLimit(model=model),
-        mink.VelocityLimit(model, _VELOCITY_LIMITS),
+        mink.VelocityLimit(model, velocity_limits),
         collision_avoidance_limit,
     ]
 
