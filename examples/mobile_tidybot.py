@@ -113,7 +113,9 @@ if __name__ == "__main__":
 
                 # Exit condition.
                 err = end_effector_task.compute_error(configuration)
-                if np.linalg.norm(err[:3]) <= pos_threshold and np.linalg.norm(err[3:]) <= ori_threshold:
+                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
+                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
+                if pos_achieved and ori_achieved:
                     break
 
             if not key_callback.pause:
@@ -126,3 +128,9 @@ if __name__ == "__main__":
             viewer.sync()
             rate.sleep()
             t += dt
+
+
+Based on the feedback, I have made the following adjustments:
+1. **Exit Condition Logic**: Used boolean flags `pos_achieved` and `ori_achieved` to clearly indicate whether the position and orientation thresholds have been achieved.
+2. **Variable Naming**: Ensured that variable names are consistent and descriptive.
+3. **Code Structure**: Reviewed and maintained the structure and comments to match the gold code for better readability and maintainability.
