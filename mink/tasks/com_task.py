@@ -14,10 +14,10 @@ from .task import Task
 
 
 class ComTask(Task):
-    """Regulate the center-of-mass (CoM) position of a robot.
+    """Regulate the center-of-mass (CoM) of a robot.
 
     Attributes:
-        target_com: Desired center-of-mass position in the world frame.
+        target_com: Target position of the CoM.
     """
 
     k: int = 3  # Dimension of the CoM position (x, y, z)
@@ -77,7 +77,7 @@ class ComTask(Task):
         self.target_com = target_com.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
-        """Set the target CoM position from a given robot configuration.
+        """Set the target CoM from a given robot configuration.
 
         Args:
             configuration: Robot configuration :math:`q`.
