@@ -72,7 +72,7 @@ class Configuration:
         """Update the configuration from a keyframe.
 
         Args:
-            key_name: Name of the keyframe.
+            key_name: The name of the keyframe to update the configuration from.
 
         Raises:
             InvalidKeyframe: If the keyframe is not found in the model.
