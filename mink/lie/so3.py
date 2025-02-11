@@ -37,10 +37,9 @@ class SO3(MatrixLieGroup):
 
     def __post_init__(self) -> None:
         """Validate the shape of the quaternion."""
-        if self.wxyz.shape != (self.parameters_dim,):
-            raise ValueError(
-                f"Expected wxyz to be a length 4 vector but got {self.wxyz.shape[0]}."
-            )
+        assert self.wxyz.shape == (self.parameters_dim,), (
+            f"Expected wxyz to be a length 4 vector but got {self.wxyz.shape[0]}."
+        )
 
     def __repr__(self) -> str:
         """Return a string representation of the quaternion."""
@@ -74,29 +73,35 @@ class SO3(MatrixLieGroup):
     def from_rpy_radians(cls, roll: float, pitch: float, yaw: float) -> SO3:
         """Create an SO3 instance from roll, pitch, and yaw angles in radians."""
         return (
-            SO3.from_z_radians(yaw)
-            @ SO3.from_y_radians(pitch)
-            @ SO3.from_x_radians(roll)
+            cls.from_z_radians(yaw)
+            @ cls.from_y_radians(pitch)
+            @ cls.from_x_radians(roll)
         )
 
     @classmethod
     def from_matrix(cls, matrix: np.ndarray) -> SO3:
-        """Create an SO3 instance from a 3x3 rotation matrix."""
-        if matrix.shape != (SO3.matrix_dim, SO3.matrix_dim):
-            raise ValueError(f"Expected a 3x3 matrix but got {matrix.shape}.")
-        wxyz = np.zeros(SO3.parameters_dim, dtype=np.float64)
+        """Create an SO3 instance from a 3x3 rotation matrix.
+
+        Eq. 138.
+        """
+        assert matrix.shape == (cls.matrix_dim, cls.matrix_dim), (
+            f"Expected a 3x3 matrix but got {matrix.shape}."
+        )
+        wxyz = np.zeros(cls.parameters_dim, dtype=np.float64)
         mujoco.mju_mat2Quat(wxyz, matrix.ravel())
-        return SO3(wxyz=wxyz)
+        return cls(wxyz=wxyz)
 
     @classmethod
     def identity(cls) -> SO3:
         """Return the identity rotation."""
-        return SO3(wxyz=_IDENTITY_WXYZ)
+        return cls(wxyz=_IDENTITY_WXYZ)
 
     @classmethod
     def sample_uniform(cls) -> SO3:
-        """Sample a uniform random rotation."""
-        # Ref: https://lavalle.pl/planning/node198.html
+        """Sample a uniform random rotation.
+
+        Ref: https://lavalle.pl/planning/node198.html
+        """
         u1, u2, u3 = np.random.uniform(
             low=np.zeros(shape=(3,)),
             high=np.array([1.0, 2.0 * np.pi, 2.0 * np.pi]),
@@ -112,10 +117,13 @@ class SO3(MatrixLieGroup):
             ],
             dtype=np.float64,
         )
-        return SO3(wxyz=wxyz)
+        return cls(wxyz=wxyz)
 
     def as_matrix(self) -> np.ndarray:
-        """Convert the quaternion to a 3x3 rotation matrix."""
+        """Convert the quaternion to a 3x3 rotation matrix.
+
+        Eq. 138.
+        """
         mat = np.zeros(9, dtype=np.float64)
         mujoco.mju_quat2Mat(mat, self.wxyz)
         return mat.reshape(3, 3)
@@ -153,8 +161,9 @@ class SO3(MatrixLieGroup):
 
     def apply(self, target: np.ndarray) -> np.ndarray:
         """Apply the rotation to a 3D vector."""
-        if target.shape != (SO3.space_dim,):
-            raise ValueError(f"Expected a 3D vector but got {target.shape}.")
+        assert target.shape == (self.space_dim,), (
+            f"Expected a 3D vector but got {target.shape}."
+        )
         padded_target = np.concatenate([np.zeros(1, dtype=np.float64), target])
         return (self @ SO3(wxyz=padded_target) @ self.inverse()).wxyz[1:]
 
@@ -167,8 +176,9 @@ class SO3(MatrixLieGroup):
     @classmethod
     def exp(cls, tangent: np.ndarray) -> SO3:
         """Exponential map from the tangent space to the manifold."""
-        if tangent.shape != (SO3.tangent_dim,):
-            raise ValueError(f"Expected a 3D tangent vector but got {tangent.shape}.")
+        assert tangent.shape == (cls.tangent_dim,), (
+            f"Expected a 3D tangent vector but got {tangent.shape}."
+        )
         theta_squared = tangent @ tangent
         theta_pow_4 = theta_squared * theta_squared
         use_taylor = theta_squared < get_epsilon(tangent.dtype)
@@ -181,7 +191,7 @@ class SO3(MatrixLieGroup):
             real = np.cos(safe_half_theta)
             imaginary = np.sin(safe_half_theta) / safe_theta
         wxyz = np.concatenate([np.array([real]), imaginary * tangent])
-        return SO3(wxyz=wxyz)
+        return cls(wxyz=wxyz)
 
     def log(self) -> np.ndarray:
         """Logarithmic map from the manifold to the tangent space."""
@@ -208,8 +218,9 @@ class SO3(MatrixLieGroup):
     @classmethod
     def ljac(cls, other: np.ndarray) -> np.ndarray:
         """Left Jacobian of the exponential map. (Eqn. 145, 174)"""
-        if other.shape != (SO3.tangent_dim,):
-            raise ValueError(f"Expected a 3D tangent vector but got {other.shape}.")
+        assert other.shape == (cls.tangent_dim,), (
+            f"Expected a 3D tangent vector but got {other.shape}."
+        )
         theta = np.sqrt(other @ other)
         use_taylor = theta < get_epsilon(theta.dtype)
         if use_taylor:
@@ -225,8 +236,9 @@ class SO3(MatrixLieGroup):
     @classmethod
     def ljacinv(cls, other: np.ndarray) -> np.ndarray:
         """Inverse of the left Jacobian of the exponential map. (Eqn. 145, 174)"""
-        if other.shape != (SO3.tangent_dim,):
-            raise ValueError(f"Expected a 3D tangent vector but got {other.shape}.")
+        assert other.shape == (cls.tangent_dim,), (
+            f"Expected a 3D tangent vector but got {other.shape}."
+        )
         theta = np.sqrt(other @ other)
         use_taylor = theta < get_epsilon(theta.dtype)
         if use_taylor:
