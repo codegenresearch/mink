@@ -26,6 +26,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 source_suffix = {".rst": "restructuredtext"}
 pygments_style = "sphinx"
 
+# Autodoc settings
 autodoc_typehints = "both"
 autodoc_class_signature = "separated"
 autodoc_default_options = {
@@ -33,13 +34,17 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": True,
+    "inherited-members": None,
     "exclude-members": "__init__, __weakref__",
 }
 
 autodoc_type_aliases = {
     "npt.ArrayLike": "ArrayLike",
 }
+
+# Napoleon settings
+napoleon_numpy_docstring = False
+napoleon_use_rtype = False
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
