@@ -49,9 +49,13 @@ def get_dof_and_actuator_ids(model, joint_names):
     Returns:
         tuple: A tuple containing the DOF IDs and actuator IDs as numpy arrays.
     """
-    dof_ids = np.array([model.joint(f"{prefix}/{joint}").id for prefix in ["left", "right"] for joint in joint_names])
-    actuator_ids = np.array([model.actuator(f"{prefix}/{joint}").id for prefix in ["left", "right"] for joint in joint_names])
-    return dof_ids, actuator_ids
+    dof_ids = []
+    actuator_ids = []
+    for prefix in ["left", "right"]:
+        for joint in joint_names:
+            dof_ids.append(model.joint(f"{prefix}/{joint}").id)
+            actuator_ids.append(model.actuator(f"{prefix}/{joint}").id)
+    return np.array(dof_ids), np.array(actuator_ids)
 
 
 def initialize_mocap_targets(model, data, left_target_name, right_target_name, left_gripper_name, right_gripper_name):
@@ -86,8 +90,7 @@ def setup_collision_avoidance(model):
     table_geom = ["table"]
     collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),  # Collision between left and right wrists
-        (l_wrist_geoms, frame_geoms + table_geom),  # Collision between left wrist and table/frame
-        (r_wrist_geoms, frame_geoms + table_geom),  # Collision between right wrist and table/frame
+        (l_wrist_geoms + r_wrist_geoms, frame_geoms + table_geom),  # Collision between wrists and table/frame
     ]
     return mink.CollisionAvoidanceLimit(
         model=model,
@@ -102,7 +105,6 @@ def main():
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
     dof_ids, actuator_ids = get_dof_and_actuator_ids(model, _JOINT_NAMES)
 
     configuration = mink.Configuration(model)
@@ -136,9 +138,10 @@ def main():
     collision_avoidance_limit = setup_collision_avoidance(model)
 
     # Define configuration limits.
+    velocity_limits = {f"{prefix}/{joint}": _VELOCITY_LIMITS[joint] for prefix in ["left", "right"] for joint in _JOINT_NAMES}
     limits = [
         mink.ConfigurationLimit(model=model),
-        mink.VelocityLimit(model, {joint: _VELOCITY_LIMITS[joint.split('/')[-1]] for joint in joint_names}),
+        mink.VelocityLimit(model, velocity_limits),
         collision_avoidance_limit,
     ]
 
@@ -148,9 +151,10 @@ def main():
 
     # Solver and error thresholds.
     solver = "quadprog"
-    pos_threshold = 1e-4
-    ori_threshold = 1e-4
-    max_iters = 20
+    pos_threshold = 1e-3  # Adjusted to match gold code
+    ori_threshold = 1e-3  # Adjusted to match gold code
+    max_iters = 10  # Adjusted to match gold code
+    damping = 1e-2  # Adjusted to match gold code
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -172,7 +176,7 @@ def main():
             r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute posture task target.
-            posture_task.set_target(configuration)
+            posture_task.set_target_from_configuration(configuration)
 
             # Compute velocity and integrate into the next configuration.
             for _ in range(max_iters):
@@ -182,7 +186,7 @@ def main():
                     rate.dt,
                     solver,
                     limits=limits,
-                    damping=1e-3,
+                    damping=damping,
                 )
                 configuration.integrate_inplace(vel, rate.dt)
 
