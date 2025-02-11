@@ -27,10 +27,10 @@ class ConfigurationLimit(Limit):
             model: MuJoCo model.
             gain: Gain factor in (0, 1] that determines how fast each joint is
                 allowed to move towards the joint limits at each timestep. Values lower
-                than 1 are safer but may make the joints move slowly.
+                than 1 are safer but may make the joints move more slowly.
             min_distance_from_limits: Offset in meters (slide joints) or radians
                 (hinge joints) to be added to the limits. Positive values decrease the
-                range of motion, negative values increase it (i.e. negative values
+                range of motion, negative values increase it (i.e., negative values
                 allow penetration).
         """
         if not 0.0 < gain <= 1.0:
@@ -91,6 +91,8 @@ class ConfigurationLimit(Limit):
             Pair :math:`(G, h)` representing the inequality constraint as
             :math:`G \Delta q \leq h`, or ``None`` if there is no limit.
         """
+        del dt  # Unused.
+
         if self.projection_matrix is None:
             return Constraint()
 
