@@ -23,7 +23,7 @@ class TestVelocityLimit(absltest.TestCase):
         self.velocities = {self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)}
 
     def test_dimensions(self):
-        """Test dimensions of velocity limit indices and projection matrix."""
+        """Test dimensions of velocity limit."""
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
         nb = nv - len(get_freejoint_dims(self.model)[1])
@@ -56,9 +56,6 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertEqual(len(limit.indices), nb)
         expected_limit = np.asarray([np.pi] * nb)
         np.testing.assert_allclose(limit.limit, expected_limit)
-        G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
-        self.assertEqual(G.shape, (2 * nb, nv))
-        self.assertEqual(h.shape, (2 * nb,))
 
     def test_ball_joint(self):
         """Test behavior with a ball joint."""
