@@ -48,8 +48,8 @@ class VelocityLimit(Limit):
             jnt_type = model.jnt_type[jid]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
                 raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
-            vdim = dof_width(jnt_type)
             vadr = model.jnt_dofadr[jid]
+            vdim = dof_width(jnt_type)
             max_vel = np.atleast_1d(max_vel)
             if max_vel.shape != (vdim,):
                 raise LimitDefinitionError(
@@ -69,7 +69,7 @@ class VelocityLimit(Limit):
 
     def compute_qp_inequalities(
         self, configuration: Configuration, dt: float
-    ) -> Optional[Constraint]:
+    ) -> Constraint:
         r"""Compute the configuration-dependent joint velocity limits.
 
         The limits are defined as:
@@ -90,11 +90,11 @@ class VelocityLimit(Limit):
         Returns:
             Pair :math:`(G, h)` representing the inequality constraint as
             :math:`G \Delta q \leq h`, where :math:`G` has shape (2nb, nv) and :math:`h`
-            has shape (2nb,). Returns `None` if there are no limits.
+            has shape (2nb,). Returns an empty `Constraint()` if there are no limits.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
-            return None
+            return Constraint()
         G = np.vstack([self.projection_matrix, -self.projection_matrix])
         h = np.hstack([dt * self.limit, dt * self.limit])
         return Constraint(G=G, h=h)
