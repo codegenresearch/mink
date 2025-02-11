@@ -153,9 +153,9 @@ if __name__ == "__main__":
             vel = mink.solve_ik(
                 configuration,
                 tasks,
-                rate.dt,
-                solver,
+                dt=rate.dt,
                 damping=1e-2,
+                solver=solver,
                 limits=limits,
                 use_sparse_solver=False,
             )
