@@ -38,3 +38,6 @@ class TestUtils(absltest.TestCase):
 
 if __name__ == "__main__":
     absltest.main()
+
+
+Based on the feedback, I have ensured that the `skew` function handles non-numeric input by raising an `AssertionError`. I have also maintained a variety of test cases to cover different scenarios, ensuring robustness while keeping the test suite focused on essential behaviors.
