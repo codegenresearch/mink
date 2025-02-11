@@ -39,13 +39,13 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": None,
+    "inherited-members": True,
     "exclude-members": "__weakref__",
 }
 
 # Type aliases
 autodoc_type_aliases = {
-    "npt.ArrayLike": "np.ndarray",
+    "ArrayLike": "np.ndarray",
 }
 
 # -- Options for HTML output -------------------------------------------------
