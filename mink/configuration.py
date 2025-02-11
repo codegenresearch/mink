@@ -10,11 +10,11 @@ different elements of the robot model. Supported frame types include `body`, `ge
 
 Key functionalities include:
 
-    - Running forward kinematics to update the state.
-    - Checking configuration bounds.
-    - Computing Jacobians for different frames.
-    - Retrieving frame transforms relative to the world frame.
-    - Integrating velocities to update configurations.
+- Running forward kinematics to update the state.
+- Checking configuration limits.
+- Computing Jacobians for different frames.
+- Retrieving frame transforms relative to the world frame.
+- Integrating velocities to update configurations.
 """
 
 from typing import Optional
@@ -37,11 +37,11 @@ class Configuration:
 
     Key functionalities include:
 
-        - Running forward kinematics to update the state.
-        - Checking configuration bounds.
-        - Computing Jacobians for different frames.
-        - Retrieving frame transforms relative to the world frame.
-        - Integrating velocities to update configurations.
+    - Running forward kinematics to update the state.
+    - Checking configuration limits.
+    - Computing Jacobians for different frames.
+    - Retrieving frame transforms relative to the world frame.
+    - Integrating velocities to update configurations.
     """
 
     def __init__(
@@ -53,7 +53,7 @@ class Configuration:
 
         Args:
             model: Mujoco model.
-            q: Configuration vector to initialize from. If None, the configuration
+            q: Configuration to initialize from. If None, the configuration
                 is initialized to the reference configuration `qpos0`.
         """
         self.model = model
@@ -63,11 +63,8 @@ class Configuration:
     def update(self, q: Optional[np.ndarray] = None) -> None:
         """Run forward kinematics to update the state.
 
-        This method updates the configuration vector if provided and performs forward
-        kinematics to update frame transforms and Jacobians.
-
         Args:
-            q: Optional configuration vector to override the internal data.qpos.
+            q: Optional configuration to override the internal data.qpos.
         """
         if q is not None:
             self.data.qpos = q
@@ -82,23 +79,23 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            InvalidKeyframe: If no key named `key` was found in the model.
+            ValueError: If no key named `key` was found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise exceptions.InvalidKeyframe(key_name, self.model)
+            raise ValueError(f"No key named '{key_name}' was found in the model.")
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
-        """Check if the current configuration is within the specified joint bounds.
+        """Check if the current configuration is within the specified configuration limits.
 
         Args:
-            tol: Tolerance in radians for checking joint bounds.
-            safety_break: If True, raise an exception if the configuration is out of bounds.
+            tol: Tolerance in radians for checking configuration limits.
+            safety_break: If True, raise an exception if the configuration is out of limits.
                 If False, print a warning and continue execution.
 
         Raises:
-            NotWithinConfigurationLimits: If the configuration is out of bounds and safety_break is True.
+            NotWithinConfigurationLimits: If the configuration is out of limits and safety_break is True.
         """
         for jnt in range(self.model.njnt):
             jnt_type = self.model.jnt_type[jnt]
@@ -119,19 +116,27 @@ class Configuration:
                     )
                 else:
                     print(
-                        f"Joint value {qval} at index {jnt} is out of bounds: "
+                        f"Joint value {qval} at index {jnt} is out of limits: "
                         f"[{qmin}, {qmax}]"
                     )
 
     def get_frame_jacobian(self, frame_name: str, frame_type: str) -> np.ndarray:
         """Compute the Jacobian matrix of a frame velocity relative to the world frame.
 
+        Denoting our frame by :math:`B` and the world frame by :math:`W`, the
+        Jacobian matrix :math:`{}_B J_{WB}` is related to the body velocity
+        :math:`{}_B v_{WB}` by:
+
+        .. math::
+
+            {}_B v_{WB} = {}_B J_{WB} \dot{q}
+
         Args:
             frame_name: Name of the frame in the MJCF.
             frame_type: Type of frame. Can be 'geom', 'body', or 'site'.
 
         Returns:
-            Jacobian matrix of the frame velocity relative to the world frame.
+            Jacobian matrix :math:`{}_B J_{WB}` of the frame velocity relative to the world frame.
 
         Raises:
             UnsupportedFrame: If the frame type is not supported.
