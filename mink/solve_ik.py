@@ -27,8 +27,8 @@ def _compute_qp_inequalities(
 ) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
     if limits is None:
         limits = [ConfigurationLimit(configuration.model)]
-    G_list: list[np.ndarray] = []
-    h_list: list[np.ndarray] = []
+    G_list = []
+    h_list = []
     for limit in limits:
         inequality = limit.compute_qp_inequalities(configuration, dt)
         if not inequality.inactive:
@@ -103,3 +103,24 @@ def solve_ik(
     assert dq is not None
     v: np.ndarray = dq / dt
     return v
+
+
+def test_jacobian_errors():
+    """Test for Jacobian errors in tasks."""
+    # Mock configuration and task
+    model = load_robot_description("ur5e_mj_description")
+    configuration = Configuration(model)
+    task = Task("attachment_site", "site", position_cost=-1.0, orientation_cost=-1.0)
+    with np.testing.assert_raises(AssertionError):
+        task.compute_qp_objective(configuration)
+
+
+def test_negative_costs():
+    """Test for negative costs in tasks."""
+    # Mock configuration and task
+    model = load_robot_description("ur5e_mj_description")
+    configuration = Configuration(model)
+    task = Task("attachment_site", "site", position_cost=-1.0, orientation_cost=-1.0)
+    H_task, c_task = task.compute_qp_objective(configuration)
+    assert np.all(H_task >= 0)
+    assert np.all(c_task <= 0)
