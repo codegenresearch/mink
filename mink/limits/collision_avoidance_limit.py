@@ -39,7 +39,8 @@ class Contact:
     def normal(self) -> np.ndarray:
         """The contact normal pointing from geom1 to geom2."""
         normal = self.fromto[3:] - self.fromto[:3]
-        return normal / (np.linalg.norm(normal) + 1e-9)
+        mujoco.mju_normalize3(normal)
+        return normal
 
     @property
     def inactive(self) -> bool:
@@ -261,7 +262,7 @@ class CollisionAvoidanceLimit(Limit):
             geom2_id: The ID of the second geom.
 
         Returns:
-            A Contact object representing the contact.
+            A Contact object representing the contact with the smallest signed distance.
         """
         fromto = np.empty(6)
         dist = mujoco.mj_geomDistance(
@@ -290,13 +291,12 @@ class CollisionAvoidanceLimit(Limit):
             if isinstance(g, int):
                 list_of_int.append(g)
             elif isinstance(g, str):
-                assert isinstance(g, str), f"Geom must be int or str, got {type(g)}"
                 list_of_int.append(self.model.geom(g).id)
             else:
                 raise TypeError(f"Geom must be int or str, got {type(g)}")
         return list_of_int
 
-    def _convert_collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
+    def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
         """Converts collision pairs to geom ID pairs.
 
         Args:
@@ -334,7 +334,7 @@ class CollisionAvoidanceLimit(Limit):
             A list of geom ID pairs.
         """
         geom_id_pairs = []
-        for id_pair in self._convert_collision_pairs_to_geom_id_pairs(geom_pairs):
+        for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
                 weld_body_cond = not _is_welded_together(self.model, geom_a, geom_b)
                 parent_child_cond = not _are_geom_bodies_parent_child(
