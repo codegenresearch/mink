@@ -37,7 +37,7 @@ class ComTask(Task):
     def set_cost(self, cost: npt.ArrayLike) -> None:
         """Set a new cost for all CoM coordinates.
 
-        The cost must be a vector of shape (1,) (aka identical cost for all coordinates)
+        The cost must be a vector of shape (1,) (identical cost for all coordinates)
         or (3,). All cost values must be non-negative.
 
         Args:
@@ -50,7 +50,7 @@ class ComTask(Task):
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"(aka identical cost for all coordinates) or ({self.k},). "
+                f"(identical cost for all coordinates) or ({self.k},). "
                 f"Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
@@ -87,14 +87,19 @@ class ComTask(Task):
     def compute_error(self, configuration: Configuration) -> np.ndarray:
         """Compute the CoM task error.
 
-        The error is defined as the difference between the target CoM position and
-        the current CoM position.
+        The error is defined as:
+
+        .. math::
+
+            e(q) = c^* - c
+
+        where :math:`c^*` is the target CoM position and :math:`c` is the current CoM position.
 
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Center-of-mass task error vector.
+            Center-of-mass task error vector :math:`e(q)`.
         """
         if self.target_com is None:
             raise TargetNotSet(self.__class__.__name__)
@@ -103,14 +108,15 @@ class ComTask(Task):
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         """Compute the CoM task Jacobian.
 
-        The task Jacobian is the derivative of the CoM position with respect to the
-        current configuration :math:`q`.
+        The task Jacobian :math:`J(q) \in \mathbb{R}^{3 \times n_v}` is the
+        derivative of the CoM position with respect to the current configuration
+        :math:`q`.
 
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Center-of-mass task Jacobian.
+            Center-of-mass task Jacobian :math:`J(q)`.
         """
         if self.target_com is None:
             raise TargetNotSet(self.__class__.__name__)
