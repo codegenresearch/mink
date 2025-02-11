@@ -12,8 +12,8 @@ class TestUtils(absltest.TestCase):
             utils.skew(np.zeros((5,)))
 
     def test_skew_equals_negative(self):
-        s = utils.skew(np.random.randn(3))
-        np.testing.assert_allclose(s.T, -s)
+        m = utils.skew(np.random.randn(3))
+        np.testing.assert_allclose(m.T, -m)
 
 
 if __name__ == "__main__":
