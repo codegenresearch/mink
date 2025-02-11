@@ -8,17 +8,10 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "kuka_iiwa_14" / "scene.xml"
+_XML = _HERE / "kuka_iiwa_14" / "scene.xml"
 
-# IK settings
-solver = "quadprog"
-pos_threshold = 1e-4
-ori_threshold = 1e-4
-max_iters = 20
-rate_limit_frequency = 500.0
-
-def main():
-    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
+if __name__ == "__main__":
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
     configuration = mink.Configuration(model)
 
@@ -37,7 +30,11 @@ def main():
         posture_task := mink.PostureTask(model=model, cost=1e-2),
     ]
 
-    ## =================== ##
+    # IK settings
+    solver = "quadprog"
+    pos_threshold = 1e-4
+    ori_threshold = 1e-4
+    max_iters = 20
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -51,7 +48,7 @@ def main():
         # Initialize the mocap target at the end-effector site.
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
-        rate = RateLimiter(frequency=rate_limit_frequency, warn=False)
+        rate = RateLimiter(frequency=500.0, warn=False)
         while viewer.is_running():
             # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
@@ -73,6 +70,3 @@ def main():
             # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
-
-if __name__ == "__main__":
-    main()
