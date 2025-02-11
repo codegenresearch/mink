@@ -233,9 +233,9 @@ class Configuration:
             dt: Integration duration in [s].
         """
         # Improve posture task integration by clamping velocity to avoid overshooting
-        velocity = np.clip(velocity, -0.5, 0.5)  # Adjust velocity limits as needed
+        velocity = np.clip(velocity, -1.0, 1.0)  # Adjust velocity limits as needed
         mujoco.mj_integratePos(self.model, self.data.qpos, velocity, dt)
-        self.update()
+        self.update()  # Ensure the internal state is refreshed after integration
 
     # Aliases.
 
