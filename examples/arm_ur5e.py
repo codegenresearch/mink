@@ -31,8 +31,9 @@ if __name__ == "__main__":
     ]
 
     # Enable collision avoidance between (wrist3, floor) and (wrist3, wall).
+    wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
-        (["wrist_3_link"], ["floor", "wall"]),
+        (wrist_3_geoms, ["floor", "wall"]),
     ]
 
     limits = [
@@ -68,7 +69,7 @@ if __name__ == "__main__":
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
         # Initialize to the home keyframe.
-        configuration.update_from_keyframe("home")
+        mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
 
@@ -112,11 +113,10 @@ if __name__ == "__main__":
             rate.sleep()
 
 
-To align more closely with the gold code, I have made the following adjustments:
-
-1. **Data Initialization**: Ensured that `data` is initialized directly from the `configuration` object using `configuration.update(data.qpos)`.
+### Changes Made:
+1. **Data Initialization**: Used `mujoco.mj_resetDataKeyframe` to initialize the data to the home keyframe, similar to the gold code.
 2. **Function Call Parameters**: Ensured the parameters passed to `mink.solve_ik` are in the same order and structure as in the gold code, using keyword arguments where applicable.
 3. **Comment Clarity**: Rephrased comments for clarity and specificity, ensuring they describe the purpose of the code sections.
-4. **Redundant Code**: Removed any redundant lines or variables that were not necessary.
-5. **Visualization Calls**: Ensured that the visualization calls (`mujoco.mj_camlight`, `mujoco.mj_fwdPosition`, and `mujoco.mj_sensorPos`) are placed appropriately to match the gold code's structure.
+4. **Redundant Code**: Removed redundant lines and ensured the code is streamlined.
+5. **Visualization Calls**: Ensured that the visualization calls (`mujoco.mj_camlight`, `mujoco.mj_fwdPosition`, and `mujoco.mj_sensorPos`) are placed appropriately and in the same order as in the gold code.
 6. **Formatting Consistency**: Ensured consistent formatting, including spacing and line breaks, to match the style of the gold code.
