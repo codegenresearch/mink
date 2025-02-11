@@ -71,7 +71,7 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            InvalidKeyframe: If no key named `key_name` is found in the model.
+            InvalidKeyframe: If the keyframe is not found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
