@@ -6,13 +6,12 @@ It automatically performs forward kinematics at each time step, ensuring that al
 kinematic queries return up-to-date information.
 
 In this context, a frame refers to a coordinate system that can be attached to
-different elements of the robot model. Currently supported frames include
-`body`, `geom`, and `site`.
+different elements of the robot model. Supported frame types include `body`, `geom`, and `site`.
 
 Key functionalities include:
 
     - Running forward kinematics to update the state.
-    - Checking configuration limits.
+    - Checking configuration bounds.
     - Computing Jacobians for different frames.
     - Retrieving frame transforms relative to the world frame.
     - Integrating velocities to update configurations.
@@ -39,7 +38,7 @@ class Configuration:
     Key functionalities include:
 
         - Running forward kinematics to update the state.
-        - Checking configuration limits.
+        - Checking configuration bounds.
         - Computing Jacobians for different frames.
         - Retrieving frame transforms relative to the world frame.
         - Integrating velocities to update configurations.
@@ -50,7 +49,7 @@ class Configuration:
         model: mujoco.MjModel,
         q: Optional[np.ndarray] = None,
     ):
-        """Initialize the Configuration with a model and an optional initial configuration.
+        """Constructor.
 
         Args:
             model: Mujoco model.
@@ -62,7 +61,7 @@ class Configuration:
         self.update(q=q)
 
     def update(self, q: Optional[np.ndarray] = None) -> None:
-        """Update the configuration and run forward kinematics.
+        """Run forward kinematics to update the state.
 
         This method updates the configuration vector if provided and performs forward
         kinematics to update frame transforms and Jacobians.
@@ -83,23 +82,23 @@ class Configuration:
             key_name: The name of the keyframe.
 
         Raises:
-            ValueError: If no keyframe with the specified name is found in the model.
+            InvalidKeyframe: If no key named `key` was found in the model.
         """
         key_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
-            raise ValueError(f"No keyframe named '{key_name}' found in the model.")
+            raise exceptions.InvalidKeyframe(key_name, self.model)
         self.update(q=self.model.key_qpos[key_id])
 
     def check_limits(self, tol: float = 1e-6, safety_break: bool = True) -> None:
-        """Check if the current configuration is within the specified joint limits.
+        """Check if the current configuration is within the specified joint bounds.
 
         Args:
-            tol: Tolerance in radians for checking joint limits.
-            safety_break: If True, raise an exception if the configuration is out of limits.
+            tol: Tolerance in radians for checking joint bounds.
+            safety_break: If True, raise an exception if the configuration is out of bounds.
                 If False, print a warning and continue execution.
 
         Raises:
-            NotWithinConfigurationLimits: If the configuration is out of limits and safety_break is True.
+            NotWithinConfigurationLimits: If the configuration is out of bounds and safety_break is True.
         """
         for jnt in range(self.model.njnt):
             jnt_type = self.model.jnt_type[jnt]
@@ -120,7 +119,7 @@ class Configuration:
                     )
                 else:
                     print(
-                        f"Joint value {qval} at index {jnt} is out of limits: "
+                        f"Joint value {qval} at index {jnt} is out of bounds: "
                         f"[{qmin}, {qmax}]"
                     )
 
