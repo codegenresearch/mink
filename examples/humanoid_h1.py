@@ -18,46 +18,41 @@ if __name__ == "__main__":
     hands = ["right_wrist", "left_wrist"]
 
     # Initialize tasks in the specified order
-    tasks = []
-
-    posture_task = mink.PostureTask(model, cost=1.0)
-    tasks.append(posture_task)
-
-    pelvis_orientation_task = mink.FrameTask(
-        frame_name="pelvis",
-        frame_type="body",
-        position_cost=0.0,
-        orientation_cost=10.0,
-    )
-    tasks.append(pelvis_orientation_task)
-
-    com_task = mink.ComTask(cost=200.0)
-    tasks.append(com_task)
+    tasks = [
+        posture_task := mink.PostureTask(model, cost=1.0),
+        pelvis_orientation_task := mink.FrameTask(
+            frame_name="pelvis",
+            frame_type="body",
+            position_cost=0.0,
+            orientation_cost=10.0,
+        ),
+        com_task := mink.ComTask(cost=200.0),
+    ]
 
     # Initialize foot tasks
     feet_tasks = []
     for foot in feet:
-        foot_task = mink.FrameTask(
+        task = mink.FrameTask(
             frame_name=foot,
             frame_type="site",
             position_cost=200.0,
             orientation_cost=10.0,
             lm_damping=1.0,
         )
-        feet_tasks.append(foot_task)
+        feet_tasks.append(task)
     tasks.extend(feet_tasks)
 
     # Initialize hand tasks
     hand_tasks = []
     for hand in hands:
-        hand_task = mink.FrameTask(
+        task = mink.FrameTask(
             frame_name=hand,
             frame_type="site",
             position_cost=200.0,
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        hand_tasks.append(hand_task)
+        hand_tasks.append(task)
     tasks.extend(hand_tasks)
 
     # Get mocap IDs for COM, feet, and hands
@@ -74,12 +69,12 @@ if __name__ == "__main__":
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
-        # Initialize to the home keyframe
+        # Initialize to the home keyframe.
         configuration.update_from_keyframe("stand")
         posture_task.set_target_from_configuration(configuration)
         pelvis_orientation_task.set_target_from_configuration(configuration)
 
-        # Initialize mocap bodies at their respective sites
+        # Initialize mocap bodies at their respective sites.
         for hand, foot in zip(hands, feet):
             mink.move_mocap_to_frame(model, data, f"{foot}_target", foot, "site")
             mink.move_mocap_to_frame(model, data, f"{hand}_target", hand, "site")
@@ -87,17 +82,17 @@ if __name__ == "__main__":
 
         rate = RateLimiter(frequency=200.0, warn=False)
         while viewer.is_running():
-            # Update task targets
+            # Update task targets.
             com_task.set_target(data.mocap_pos[com_mid])
             for i, (hand_task, foot_task) in enumerate(zip(hand_tasks, feet_tasks)):
                 foot_task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
                 hand_task.set_target(mink.SE3.from_mocap_id(data, hands_mid[i]))
 
-            # Solve IK and integrate configuration
+            # Solve IK and integrate configuration.
             vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-1)
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
-            # Visualize at fixed FPS
+            # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
