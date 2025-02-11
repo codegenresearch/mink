@@ -36,12 +36,12 @@ if __name__ == "__main__":
     joint_names: list[str] = []
     velocity_limits: dict[str, float] = {}
     for prefix in ["left", "right"]:
-        for name in _JOINT_NAMES:
-            joint_name = f"{prefix}/{name}"
-            joint_names.append(joint_name)
-            velocity_limits[joint_name] = _VELOCITY_LIMITS[name]
-    dof_ids: np.ndarray = np.array([model.joint(name).id for name in joint_names])
-    actuator_ids: np.ndarray = np.array([model.actuator(name).id for name in joint_names])
+        for n in _JOINT_NAMES:
+            name = f"{prefix}/{n}"
+            joint_names.append(name)
+            velocity_limits[name] = _VELOCITY_LIMITS[n]
+    dof_ids = np.array([model.joint(name).id for name in joint_names])
+    actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
     # Initialize the configuration for IK.
     configuration = mink.Configuration(model)
@@ -64,8 +64,7 @@ if __name__ == "__main__":
         ),
     ]
 
-    # Set up collision avoidance between the wrists and the table, and between the two wrists.
-    # Collision pairs:
+    # Enable collision avoidance between the following geoms:
     # - Geoms starting at subtree "right wrist" - "table"
     # - Geoms starting at subtree "left wrist" - "table"
     # - Geoms starting at subtree "right wrist" - geoms starting at subtree "left wrist"
@@ -104,7 +103,7 @@ if __name__ == "__main__":
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
-        # Reset the simulation to the neutral pose.
+        # Initialize to the home keyframe.
         mujoco.mj_resetDataKeyframe(model, data, model.key("neutral_pose").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
@@ -115,11 +114,11 @@ if __name__ == "__main__":
 
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
-            # Update the targets for both end effectors.
+            # Update task targets.
             l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
             r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
-            # Solve IK and integrate the solution.
+            # Compute velocity and integrate into the next configuration.
             for i in range(max_iters):
                 vel = mink.solve_ik(
                     configuration,
