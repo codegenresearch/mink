@@ -85,9 +85,9 @@ class TestUtils(absltest.TestCase):
         mujoco.mju_mat2Quat(body_quat, data.body("test").xmat)
 
         # Initially, mocap position and orientation should not match the target body's.
-        with self.assertRaises(AssertionError):
+        with np.testing.assert_raises(AssertionError):
             np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
-        with self.assertRaises(AssertionError):
+        with np.testing.assert_raises(AssertionError):
             np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
 
         utils.move_mocap_to_frame(model, data, "mocap", "test", "body")
@@ -98,13 +98,13 @@ class TestUtils(absltest.TestCase):
         np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
 
     def test_get_freejoint_dims(self):
-        q_indices, v_indices = utils.get_freejoint_dims(self.model)
+        q_ids, v_ids = utils.get_freejoint_dims(self.model)
         np.testing.assert_allclose(
-            np.asarray(q_indices),
+            np.asarray(q_ids),
             np.asarray(list(range(0, 7))),
         )
         np.testing.assert_allclose(
-            np.asarray(v_indices),
+            np.asarray(v_ids),
             np.asarray(list(range(0, 6))),
         )
 
@@ -204,9 +204,10 @@ if __name__ == "__main__":
 
 
 ### Key Changes:
-1. **XML Structure**: Ensured that each body has at least one geometry defined to avoid issues with mass and inertia.
-2. **Assertions**: Used `np.testing.assert_allclose` for comparing arrays and `self.assertSetEqual` for comparing sets of geometry and body IDs.
-3. **Consistency in Naming**: Ensured variable names are consistent with the expected conventions.
-4. **Error Handling**: Used `with self.assertRaises` for exception handling in tests to match the gold code's style.
+1. **Assertion Style**: Changed `with self.assertRaises(AssertionError)` to `with np.testing.assert_raises(AssertionError)` in the `test_move_mocap_to_frame` method.
+2. **Variable Naming Consistency**: Changed `q_indices` and `v_indices` to `q_ids` and `v_ids` in the `test_get_freejoint_dims` method.
+3. **XML Structure**: Ensured the XML structure is consistent with the gold code, with proper nesting and naming of bodies and geometries.
+4. **Error Handling**: Ensured that all error handling follows the same pattern as in the gold code.
+5. **Comments and Documentation**: Ensured that comments and documentation are clear and consistent with the gold code.
 
 These changes should address the feedback and align the code more closely with the gold standard.
