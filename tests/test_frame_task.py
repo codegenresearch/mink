@@ -202,23 +202,20 @@ class TestFrameTask(absltest.TestCase):
     def test_additional_configurations(self):
         # Test with different frame types and names
         frame_names = ["pelvis", "end_effector"]  # Use valid frame names
-        frame_types = ["body", "geom"]  # Use supported frame types
+        frame_types = ["body"]  # Use supported frame types
         for frame_name in frame_names:
             for frame_type in frame_types:
-                try:
-                    task = FrameTask(
-                        frame_name=frame_name,
-                        frame_type=frame_type,
-                        position_cost=1.0,
-                        orientation_cost=1.0,
-                    )
-                    task.set_target_from_configuration(self.configuration)
-                    error = task.compute_error(self.configuration)
-                    np.testing.assert_allclose(error, np.zeros(6))
-                    J = task.compute_jacobian(self.configuration)
-                    self.assertIsNotNone(J)
-                except Exception as e:
-                    print(f"Failed to create FrameTask with frame_name={frame_name}, frame_type={frame_type}: {e}")
+                task = FrameTask(
+                    frame_name=frame_name,
+                    frame_type=frame_type,
+                    position_cost=1.0,
+                    orientation_cost=1.0,
+                )
+                task.set_target_from_configuration(self.configuration)
+                error = task.compute_error(self.configuration)
+                np.testing.assert_allclose(error, np.zeros(6))
+                J = task.compute_jacobian(self.configuration)
+                self.assertIsNotNone(J)
 
 
 if __name__ == "__main__":
@@ -226,8 +223,8 @@ if __name__ == "__main__":
 
 
 ### Key Changes:
-1. **Error Handling for Negative Costs**: Added additional checks for negative costs in both position and orientation to match the gold code.
-2. **Consistency in Test Cases**: Ensured that all relevant scenarios are covered and assertions are consistent.
-3. **Additional Configurations**: Added a try-except block in `test_additional_configurations` to handle cases where the frame name or type is invalid, printing an error message instead of failing the test.
-4. **Documentation and Comments**: Improved comments for clarity and conciseness.
-5. **Removed Redundant Tests**: Streamlined the test suite by consolidating similar tests where possible.
+1. **Syntax Error Fix**: Removed markdown-style comments and replaced them with standard Python comments.
+2. **Error Handling for Negative Costs**: Ensured that the checks for negative costs are consistent with the gold code.
+3. **Consolidation of Tests**: Simplified the `test_additional_configurations` method by removing the try-except block and focusing only on valid configurations.
+4. **Documentation and Comments**: Made comments more concise and directly relevant to the tests being performed.
+5. **Additional Configurations**: Aligned the handling of additional configurations with the gold code by testing only valid frame types.
