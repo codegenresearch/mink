@@ -14,11 +14,13 @@ _INVERT_QUAT_SIGN = np.array([1.0, -1.0, -1.0, -1.0], dtype=np.float64)
 
 
 class RollPitchYaw(NamedTuple):
-    """Struct containing roll, pitch, and yaw Euler angles."""
+    """Struct containing roll, pitch, and yaw Euler angles.
 
-    roll: float
-    pitch: float
-    yaw: float
+    Attributes:
+        roll (float): Roll angle in radians.
+        pitch (float): Pitch angle in radians.
+        yaw (float): Yaw angle in radians.
+    """
 
 
 @dataclass(frozen=True)
@@ -61,17 +63,38 @@ class SO3(MatrixLieGroup):
 
     @classmethod
     def from_x_radians(cls, theta: float) -> SO3:
-        """Create a rotation around the x-axis by theta radians."""
+        """Create a rotation around the x-axis by theta radians.
+
+        Args:
+            theta (float): Rotation angle in radians.
+
+        Returns:
+            SO3: Rotation around the x-axis.
+        """
         return SO3.exp(np.array([theta, 0.0, 0.0], dtype=np.float64))
 
     @classmethod
     def from_y_radians(cls, theta: float) -> SO3:
-        """Create a rotation around the y-axis by theta radians."""
+        """Create a rotation around the y-axis by theta radians.
+
+        Args:
+            theta (float): Rotation angle in radians.
+
+        Returns:
+            SO3: Rotation around the y-axis.
+        """
         return SO3.exp(np.array([0.0, theta, 0.0], dtype=np.float64))
 
     @classmethod
     def from_z_radians(cls, theta: float) -> SO3:
-        """Create a rotation around the z-axis by theta radians."""
+        """Create a rotation around the z-axis by theta radians.
+
+        Args:
+            theta (float): Rotation angle in radians.
+
+        Returns:
+            SO3: Rotation around the z-axis.
+        """
         return SO3.exp(np.array([0.0, 0.0, theta], dtype=np.float64))
 
     @classmethod
@@ -283,6 +306,8 @@ class SO3(MatrixLieGroup):
             np.ndarray: Adjoint matrix.
         """
         return self.as_matrix()
+
+    # Jacobians.
 
     @classmethod
     def ljac(cls, other: np.ndarray) -> np.ndarray:
