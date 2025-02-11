@@ -5,7 +5,7 @@ from mink.tasks.task import Task
 
 
 class TestTask(absltest.TestCase):
-    """Test the Task class for proper error handling."""
+    """Tests for the Task class."""
 
     def setUp(self):
         """Prepare test fixture."""
