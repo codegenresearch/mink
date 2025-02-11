@@ -19,20 +19,20 @@ CollisionPairs = Sequence[CollisionPair]
 
 @dataclass(frozen=True)
 class Contact:
-    distance: float
-    contact_points: np.ndarray
-    geom1_id: int
-    geom2_id: int
-    max_distance: float
+    dist: float
+    fromto: np.ndarray
+    geom1: int
+    geom2: int
+    distmax: float
 
     @property
     def normal(self) -> np.ndarray:
-        normal = self.contact_points[3:] - self.contact_points[:3]
+        normal = self.fromto[3:] - self.fromto[:3]
         return normal / (np.linalg.norm(normal) + 1e-9)
 
     @property
-    def is_inactive(self) -> bool:
-        return self.distance == self.max_distance and not self.contact_points.any()
+    def inactive(self) -> bool:
+        return self.dist == self.distmax and not self.fromto.any()
 
 
 def compute_contact_normal_jacobian(
@@ -40,10 +40,10 @@ def compute_contact_normal_jacobian(
     data: mujoco.MjData,
     contact: Contact,
 ) -> np.ndarray:
-    geom1_body = model.geom_bodyid[contact.geom1_id]
-    geom2_body = model.geom_bodyid[contact.geom2_id]
-    geom1_contact_pos = contact.contact_points[:3]
-    geom2_contact_pos = contact.contact_points[3:]
+    geom1_body = model.geom_bodyid[contact.geom1]
+    geom2_body = model.geom_bodyid[contact.geom2]
+    geom1_contact_pos = contact.fromto[:3]
+    geom2_contact_pos = contact.fromto[3:]
     jac2 = np.empty((3, model.nv))
     mujoco.mj_jac(model, data, jac2, None, geom2_contact_pos, geom2_body)
     jac1 = np.empty((3, model.nv))
@@ -51,7 +51,7 @@ def compute_contact_normal_jacobian(
     return contact.normal @ (jac2 - jac1)
 
 
-def _are_geoms_welded(
+def _is_welded_together(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
     """Returns true if the geoms are part of the same body or are welded together."""
@@ -62,7 +62,7 @@ def _are_geoms_welded(
     return weld1 == weld2
 
 
-def _are_geoms_parent_child(
+def _are_geom_bodies_parent_child(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
     """Returns true if the geom bodies have a parent-child relationship."""
@@ -81,7 +81,7 @@ def _are_geoms_parent_child(
     return weld_id1 == weld_parent_id2 or weld_id2 == weld_parent_id1
 
 
-def _pass_contype_conaffinity_check(
+def _is_pass_contype_conaffinity_check(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
     """Returns true if the geoms pass the contype/conaffinity check."""
@@ -105,13 +105,14 @@ class CollisionAvoidanceLimit(Limit):
         gain: Gain factor in (0, 1] that determines how fast the geoms are
             allowed to move towards each other at each iteration. Smaller values
             are safer but may make the geoms move slower towards each other.
-        min_distance: The minimum distance to leave between any two geoms. A negative
-            distance allows the geoms to penetrate by the specified amount.
-        detection_distance: The distance between two geoms at which the active collision
-            avoidance limit will be active. A large value will cause collisions to be
-            detected early, but may incur high computational cost. A negative value will
-            cause the geoms to be detected only after they penetrate by the specified
-            amount.
+        minimum_distance_from_collisions: The minimum distance to leave between
+            any two geoms. A negative distance allows the geoms to penetrate by
+            the specified amount.
+        collision_detection_distance: The distance between two geoms at which the
+            active collision avoidance limit will be active. A large value will
+            cause collisions to be detected early, but may incur high computational
+            cost. A negative value will cause the geoms to be detected only after
+            they penetrate by the specified amount.
         bound_relaxation: An offset on the upper bound of each collision avoidance
             constraint.
     """
@@ -121,8 +122,8 @@ class CollisionAvoidanceLimit(Limit):
         model: mujoco.MjModel,
         geom_pairs: CollisionPairs,
         gain: float = 0.85,
-        min_distance: float = 0.005,
-        detection_distance: float = 0.01,
+        minimum_distance_from_collisions: float = 0.005,
+        collision_detection_distance: float = 0.01,
         bound_relaxation: float = 0.0,
     ):
         """Initialize collision avoidance limit.
@@ -139,84 +140,86 @@ class CollisionAvoidanceLimit(Limit):
             gain: Gain factor in (0, 1] that determines how fast the geoms are
                 allowed to move towards each other at each iteration. Smaller values
                 are safer but may make the geoms move slower towards each other.
-            min_distance: The minimum distance to leave between any two geoms. A negative
-                distance allows the geoms to penetrate by the specified amount.
-            detection_distance: The distance between two geoms at which the active collision
-                avoidance limit will be active. A large value will cause collisions to be
-                detected early, but may incur high computational cost. A negative value will
-                cause the geoms to be detected only after they penetrate by the specified
-                amount.
+            minimum_distance_from_collisions: The minimum distance to leave between
+                any two geoms. A negative distance allows the geoms to penetrate by
+                the specified amount.
+            collision_detection_distance: The distance between two geoms at which the
+                active collision avoidance limit will be active. A large value will
+                cause collisions to be detected early, but may incur high computational
+                cost. A negative value will cause the geoms to be detected only after
+                they penetrate by the specified amount.
             bound_relaxation: An offset on the upper bound of each collision avoidance
                 constraint.
         """
         self.model = model
         self.gain = gain
-        self.min_distance = min_distance
-        self.detection_distance = detection_distance
+        self.minimum_distance_from_collisions = minimum_distance_from_collisions
+        self.collision_detection_distance = collision_detection_distance
         self.bound_relaxation = bound_relaxation
         self.geom_id_pairs = self._construct_geom_id_pairs(geom_pairs)
-        self.max_contacts = len(self.geom_id_pairs)
+        self.max_num_contacts = len(self.geom_id_pairs)
 
     def compute_qp_inequalities(
         self,
-        config: Configuration,
+        configuration: Configuration,
         dt: float,
     ) -> Constraint:
-        upper_bounds = np.full((self.max_contacts,), np.inf)
-        coefficients = np.zeros((self.max_contacts, self.model.nv))
+        upper_bound = np.full((self.max_num_contacts,), np.inf)
+        coefficient_matrix = np.zeros((self.max_num_contacts, self.model.nv))
         for idx, (geom1_id, geom2_id) in enumerate(self.geom_id_pairs):
-            contact = self._compute_min_distance_contact(
-                config.data, geom1_id, geom2_id
+            contact = self._compute_contact_with_minimum_distance(
+                configuration.data, geom1_id, geom2_id
             )
-            if contact.is_inactive:
+            if contact.inactive:
                 continue
-            hi_bound_dist = contact.distance
-            if hi_bound_dist > self.min_distance:
-                dist = hi_bound_dist - self.min_distance
-                upper_bounds[idx] = (self.gain * dist / dt) + self.bound_relaxation
+            hi_bound_dist = contact.dist
+            if hi_bound_dist > self.minimum_distance_from_collisions:
+                dist = hi_bound_dist - self.minimum_distance_from_collisions
+                upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
             else:
-                upper_bounds[idx] = self.bound_relaxation
+                upper_bound[idx] = self.bound_relaxation
             jac = compute_contact_normal_jacobian(
-                self.model, config.data, contact
+                self.model, configuration.data, contact
             )
-            coefficients[idx] = -jac
-        return Constraint(G=coefficients, h=upper_bounds)
+            coefficient_matrix[idx] = -jac
+        return Constraint(G=coefficient_matrix, h=upper_bound)
 
     # Private methods.
 
-    def _compute_min_distance_contact(
+    def _compute_contact_with_minimum_distance(
         self, data: mujoco.MjData, geom1_id: int, geom2_id: int
     ) -> Contact:
         """Returns the smallest signed distance between a geom pair."""
-        contact_points = np.empty(6)
-        distance = mujoco.mj_geomDistance(
+        fromto = np.empty(6)
+        dist = mujoco.mj_geomDistance(
             self.model,
             data,
             geom1_id,
             geom2_id,
-            self.detection_distance,
-            contact_points,
+            self.collision_detection_distance,
+            fromto,
         )
         return Contact(
-            distance, contact_points, geom1_id, geom2_id, self.detection_distance
+            dist, fromto, geom1_id, geom2_id, self.collision_detection_distance
         )
 
-    def _convert_geom_ids(self, geom_list: GeomSequence) -> List[int]:
-        """Converts a list of geoms (by ID or name) to a list of IDs."""
-        ids = []
+    def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
+        """Take a heterogeneous list of geoms (specified via ID or name) and return
+        a homogenous list of IDs (int)."""
+        list_of_int: list[int] = []
         for g in geom_list:
             if isinstance(g, int):
-                ids.append(g)
+                list_of_int.append(g)
             else:
                 assert isinstance(g, str)
-                ids.append(self.model.geom(g).id)
-        return ids
+                list_of_int.append(self.model.geom(g).id)
+        return list_of_int
 
-    def _convert_collision_pairs(self, collision_pairs: CollisionPairs):
+    def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
         geom_id_pairs = []
-        for pair in collision_pairs:
-            id_pair_A = self._convert_geom_ids(pair[0])
-            id_pair_B = self._convert_geom_ids(pair[1])
+        for collision_pair in collision_pairs:
+            id_pair_A = self._homogenize_geom_id_list(collision_pair[0])
+            id_pair_B = self._homogenize_geom_id_list(collision_pair[1])
             id_pair_A = list(set(id_pair_A))
             id_pair_B = list(set(id_pair_B))
             geom_id_pairs.append((id_pair_A, id_pair_B))
@@ -236,12 +239,12 @@ class CollisionAvoidanceLimit(Limit):
                 they are considered to be the same body within this function.
         """
         geom_id_pairs = []
-        for id_pair in self._convert_collision_pairs(geom_pairs):
+        for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
                 if (
-                    not _are_geoms_welded(self.model, geom_a, geom_b)
-                    and not _are_geoms_parent_child(self.model, geom_a, geom_b)
-                    and _pass_contype_conaffinity_check(self.model, geom_a, geom_b)
+                    not _is_welded_together(self.model, geom_a, geom_b)
+                    and not _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
+                    and _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
                 ):
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
