@@ -222,22 +222,22 @@ class CollisionAvoidanceLimit(Limit):
         """
         upper_bound = np.full((self.max_num_contacts,), np.inf)
         coefficient_matrix = np.zeros((self.max_num_contacts, self.model.nv))
-        for index, (geom1, geom2) in enumerate(self.geom_id_pairs):
+        for idx, (geom1, geom2) in enumerate(self.geom_id_pairs):
             contact = self._compute_contact_with_minimum_distance(
                 configuration.data, geom1, geom2
             )
             if contact.inactive:
                 continue
-            distance = contact.dist
-            if distance > self.minimum_distance_from_collisions:
-                adjusted_distance = distance - self.minimum_distance_from_collisions
-                upper_bound[index] = (self.gain * adjusted_distance / dt) + self.bound_relaxation
+            hi_bound_dist = contact.dist
+            if hi_bound_dist > self.minimum_distance_from_collisions:
+                adjusted_distance = hi_bound_dist - self.minimum_distance_from_collisions
+                upper_bound[idx] = (self.gain * adjusted_distance / dt) + self.bound_relaxation
             else:
-                upper_bound[index] = self.bound_relaxation
+                upper_bound[idx] = self.bound_relaxation
             jacobian = compute_contact_normal_jacobian(
                 self.model, configuration.data, contact
             )
-            coefficient_matrix[index] = -jacobian
+            coefficient_matrix[idx] = -jacobian
         return Constraint(G=coefficient_matrix, h=upper_bound)
 
     # Private methods.
@@ -268,7 +268,7 @@ class CollisionAvoidanceLimit(Limit):
             dist, fromto, geom1, geom2, self.collision_detection_distance
         )
 
-    def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
+    def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> list[int]:
         """Converts a list of geoms (specified by ID or name) to a list of IDs.
 
         Args:
@@ -286,7 +286,7 @@ class CollisionAvoidanceLimit(Limit):
                 geom_ids.append(self.model.geom(geom).id)
         return geom_ids
 
-    def _convert_collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
+    def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
         """Converts collision pairs to geom ID pairs.
 
         Args:
@@ -324,10 +324,11 @@ class CollisionAvoidanceLimit(Limit):
             A list of geom ID pairs.
         """
         geom_id_pairs = []
-        for id_pair in self._convert_collision_pairs_to_geom_id_pairs(geom_pairs):
+        for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
-                if (not _is_welded_together(self.model, geom_a, geom_b) and
-                    not _are_geom_bodies_parent_child(self.model, geom_a, geom_b) and
-                    _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)):
+                is_welded = _is_welded_together(self.model, geom_a, geom_b)
+                is_parent_child = _are_geom_bodies_parent_child(self.model, geom_a, geom_b)
+                is_contype_conaffinity_pass = _is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
+                if not is_welded and not is_parent_child and is_contype_conaffinity_pass:
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
