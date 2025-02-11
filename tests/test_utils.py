@@ -21,7 +21,7 @@ class TestUtils(absltest.TestCase):
         self.q0 = self.data.qpos.copy()
 
     def test_custom_configuration_vector_throws_error_if_keyframe_invalid(self):
-        with self.assertRaises(InvalidKeyframe):
+        with np.testing.assert_raises(InvalidKeyframe):
             utils.custom_configuration_vector(self.model, "stand123")
 
     def test_custom_configuration_vector_from_keyframe(self):
@@ -29,7 +29,7 @@ class TestUtils(absltest.TestCase):
         np.testing.assert_allclose(q, self.model.key("stand").qpos)
 
     def test_custom_configuration_vector_raises_error_if_jnt_shape_invalid(self):
-        with self.assertRaises(ValueError):
+        with np.testing.assert_raises(ValueError):
             utils.custom_configuration_vector(
                 self.model,
                 "stand",
@@ -44,12 +44,12 @@ class TestUtils(absltest.TestCase):
         q = utils.custom_configuration_vector(self.model, **custom_joints)
         q_expected = self.q0.copy()
         for joint_name, value in custom_joints.items():
-            joint_id = self.model.jnt_qposadr[self.model.joint(joint_name).id]
-            q_expected[joint_id] = value
+            qid = self.model.jnt_qposadr[self.model.joint(joint_name).id]
+            q_expected[qid] = value
         np.testing.assert_array_almost_equal(q, q_expected)
 
     def test_move_mocap_to_frame_throws_error_if_body_not_mocap(self):
-        with self.assertRaises(InvalidMocapBody):
+        with np.testing.assert_raises(InvalidMocapBody):
             utils.move_mocap_to_frame(
                 self.model,
                 self.data,
@@ -169,6 +169,25 @@ class TestUtils(absltest.TestCase):
         expected_body_names = {"b1", "b2"}
         expected_body_ids = {model.body(body_name).id for body_name in expected_body_names}
         self.assertSetEqual(actual_body_ids, expected_body_ids)
+
+    def test_get_subtree_geom_ids_no_geometries(self):
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body name="b1" pos=".1 -.1 0">
+              <joint type="free"/>
+              <body name="b2">
+                <joint type="hinge" name="hinge_b2" range="0 1.57" limited="true"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        body_id_b1 = model.body("b1").id
+        actual_geom_ids = utils.get_subtree_geom_ids(model, body_id_b1)
+        expected_geom_ids = []
+        self.assertListEqual(actual_geom_ids, expected_geom_ids)
 
 
 if __name__ == "__main__":
