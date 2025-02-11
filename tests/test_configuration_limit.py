@@ -12,7 +12,7 @@ from mink.utils import get_freejoint_dims
 
 
 class TestConfigurationLimit(absltest.TestCase):
-    """Test configuration limit functionality."""
+    """Test configuration limit."""
 
     @classmethod
     def setUpClass(cls):
@@ -43,7 +43,7 @@ class TestConfigurationLimit(absltest.TestCase):
     def test_indices(self):
         limit = ConfigurationLimit(self.model)
         expected_indices = np.arange(6, self.model.nv)
-        np.testing.assert_allclose(limit.indices, expected_indices)
+        self.assertTrue(np.allclose(limit.indices, expected_indices))
 
     def test_model_with_no_limit(self):
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
@@ -76,8 +76,8 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        expected_lower = np.array([-np.inf] * 6 + [0] + [-np.inf] * (nv - 7))
-        expected_upper = np.array([np.inf] * 6 + [1.57] + [np.inf] * (nv - 7))
+        expected_lower = np.asarray([-np.inf] * 6 + [0] + [-np.inf] * (nv - 7))
+        expected_upper = np.asarray([np.inf] * 6 + [1.57] + [np.inf] * (nv - 7))
         np.testing.assert_allclose(limit.lower, expected_lower)
         np.testing.assert_allclose(limit.upper, expected_upper)
 
@@ -103,8 +103,8 @@ class TestConfigurationLimit(absltest.TestCase):
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
-        expected_lower = np.array([-np.inf] * 6 + [0] + [-np.inf] * (nv - 7))
-        expected_upper = np.array([np.inf] * 6 + [1.57] + [np.inf] * (nv - 7))
+        expected_lower = np.asarray([-np.inf] * 6 + [0] + [-np.inf] * (nv - 7))
+        expected_upper = np.asarray([np.inf] * 6 + [1.57] + [np.inf] * (nv - 7))
         np.testing.assert_allclose(limit.lower, expected_lower)
         np.testing.assert_allclose(limit.upper, expected_upper)
 
