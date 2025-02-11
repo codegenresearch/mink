@@ -175,9 +175,10 @@ if __name__ == "__main__":
 
 
 ### Key Changes:
-1. **Consolidated RPY Bijective Tests**: Combined the RPY bijective tests into a single method within `TestGroupSpecificOperations` to reduce redundancy.
-2. **Error Handling**: Added specific tests for invalid shapes in the `test_invalid_shape_log_exp` method.
-3. **Assertions**: Used `self.assertRaises` for error handling tests to maintain consistency.
+1. **Removed Invalid Comment**: Removed the line that was causing the `SyntaxError`.
+2. **Consolidated RPY Bijective Tests**: Combined the RPY bijective tests into a single method within `TestGroupSpecificOperations` to reduce redundancy.
+3. **Error Handling**: Used `self.assertRaises` for error handling tests to maintain consistency.
 4. **Class Structure**: Ensured that `TestGroupSpecificOperations` inherits from `parameterized.TestCase` and properly uses parameterization.
 5. **Documentation**: Updated docstrings to be more concise and directly related to the test being performed.
 6. **Edge Cases**: Included edge cases for RPY conversion within the `test_rpy_bijective` method.
+7. **Assertions**: Used `np.testing.assert_allclose` consistently for numerical comparisons.
