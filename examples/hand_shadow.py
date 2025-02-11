@@ -9,11 +9,11 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "shadow_hand" / "scene_left.xml"
 
-def main():
+if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     configuration = mink.Configuration(model)
 
-    # Define fingers and initialize tasks
+    # Define fingers
     fingers = ["thumb", "first", "middle", "ring", "little"]
 
     # Initialize posture task
@@ -32,7 +32,7 @@ def main():
         finger_tasks.append(task)
 
     # Combine tasks
-    tasks = [posture_task, *finger_tasks]
+    tasks = [posture_task] + finger_tasks
 
     model = configuration.model
     data = configuration.data
@@ -43,13 +43,13 @@ def main():
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
-        # Initialize to the home keyframe.
-        configuration.update_from_keyframe("grasp hard")
-        posture_task.set_target_from_configuration(configuration)
-
         # Initialize mocap bodies at their respective sites.
         for finger in fingers:
             mink.move_mocap_to_frame(model, data, f"{finger}_target", finger, "site")
+
+        # Initialize to the home keyframe.
+        configuration.update_from_keyframe("grasp hard")
+        posture_task.set_target_from_configuration(configuration)
 
         rate = RateLimiter(frequency=500.0, warn=False)  # Adjusted frequency for better performance
         dt = rate.dt
@@ -69,6 +69,3 @@ def main():
             viewer.sync()
             rate.sleep()
             t += dt  # Increment elapsed time
-
-if __name__ == "__main__":
-    main()
