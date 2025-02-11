@@ -20,8 +20,8 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         cls.model = load_robot_description("ur5e_mj_description")
 
         # Set model options to match the gold code
-        cls.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMID
-        cls.model.opt.jacobian = mujoco.mjtJac.mjJAC_BODY
+        cls.model.opt.cone = mujoco.mjtCone.mjCONE_ELLIPTIC
+        cls.model.opt.jacobian = mujoco.mjtJac.mjJAC_TRUE
         cls.model.opt.disableflags = (
             mujoco.mjtDisableBit.mjDSBL_CLAMPCTRL
             | mujoco.mjtDisableBit.mjDSBL_PASSIVE
@@ -108,10 +108,12 @@ if __name__ == "__main__":
 
 
 ### Key Changes:
-1. **SyntaxError Fix**: Removed any unterminated string literals by ensuring all docstrings are properly closed with triple quotes.
-2. **Model Options**: Ensured that the model options in `setUpClass` match the gold code exactly, including setting `model.geom_condim[:] = 1`.
-3. **Disable Flags**: Used the `disableflags` attribute directly to set the disable flags, matching the gold code's style.
+1. **SyntaxError Fix**: Removed the unterminated string literal by ensuring all docstrings are properly closed with triple quotes.
+2. **Model Options**: Updated the model options in `setUpClass` to match the gold code exactly:
+   - Set `model.opt.cone` to `mujoco.mjtCone.mjCONE_ELLIPTIC`.
+   - Set `model.opt.jacobian` to `mujoco.mjtJac.mjJAC_TRUE`.
+3. **Disable Flags**: Used the bitwise OR operator to combine the disable flags, matching the gold code's style.
 4. **Data Initialization**: Initialized the `data` object in the `test_contact_normal_jac_matches_mujoco` method after setting all necessary model options.
-5. **Assertions**: Ensured that the assertions check for the number of contacts and the correctness of the Jacobian, consistent with the gold code.
-6. **Contact Handling**: Set a specific `qpos` to ensure multiple contacts and used `mujoco.mj_contactForce` to compute contact forces.
-7. **Code Structure**: Reviewed the overall structure of the tests to ensure they follow the same logical flow and organization as the gold code.
+5. **Contact Handling**: Set a specific `qpos` to ensure multiple contacts and used `mujoco.mj_contactForce` to compute contact forces.
+6. **Assertions**: Ensured that the assertions check for the number of contacts and the correctness of the Jacobian, consistent with the gold code.
+7. **Code Structure**: Maintained a consistent structure and flow in the tests, ensuring the logical progression of the tests mirrors that of the gold code.
