@@ -15,7 +15,7 @@ author = "Kevin Zakka"
 # Retrieve the project version from pyproject.toml
 pyproject_path = Path(__file__).absolute().parent.parent / "pyproject.toml"
 pyproject = toml.load(pyproject_path)
-version: str = pyproject["tool"]["poetry"]["version"]
+version = pyproject["tool"]["poetry"]["version"]
 if not version.isalpha():
     version = f"v{version}"
 release = version
