@@ -21,7 +21,7 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
 
     tasks = [
-        mink.FrameTask(
+        end_effector_task := mink.FrameTask(
             frame_name="attachment_site",
             frame_type="site",
             position_cost=1.0,
@@ -64,14 +64,8 @@ if __name__ == "__main__":
     pos_threshold = 1e-4
     ori_threshold = 1e-4
     max_iters = 20
-    frequency = 500.0
 
-    with mujoco.viewer.launch_passive(
-        model=model,
-        data=data,
-        show_left_ui=False,
-        show_right_ui=False
-    ) as viewer:
+    with mujoco.viewer.launch_passive(model=model, data=data, show_left_ui=False, show_right_ui=False) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
@@ -79,11 +73,9 @@ if __name__ == "__main__":
         mujoco.mj_forward(model, data)
 
         # Initialize the mocap target at the end-effector site.
-        mink.move_mocap_to_frame(
-            model, data, "target", "attachment_site", "site"
-        )
+        mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
-        rate = RateLimiter(frequency=frequency, warn=False)
+        rate = RateLimiter(frequency=500.0, warn=False)
         while viewer.is_running():
             # Update task target.
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
