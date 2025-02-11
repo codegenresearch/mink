@@ -64,10 +64,7 @@ if __name__ == "__main__":
         ),
     ]
 
-    # Enable collision avoidance between the following geoms:
-    # - Geoms starting at subtree "right wrist" - "table"
-    # - Geoms starting at subtree "left wrist" - "table"
-    # - Geoms starting at subtree "right wrist" - geoms starting at subtree "left wrist"
+    # Enable collision avoidance between the wrists and the table, and between the two wrists.
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
