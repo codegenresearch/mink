@@ -37,16 +37,6 @@ class Task(abc.ABC):
 
     where :math:`J(q)` is the task Jacobian, :math:`\Delta q` is the configuration
     displacement, :math:`\alpha` is the task gain, and :math:`e(q)` is the task error.
-
-    The task gain :math:`\alpha` is a parameter in the range [0, 1] that can be used
-    for additional low-pass filtering. A gain of 1.0 corresponds to dead-beat control,
-    which aims to converge as fast as possible, but might be unstable. Lower values
-    cause the task to converge more slowly, similar to low-pass filtering.
-
-    The Levenberg-Marquardt (LM) damping parameter is used to regularize the task
-    when the error is large, helping to handle infeasible targets. Increasing this
-    value can make the task less jerky under unfeasible targets, but it also slows
-    down the task.
     """
 
     def __init__(
@@ -59,8 +49,8 @@ class Task(abc.ABC):
 
         Args:
             cost: Cost vector with the same dimension as the error of the task.
-            gain: Task gain alpha in [0, 1] for additional low-pass filtering. Defaults
-                to 1.0 (no filtering) for dead-beat control.
+            gain: Task gain :math:`\alpha` in [0, 1] for additional low-pass filtering.
+                Defaults to 1.0 (no filtering) for dead-beat control.
             lm_damping: Unitless scale of the Levenberg-Marquardt regularization term,
                 which helps when targets are infeasible. Increase this value if the task
                 is too jerky under unfeasible targets, but beware that a larger damping
