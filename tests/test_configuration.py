@@ -19,6 +19,7 @@ class TestConfiguration(absltest.TestCase):
         self.q_ref = self.model.key("home").qpos
 
     def test_nq_nv(self):
+        """Test that nq and nv are correctly initialized."""
         configuration = mink.Configuration(self.model)
         self.assertEqual(configuration.nq, self.model.nq)
         self.assertEqual(configuration.nv, self.model.nv)
@@ -36,6 +37,7 @@ class TestConfiguration(absltest.TestCase):
         np.testing.assert_array_equal(configuration.q, self.q_ref)
 
     def test_site_transform_world_frame(self):
+        """Test that the site transform in the world frame is correctly computed."""
         site_name = "attachment_site"
         configuration = mink.Configuration(self.model)
 
@@ -54,25 +56,26 @@ class TestConfiguration(absltest.TestCase):
             world_T_site.rotation().as_matrix(), expected_xmat
         )
 
-    def test_site_jacobian_raises_error_if_frame_name_is_invalid(self):
-        """Raise an error when the requested frame does not exist."""
+    def test_site_transform_raises_error_if_frame_name_is_invalid(self):
+        """Test that an error is raised when the requested frame does not exist."""
         configuration = mink.Configuration(self.model)
         with self.assertRaises(mink.InvalidFrame):
-            configuration.get_frame_jacobian("invalid_name", "site")
+            configuration.get_transform_frame_to_world("invalid_name", "site")
 
-    def test_site_jacobian_raises_error_if_frame_type_is_invalid(self):
-        """Raise an error when the requested frame type is invalid."""
+    def test_site_transform_raises_error_if_frame_type_is_invalid(self):
+        """Test that an error is raised when the requested frame type is invalid."""
         configuration = mink.Configuration(self.model)
         with self.assertRaises(mink.UnsupportedFrame):
-            configuration.get_frame_jacobian("name_does_not_matter", "joint")
+            configuration.get_transform_frame_to_world("name_does_not_matter", "joint")
 
     def test_update_raises_error_if_keyframe_is_invalid(self):
-        """Raise an error when the request keyframe does not exist."""
+        """Test that an error is raised when the requested keyframe does not exist."""
         configuration = mink.Configuration(self.model)
         with self.assertRaises(mink.InvalidKeyframe):
             configuration.update_from_keyframe("invalid_keyframe")
 
     def test_inplace_integration(self):
+        """Test that inplace integration correctly updates the configuration."""
         configuration = mink.Configuration(self.model, self.q_ref)
 
         dt = 1e-3
@@ -90,16 +93,16 @@ class TestConfiguration(absltest.TestCase):
         np.testing.assert_almost_equal(configuration.q, expected_qpos)
 
     def test_check_limits(self):
-        """Check that an error is raised iff a joint limit is exceeded."""
+        """Test that an error is raised if a joint limit is exceeded."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
-        configuration.check_limits(safety_break=0.01)
+        configuration.check_limits()
         self.q_ref[0] += 1e4  # Move configuration out of bounds.
         configuration.update(q=self.q_ref)
         with self.assertRaises(mink.NotWithinConfigurationLimits):
-            configuration.check_limits(safety_break=0.01)
+            configuration.check_limits()
 
     def test_check_limits_free_joints(self):
-        """Check that free joints are not limited."""
+        """Test that free joints are not limited."""
         xml_str = """
         <mujoco>
           <worldbody>
@@ -112,7 +115,7 @@ class TestConfiguration(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         configuration = mink.Configuration(model)
-        configuration.check_limits(safety_break=0.01)
+        configuration.check_limits()
 
 
 if __name__ == "__main__":
