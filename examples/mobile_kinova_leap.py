@@ -14,7 +14,7 @@ _HERE = Path(__file__).parent
 _ARM_XML = _HERE / "stanford_tidybot" / "scene_mobile_kinova.xml"
 _HAND_XML = _HERE / "leap_hand" / "right_hand.xml"
 
-FINGERS = ["tip_1", "tip_2", "tip_3", "th_tip"]
+fingers = ["tip_1", "tip_2", "tip_3", "th_tip"]
 
 # fmt: off
 HOME_QPOS = [
@@ -45,7 +45,7 @@ def construct_model():
 
     arm_mjcf.keyframe.add("key", name="home", qpos=HOME_QPOS)
 
-    for finger in FINGERS:
+    for finger in fingers:
         body = arm_mjcf.worldbody.add("body", name=f"{finger}_target", mocap=True)
         body.add(
             "geom",
@@ -84,7 +84,7 @@ def create_tasks(model, configuration):
 
     posture_cost = np.zeros((model.nv,))
     posture_cost[2] = 1e-3  # Mobile Base.
-    posture_cost[-16:] = 1e-3  # Leap Hand.
+    posture_cost[-16:] = 5e-2  # Leap Hand.
 
     posture_task = mink.PostureTask(model, cost=posture_cost)
 
@@ -103,18 +103,19 @@ def create_tasks(model, configuration):
             orientation_cost=0.0,
             lm_damping=1e-3,
         )
-        for finger in FINGERS
+        for finger in fingers
     ]
 
-    return end_effector_task, posture_task, damping_task, finger_tasks
+    tasks = [end_effector_task, posture_task, *finger_tasks]
+    return tasks, damping_task
 
 
 if __name__ == "__main__":
     model = construct_model()
     configuration = mink.Configuration(model)
+    data = configuration.data
 
-    end_effector_task, posture_task, damping_task, finger_tasks = create_tasks(model, configuration)
-    tasks = [end_effector_task, posture_task, *finger_tasks]
+    tasks, damping_task = create_tasks(model, configuration)
     limits = [mink.ConfigurationLimit(model)]
 
     solver = "quadprog"
@@ -126,20 +127,20 @@ if __name__ == "__main__":
 
     with mujoco.viewer.launch_passive(
         model=model,
-        data=configuration.data,
+        data=data,
         show_left_ui=False,
         show_right_ui=False,
         key_callback=key_callback,
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
-        mujoco.mj_resetDataKeyframe(model, configuration.data, model.key("home").id)
-        configuration.update(configuration.data.qpos)
+        mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
+        configuration.update(data.qpos)
         posture_task.set_target_from_configuration(configuration)
-        mujoco.mj_forward(model, configuration.data)
+        mujoco.mj_forward(model, data)
 
-        mink.move_mocap_to_frame(model, configuration.data, "pinch_site_target", "pinch_site", "site")
-        for finger in FINGERS:
-            mink.move_mocap_to_frame(model, configuration.data, f"{finger}_target", f"leap_right/{finger}", "site")
+        mink.move_mocap_to_frame(model, data, "pinch_site_target", "pinch_site", "site")
+        for finger in fingers:
+            mink.move_mocap_to_frame(model, data, f"{finger}_target", f"leap_right/{finger}", "site")
 
         T_eef_prev = configuration.get_transform_frame_to_world("pinch_site", "site")
         rate = RateLimiter(frequency=50.0)
@@ -147,23 +148,23 @@ if __name__ == "__main__":
         t = 0.0
 
         while viewer.is_running():
-            T_wt = mink.SE3.from_mocap_name(model, configuration.data, "pinch_site_target")
+            T_wt = mink.SE3.from_mocap_name(model, data, "pinch_site_target")
             end_effector_task.set_target(T_wt)
 
-            for finger, task in zip(FINGERS, finger_tasks):
+            for finger, task in zip(fingers, tasks[2:]):
                 T_pm = configuration.get_transform(f"{finger}_target", "body", "leap_right/palm_lower", "body")
                 task.set_target(T_pm)
 
-            for finger in FINGERS:
+            for finger in fingers:
                 T_eef = configuration.get_transform_frame_to_world("pinch_site", "site")
                 T = T_eef @ T_eef_prev.inverse()
-                T_w_mocap = mink.SE3.from_mocap_name(model, configuration.data, f"{finger}_target")
+                T_w_mocap = mink.SE3.from_mocap_name(model, data, f"{finger}_target")
                 T_w_mocap_new = T @ T_w_mocap
-                configuration.data.mocap_pos[model.body(f"{finger}_target").mocapid[0]] = T_w_mocap_new.translation()
-                configuration.data.mocap_quat[model.body(f"{finger}_target").mocapid[0]] = T_w_mocap_new.rotation().wxyz
+                data.mocap_pos[model.body(f"{finger}_target").mocapid[0]] = T_w_mocap_new.translation()
+                data.mocap_quat[model.body(f"{finger}_target").mocapid[0]] = T_w_mocap_new.rotation().wxyz
 
             for _ in range(max_iters):
-                tasks_to_solve = [*tasks, damping_task] if key_callback.fix_base else tasks
+                tasks_to_solve = tasks + [damping_task] if key_callback.fix_base else tasks
                 vel = mink.solve_ik(configuration, tasks_to_solve, dt, solver, 1e-3)
                 configuration.integrate_inplace(vel, dt)
 
@@ -174,10 +175,10 @@ if __name__ == "__main__":
                     break
 
             if not key_callback.pause:
-                configuration.data.ctrl = configuration.q
-                mujoco.mj_step(model, configuration.data)
+                data.ctrl = configuration.q
+                mujoco.mj_step(model, data)
             else:
-                mujoco.mj_forward(model, configuration.data)
+                mujoco.mj_forward(model, data)
 
             T_eef_prev = T_eef.copy()
             viewer.sync()
