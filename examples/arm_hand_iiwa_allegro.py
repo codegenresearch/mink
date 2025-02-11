@@ -57,6 +57,7 @@ def construct_model():
     )
 
 if __name__ == "__main__":
+    # Construct the model and initialize configuration
     model = construct_model()
     configuration = mink.Configuration(model)
     data = configuration.data
@@ -104,22 +105,28 @@ if __name__ == "__main__":
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
+
+        # Reset data to home keyframe and update configuration
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
         posture_task.set_target_from_configuration(configuration)
 
         while viewer.is_running():
-            # Update end-effector task
+            # Update kuka end-effector task
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
             # Update finger tasks
             for finger, task in zip(fingers, finger_tasks):
-                T_pm = configuration.get_transform(f"{finger}_target", "body", "allegro_left/palm", "body")
+                T_pm = configuration.get_transform(
+                    f"{finger}_target", "body", "allegro_left/palm", "body"
+                )
                 task.set_target(T_pm)
 
             # Update mocap positions
-            T_eef = configuration.get_transform_frame_to_world("attachment_site", "site")
+            T_eef = configuration.get_transform_frame_to_world(
+                "attachment_site", "site"
+            )
             T = T_eef @ T_eef_prev.inverse()
             for finger in fingers:
                 T_w_mocap = mink.SE3.from_mocap_name(model, data, f"{finger}_target")
@@ -128,11 +135,15 @@ if __name__ == "__main__":
                 data.mocap_pos[body.mocapid[0]] = T_w_mocap_new.translation()
                 data.mocap_quat[body.mocapid[0]] = T_w_mocap_new.rotation().wxyz
 
-            # Solve IK and integrate velocity
-            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3, limits=limits)
+            # Compute velocity and integrate into the next configuration
+            vel = mink.solve_ik(
+                configuration, tasks, rate.dt, solver, 1e-3, limits=limits
+            )
             configuration.integrate_inplace(vel, rate.dt)
             mujoco.mj_camlight(model, data)
 
             T_eef_prev = T_eef.copy()
+
+            # Visualize at fixed FPS
             viewer.sync()
             rate.sleep()
