@@ -22,7 +22,7 @@ _JOINT_NAMES = [
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
 _VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
 
-def get_subtree_body_ids(model, body_name):
+def get_subtree_body_ids(model: mujoco.MjModel, body_name: str) -> list[int]:
     """Retrieve all body IDs in the subtree starting from the given body name."""
     body_id = model.body(body_name).id
     subtree_ids = [body_id]
@@ -31,13 +31,20 @@ def get_subtree_body_ids(model, body_name):
             subtree_ids.append(i)
     return subtree_ids
 
-def get_subtree_geom_ids(model, body_name):
+def get_subtree_geom_ids(model: mujoco.MjModel, body_name: str) -> list[int]:
     """Retrieve all geom IDs in the subtree starting from the given body name."""
     body_ids = get_subtree_body_ids(model, body_name)
     geom_ids = []
     for body_id in body_ids:
         geom_ids.extend(model.body_geomadr[body_id] + np.arange(model.body_geomnum[body_id]))
     return geom_ids
+
+def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, subtree_ids: list[int]) -> np.ndarray:
+    """Compute forces to counteract gravity for the specified subtree."""
+    gravity_compensation = np.zeros(model.nu)
+    for body_id in subtree_ids:
+        gravity_compensation += data.qfrc_bias[model.body_dofadr[body_id]:model.body_dofadr[body_id] + model.body_dofnum[body_id]]
+    return gravity_compensation
 
 def test_get_subtree_body_ids():
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
@@ -119,9 +126,9 @@ if __name__ == "__main__":
     l_mid = model.body("left/target").mocapid[0]
     r_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
-    pos_threshold = 1e-2
-    ori_threshold = 1e-2
-    max_iters = 2
+    pos_threshold = 1e-3
+    ori_threshold = 1e-3
+    max_iters = 5
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -159,7 +166,7 @@ if __name__ == "__main__":
                 l_err = l_ee_task.compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = r_ee_task.compute_error(configuration)  # Corrected from l_ee_task to r_ee_task
+                r_err = r_ee_task.compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
                 if (
@@ -171,6 +178,13 @@ if __name__ == "__main__":
                     break
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
+
+            # Apply gravity compensation
+            left_subtree_ids = get_subtree_body_ids(model, "left/wrist_link")
+            right_subtree_ids = get_subtree_body_ids(model, "right/wrist_link")
+            gravity_compensation = compensate_gravity(model, data, left_subtree_ids + right_subtree_ids)
+            data.ctrl[actuator_ids] += gravity_compensation[actuator_ids]
+
             mujoco.mj_step(model, data)
 
             # Visualize at fixed FPS.
