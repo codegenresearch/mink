@@ -11,8 +11,8 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
-# Joint names for a single arm.
-JOINT_NAMES = [
+# Single arm joint names.
+_JOINT_NAMES = [
     "waist",
     "shoulder",
     "elbow",
@@ -21,9 +21,9 @@ JOINT_NAMES = [
     "wrist_rotate",
 ]
 
-# Velocity limits for each joint, sourced from:
+# Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-JOINT_VELOCITY_LIMITS = {f"{prefix}/{joint}": np.pi for prefix in ["left", "right"] for joint in JOINT_NAMES}
+_VELOCITY_LIMITS = {f"{prefix}/{joint}": np.pi for prefix in ["left", "right"] for joint in _JOINT_NAMES}
 
 
 def compensate_gravity(
@@ -32,13 +32,13 @@ def compensate_gravity(
     subtree_ids: Sequence[int],
     qfrc_applied: Optional[np.ndarray] = None,
 ) -> None:
-    """Compute forces to counteract gravity for the specified subtrees.
+    """Compute forces to counteract gravity for the given subtrees.
 
     Args:
-        model: The Mujoco model.
-        data: The Mujoco data.
-        subtree_ids: A list of subtree IDs. Gravity compensation forces will be applied to all bodies in these subtrees.
-        qfrc_applied: An optional array to store the computed forces. If not provided, the applied forces in `data` are used.
+        model: Mujoco model.
+        data: Mujoco data.
+        subtree_ids: List of subtree ids. Gravity compensation forces will be applied to all bodies in these subtrees.
+        qfrc_applied: Optional array to store the computed forces. If not provided, the applied forces in `data` are used.
     """
     qfrc_applied = data.qfrc_applied if qfrc_applied is None else qfrc_applied
     qfrc_applied[:] = 0.0  # Reset forces from previous calls.
@@ -53,18 +53,17 @@ if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(str(_XML))
     data = mujoco.MjData(model)
 
-    # Subtree IDs for gravity compensation.
+    # Bodies for which to apply gravity compensation.
     left_subtree_id = model.body("left/base_link").id
     right_subtree_id = model.body("right/base_link").id
 
-    # Collect joint and actuator IDs for both arms.
-    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in JOINT_NAMES]
+    # Get the dof and actuator ids for the joints we wish to control.
+    joint_names = [f"{prefix}/{joint}" for prefix in ["left", "right"] for joint in _JOINT_NAMES]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
 
     configuration = mink.Configuration(model)
 
-    # Define tasks for both arms and posture.
     tasks = [
         l_ee_task := mink.FrameTask(
             frame_name="left/gripper",
@@ -83,7 +82,7 @@ if __name__ == "__main__":
         posture_task := mink.PostureTask(model, cost=1e-4),
     ]
 
-    # Set up collision avoidance for specified geometries.
+    # Enable collision avoidance between the following geoms.
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     l_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
@@ -100,20 +99,18 @@ if __name__ == "__main__":
         collision_detection_distance=0.1,
     )
 
-    # Define limits for configuration, velocity, and collision avoidance.
-    config_limit = mink.ConfigurationLimit(model=model)
-    velocity_limit = mink.VelocityLimit(model, JOINT_VELOCITY_LIMITS)
-    limits = [config_limit, velocity_limit, collision_avoidance_limit]
+    limits = [
+        mink.ConfigurationLimit(model=model),
+        mink.VelocityLimit(model, _VELOCITY_LIMITS),
+        collision_avoidance_limit,
+    ]
 
-    # Mocap IDs for left and right targets.
-    l_target_id = model.body("left/target").mocapid[0]
-    r_target_id = model.body("right/target").mocapid[0]
-
-    # IK solver settings.
+    l_mid = model.body("left/target").mocapid[0]
+    r_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
-    position_threshold = 5e-3
-    orientation_threshold = 5e-3
-    max_iterations = 5
+    pos_threshold = 5e-3
+    ori_threshold = 5e-3
+    max_iters = 5
 
     rate = RateLimiter(frequency=200.0, warn=False)
     with mujoco.viewer.launch_passive(
@@ -121,13 +118,13 @@ if __name__ == "__main__":
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
-        # Initialize to the neutral pose keyframe.
+        # Initialize to the home keyframe.
         mujoco.mj_resetDataKeyframe(model, data, model.key("neutral_pose").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
         posture_task.set_target_from_configuration(configuration)
 
-        # Position mocap targets at the end-effector sites.
+        # Initialize mocap targets at the end-effector site.
         mink.move_mocap_to_frame(model, data, "left/target", "left/gripper", "site")
         mink.move_mocap_to_frame(model, data, "right/target", "right/gripper", "site")
 
@@ -136,9 +133,9 @@ if __name__ == "__main__":
             l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
             r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
-            # Solve IK and integrate the solution.
-            for _ in range(max_iterations):
-                velocity = mink.solve_ik(
+            # Compute velocity and integrate into the next configuration.
+            for i in range(max_iters):
+                vel = mink.solve_ik(
                     configuration,
                     tasks,
                     rate.dt,
@@ -146,23 +143,21 @@ if __name__ == "__main__":
                     limits=limits,
                     damping=1e-5,
                 )
-                configuration.integrate_inplace(velocity, rate.dt)
+                configuration.integrate_inplace(vel, rate.dt)
 
-                # Check if both arms have reached their targets.
                 l_err = l_ee_task.compute_error(configuration)
-                l_pos_achieved = np.linalg.norm(l_err[:3]) <= position_threshold
-                l_ori_achieved = np.linalg.norm(l_err[3:]) <= orientation_threshold
+                l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
+                l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
                 r_err = r_ee_task.compute_error(configuration)
-                r_pos_achieved = np.linalg.norm(r_err[:3]) <= position_threshold
-                r_ori_achieved = np.linalg.norm(r_err[3:]) <= orientation_threshold
+                r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
+                r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
                 if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
                     break
 
-            # Apply computed joint positions and gravity compensation.
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
             compensate_gravity(model, data, [left_subtree_id, right_subtree_id])
             mujoco.mj_step(model, data)
 
-            # Update the viewer and sleep to maintain the desired rate.
+            # Visualize at fixed FPS.
             viewer.sync()
             rate.sleep()
