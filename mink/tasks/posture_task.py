@@ -21,7 +21,8 @@ class PostureTask(Task):
     affected by this task.
 
     Attributes:
-        target_q: Target joint configuration.
+        target_q: Target configuration for the robot's joints.
+        _v_ids: Indices of free joint dimensions.
     """
 
     target_q: Optional[np.ndarray]
@@ -79,7 +80,7 @@ class PostureTask(Task):
         self.target_q = target_q.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
-        """Set the target posture from the current configuration.
+        """Set the target posture from the current configuration of the robot.
 
         Args:
             configuration: Current configuration of the robot.
