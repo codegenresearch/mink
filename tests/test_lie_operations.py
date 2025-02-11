@@ -1,4 +1,4 @@
-"""Tests for general operation definitions and collision handling."""
+"""Tests for general operation definitions."""
 
 from typing import Type
 
@@ -82,14 +82,11 @@ class TestOperations(parameterized.TestCase):
         state_lin = state.log() + state.jlog() @ w
         np.testing.assert_allclose(state_pert, state_lin, atol=1e-7)
 
-    def test_collision_handling(self, group: Type[MatrixLieGroup]):
-        """Check collision handling operations."""
-        transform_a = group.sample_uniform()
-        transform_b = group.sample_uniform()
-        # Simulate a collision scenario
-        collision_transform = transform_a @ transform_b
-        # Check if collision detection is consistent
-        assert_transforms_close(collision_transform, transform_a @ transform_b)
+    def test_invalid_shape_exp(self, group: Type[MatrixLieGroup]):
+        """Check that exp raises an error for invalid shape."""
+        invalid_tangent = np.random.randn(group.tangent_dim + 1)
+        with self.assertRaises(ValueError):
+            group.exp(invalid_tangent)
 
     def test_invalid_shape_log(self, group: Type[MatrixLieGroup]):
         """Check that log raises an error for invalid shape."""
@@ -98,20 +95,44 @@ class TestOperations(parameterized.TestCase):
         with self.assertRaises(ValueError):
             transform.log(invalid_tangent)
 
-    def test_invalid_shape_exp(self, group: Type[MatrixLieGroup]):
-        """Check that exp raises an error for invalid shape."""
-        invalid_tangent = np.random.randn(group.tangent_dim + 1)
-        with self.assertRaises(ValueError):
-            group.exp(invalid_tangent)
 
-
-class TestGroupSpecificOperations(absltest.TestCase):
-    """Group specific tests."""
+class TestSO3SpecificOperations(absltest.TestCase):
+    """SO3 specific tests."""
 
     def test_so3_rpy_bijective(self):
         """Check SO3 RPY conversion is bijective."""
         T = SO3.sample_uniform()
         assert_transforms_close(T, SO3.from_rpy_radians(*T.as_rpy_radians()))
+
+    def test_so3_invalid_shape_exp(self):
+        """Check that SO3 exp raises an error for invalid shape."""
+        invalid_tangent = np.random.randn(SO3.tangent_dim + 1)
+        with self.assertRaises(ValueError):
+            SO3.exp(invalid_tangent)
+
+    def test_so3_invalid_shape_log(self):
+        """Check that SO3 log raises an error for invalid shape."""
+        T = SO3.sample_uniform()
+        invalid_tangent = np.random.randn(SO3.tangent_dim + 1)
+        with self.assertRaises(ValueError):
+            T.log(invalid_tangent)
+
+
+class TestSE3SpecificOperations(absltest.TestCase):
+    """SE3 specific tests."""
+
+    def test_se3_invalid_shape_exp(self):
+        """Check that SE3 exp raises an error for invalid shape."""
+        invalid_tangent = np.random.randn(SE3.tangent_dim + 1)
+        with self.assertRaises(ValueError):
+            SE3.exp(invalid_tangent)
+
+    def test_se3_invalid_shape_log(self):
+        """Check that SE3 log raises an error for invalid shape."""
+        T = SE3.sample_uniform()
+        invalid_tangent = np.random.randn(SE3.tangent_dim + 1)
+        with self.assertRaises(ValueError):
+            T.log(invalid_tangent)
 
 
 if __name__ == "__main__":
