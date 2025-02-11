@@ -47,7 +47,7 @@ class TestUtils(absltest.TestCase):
         for name, value in custom_joints.items():
             qid = self.model.jnt_qposadr[self.model.joint(name).id]
             q_expected[qid] = value
-        np.testing.assert_array_almost_equal(q, q_expected)
+        np.testing.assert_allclose(q, q_expected)
 
     def test_move_mocap_to_frame_throws_error_if_body_not_mocap(self):
         with self.assertRaises(InvalidMocapBody):
@@ -140,6 +140,36 @@ class TestUtils(absltest.TestCase):
         expected_geom_ids = [model.geom(g).id for g in geom_names]
         self.assertListEqual(actual_geom_ids, expected_geom_ids)
 
+    def test_get_subtree_body_ids(self):
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body name="b1" pos=".1 -.1 0">
+              <joint type="free"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body name="b2">
+                <joint type="hinge" range="0 1.57" limited="true"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+            <body name="b3" pos="1 1 1">
+              <joint type="free"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body name="b4">
+                <joint type="hinge" range="0 1.57" limited="true"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        b1_id = model.body("b1").id
+        actual_body_ids = utils.get_subtree_body_ids(model, b1_id)
+        body_names = ["b1", "b2"]
+        expected_body_ids = [model.body(b).id for b in body_names]
+        self.assertListEqual(actual_body_ids, expected_body_ids)
+
     def test_apply_gravity_compensation(self):
         """Test gravity compensation for a given configuration."""
         q = utils.custom_configuration_vector(self.model, "stand")
@@ -179,3 +209,42 @@ class TestUtils(absltest.TestCase):
 
 if __name__ == "__main__":
     absltest.main()
+
+
+### Additional Utility Functions in `mink.utils`
+
+To address the missing functions, you need to add the following implementations to the `mink.utils` module:
+
+
+def apply_gravity_compensation(model, data, q):
+    """Apply gravity compensation to the given configuration."""
+    data.qpos[:] = q
+    mujoco.mj_forward(model, data)
+    mujoco.mj_inverse(model, data)
+    data.qfrc_applied[:] = data.qfrc_bias[:]
+
+def get_subtree_geom_ids(model, body_id):
+    """Get the geom IDs of a subtree rooted at the given body ID."""
+    geom_ids = []
+    for geom_id in range(model.ngeom):
+        if model.geom_bodyid[geom_id] == body_id:
+            geom_ids.append(geom_id)
+        elif model.geom_bodyid[geom_id] in model.body_subtreelist[body_id:model.body_subtreelist[body_id + 1]]:
+            geom_ids.append(geom_id)
+    return geom_ids
+
+def get_subtree_body_ids(model, body_id):
+    """Get the body IDs of a subtree rooted at the given body ID."""
+    body_ids = [body_id]
+    for i in range(model.body_subtreelist[body_id], model.body_subtreelist[body_id + 1]):
+        body_ids.append(model.body_id2adr[i])
+    return body_ids
+
+def get_subtree_transform(model, data, body_id):
+    """Get the SE3 transform of a subtree rooted at the given body ID."""
+    xpos = data.body(body_id).xpos
+    xmat = data.body(body_id).xmat
+    return SE3.from_matrix(np.hstack((xmat.reshape(3, 3), xpos.reshape(3, 1))))
+
+
+These implementations should be added to the `mink.utils` module to ensure that the tests pass and the functionality is complete.
