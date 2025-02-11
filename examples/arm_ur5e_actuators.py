@@ -36,7 +36,7 @@ if __name__ == "__main__":
         ),
     ]
 
-    # Define collision pairs for collision avoidance
+    # Enable collision avoidance between the wrist_3_link and the floor, wall
     wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [
         (wrist_3_geoms, ["floor", "wall"]),
@@ -64,6 +64,9 @@ if __name__ == "__main__":
     # Append velocity limit to the limits list
     velocity_limit = mink.VelocityLimit(model, max_velocities)
     limits.append(velocity_limit)
+
+    # Initialize the mocap ID for the target body
+    mid = model.body("target").mocapid[0]
 
     ## =================== ##
     ## IK settings.
