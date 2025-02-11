@@ -11,7 +11,7 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
 # Single arm joint names.
-_JOINT_NAMES: list[str] = [
+_JOINT_NAMES = [
     "waist",
     "shoulder",
     "elbow",
@@ -22,7 +22,7 @@ _JOINT_NAMES: list[str] = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS: dict[str, float] = {k: np.pi for k in _JOINT_NAMES}
+_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
 
 
 if __name__ == "__main__":
@@ -30,8 +30,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names: list[str] = []
-    velocity_limits: dict[str, float] = {}
+    joint_names = []
+    velocity_limits = {}
     for prefix in ["left", "right"]:
         for n in _JOINT_NAMES:
             name = f"{prefix}/{n}"
@@ -122,7 +122,7 @@ if __name__ == "__main__":
             r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute velocity and integrate into the next configuration.
-            for _ in range(max_iters):
+            for i in range(max_iters):
                 vel = mink.solve_ik(
                     configuration,
                     tasks,
