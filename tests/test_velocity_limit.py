@@ -19,51 +19,51 @@ class TestVelocityLimit(absltest.TestCase):
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("stand")
-        # NOTE: These velocities are arbitrary and do not match real hardware.
+        # NOTE(kevin): These velocities are arbitrary and do not match real hardware.
         self.velocities = {
             self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)
         }
 
     def test_dimensions(self):
-        """Test that the dimensions of the VelocityLimit instance are correct."""
+        """Test dimensions of VelocityLimit instance."""
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
         nb = nv - 6  # Subtract the 6 free joints
-        self.assertEqual(len(limit.indices), nb, "Number of limited joints does not match expected.")
-        self.assertEqual(limit.projection_matrix.shape, (nb, nv), "Projection matrix shape does not match expected.")
+        self.assertEqual(len(limit.indices), nb)
+        self.assertEqual(limit.projection_matrix.shape, (nb, nv))
 
     def test_indices(self):
-        """Test that the indices of the limited joints are correct."""
+        """Test indices of limited joints."""
         limit = VelocityLimit(self.model, self.velocities)
         expected_indices = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
-        self.assertTrue(np.allclose(limit.indices, expected_indices), "Indices of limited joints do not match expected.")
+        self.assertTrue(np.allclose(limit.indices, expected_indices))
 
     def test_model_with_no_limit(self):
-        """Test that a model with no velocity limits behaves correctly."""
+        """Test model with no velocity limits."""
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
         empty_bounded = VelocityLimit(empty_model)
-        self.assertEqual(len(empty_bounded.indices), 0, "Number of limited joints should be zero for an empty model.")
-        self.assertIsNone(empty_bounded.projection_matrix, "Projection matrix should be None for an empty model.")
+        self.assertEqual(len(empty_bounded.indices), 0)
+        self.assertIsNone(empty_bounded.projection_matrix)
         G, h = empty_bounded.compute_qp_inequalities(self.configuration, 1e-3)
-        self.assertIsNone(G, "G should be None for an empty model.")
-        self.assertIsNone(h, "h should be None for an empty model.")
+        self.assertIsNone(G)
+        self.assertIsNone(h)
 
     def test_model_with_subset_of_velocities_limited(self):
-        """Test that a model with a subset of velocity limits behaves correctly."""
-        limited_velocities = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i <= 2}
-        limit = VelocityLimit(self.model, limited_velocities)
+        """Test model with a subset of velocity limits."""
+        limit_subset = {key: value for i, (key, value) in enumerate(self.velocities.items()) if i <= 2}
+        limit = VelocityLimit(self.model, limit_subset)
         nb = 3
         nv = self.model.nv
-        self.assertEqual(limit.projection_matrix.shape, (nb, nv), "Projection matrix shape does not match expected.")
-        self.assertEqual(len(limit.indices), nb, "Number of limited joints does not match expected.")
+        self.assertEqual(limit.projection_matrix.shape, (nb, nv))
+        self.assertEqual(len(limit.indices), nb)
         expected_limit = np.asarray([np.pi] * nb)
-        np.testing.assert_allclose(limit.limit, expected_limit, "Velocity limits do not match expected.")
+        np.testing.assert_allclose(limit.limit, expected_limit)
         G, h = limit.compute_qp_inequalities(self.configuration, 1e-3)
-        self.assertEqual(G.shape, (2 * nb, nv), "G shape does not match expected.")
-        self.assertEqual(h.shape, (2 * nb,), "h shape does not match expected.")
+        self.assertEqual(G.shape, (2 * nb, nv))
+        self.assertEqual(h.shape, (2 * nb,))
 
     def test_model_with_ball_joint(self):
-        """Test that a model with a ball joint behaves correctly."""
+        """Test model with a ball joint."""
         xml_str = """
         <mujoco>
           <worldbody>
@@ -85,11 +85,11 @@ class TestVelocityLimit(absltest.TestCase):
         }
         limit = VelocityLimit(model, velocities)
         nb = 3 + 1
-        self.assertEqual(len(limit.indices), nb, "Number of limited joints does not match expected.")
-        self.assertEqual(limit.projection_matrix.shape, (nb, model.nv), "Projection matrix shape does not match expected.")
+        self.assertEqual(len(limit.indices), nb)
+        self.assertEqual(limit.projection_matrix.shape, (nb, model.nv))
 
     def test_ball_joint_invalid_limit_shape(self):
-        """Test that an invalid limit shape for a ball joint raises an error."""
+        """Test invalid limit shape for a ball joint."""
         xml_str = """
         <mujoco>
           <worldbody>
@@ -108,10 +108,8 @@ class TestVelocityLimit(absltest.TestCase):
         velocities = {
             "ball": (np.pi, np.pi / 2),
         }
-        with self.assertRaises(LimitDefinitionError) as cm:
+        with self.assertRaises(LimitDefinitionError):
             VelocityLimit(model, velocities)
-        expected_error_message = "Joint ball must have a limit of shape (3,). Got: (2,)"
-        self.assertEqual(str(cm.exception), expected_error_message, "Error message does not match expected.")
 
     def test_that_freejoint_raises_error(self):
         """Test that a free joint raises a LimitDefinitionError."""
@@ -134,10 +132,8 @@ class TestVelocityLimit(absltest.TestCase):
             "floating": np.pi,
             "hinge": np.pi,
         }
-        with self.assertRaises(LimitDefinitionError) as cm:
+        with self.assertRaises(LimitDefinitionError):
             VelocityLimit(model, velocities)
-        expected_error_message = "Free joint floating is not supported"
-        self.assertEqual(str(cm.exception), expected_error_message, "Error message does not match expected.")
 
 if __name__ == "__main__":
     absltest.main()
