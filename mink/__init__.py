@@ -1,4 +1,4 @@
-"""mink: MuJoCo inverse kinematics with gravity compensation and enhanced testing."""
+"""mink: MuJoCo inverse kinematics."""
 
 from .configuration import Configuration
 from .constants import (
@@ -24,7 +24,7 @@ from .limits import (
     Limit,
     VelocityLimit,
 )
-from .solve_ik import build_ik, solve_ik, apply_gravity_compensation
+from .solve_ik import solve_ik
 from .tasks import (
     ComTask,
     DampingTask,
@@ -48,9 +48,7 @@ from .utils import (
 __all__ = (
     "ComTask",
     "Configuration",
-    "build_ik",
     "solve_ik",
-    "apply_gravity_compensation",
     "DampingTask",
     "FrameTask",
     "RelativeFrameTask",
