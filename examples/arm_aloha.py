@@ -83,9 +83,11 @@ def setup_collision_avoidance(model):
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
+    table_geom = ["table"]
     collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),  # Collision between left and right wrists
-        (l_wrist_geoms + r_wrist_geoms, frame_geoms + ["table"]),  # Collision between wrists and table/frame
+        (l_wrist_geoms, frame_geoms + table_geom),  # Collision between left wrist and table/frame
+        (r_wrist_geoms, frame_geoms + table_geom),  # Collision between right wrist and table/frame
     ]
     return mink.CollisionAvoidanceLimit(
         model=model,
@@ -100,24 +102,34 @@ def main():
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    dof_ids, actuator_ids = get_dof_and_actuator_ids(model, list(_VELOCITY_LIMITS.keys()))
+    joint_names = list(_VELOCITY_LIMITS.keys())
+    dof_ids, actuator_ids = get_dof_and_actuator_ids(model, joint_names)
 
     configuration = mink.Configuration(model)
 
     # Define tasks for left and right end-effectors.
-    l_ee_task = mink.FrameTask(
-        frame_name="left/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    r_ee_task = mink.FrameTask(
-        frame_name="right/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
+    tasks = [
+        mink.FrameTask(
+            frame_name="left/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+        mink.FrameTask(
+            frame_name="right/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+    ]
+
+    # Define posture task.
+    posture_task = mink.PostureTask(
+        configuration=configuration,
+        position_cost=0.1,
+        orientation_cost=0.1,
     )
 
     # Set up collision avoidance.
@@ -131,8 +143,8 @@ def main():
     ]
 
     # Mocap target IDs.
-    left_target_id = model.body("left/target").mocapid[0]
-    right_target_id = model.body("right/target").mocapid[0]
+    l_mid = model.body("left/target").mocapid[0]
+    r_mid = model.body("right/target").mocapid[0]
 
     # Solver and error thresholds.
     solver = "quadprog"
@@ -156,14 +168,17 @@ def main():
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
-            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+
+            # Compute posture task target.
+            posture_task.set_target(configuration)
 
             # Compute velocity and integrate into the next configuration.
             for _ in range(max_iters):
                 vel = mink.solve_ik(
                     configuration,
-                    [l_ee_task, r_ee_task],
+                    tasks + [posture_task],
                     rate.dt,
                     solver,
                     limits=limits,
@@ -172,11 +187,11 @@ def main():
                 configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if the tasks are achieved.
-                l_err = l_ee_task.compute_error(configuration)
+                l_err = tasks[0].compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
 
-                r_err = r_ee_task.compute_error(configuration)
+                r_err = tasks[1].compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
 
