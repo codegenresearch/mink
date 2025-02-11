@@ -13,8 +13,7 @@ _IDENTITY_WXYZ = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64)
 _INVERT_QUAT_SIGN = np.array([1.0, -1.0, -1.0, -1.0], dtype=np.float64)
 
 
-@dataclass(frozen=True)
-class RollPitchYaw:
+class RollPitchYaw(NamedTuple):
     """Struct containing roll, pitch, and yaw Euler angles.
 
     Attributes:
@@ -22,9 +21,6 @@ class RollPitchYaw:
         pitch (float): Pitch angle in radians.
         yaw (float): Yaw angle in radians.
     """
-    roll: float
-    pitch: float
-    yaw: float
 
 
 @dataclass(frozen=True)
@@ -102,21 +98,19 @@ class SO3(MatrixLieGroup):
         return SO3.exp(np.array([0.0, 0.0, theta], dtype=np.float64))
 
     @classmethod
-    def from_rpy_radians(cls, roll: float, pitch: float, yaw: float) -> SO3:
+    def from_rpy_radians(cls, rpy: RollPitchYaw) -> SO3:
         """Create a rotation from roll, pitch, and yaw angles in radians.
 
         Args:
-            roll (float): Roll angle in radians.
-            pitch (float): Pitch angle in radians.
-            yaw (float): Yaw angle in radians.
+            rpy (RollPitchYaw): Roll, pitch, and yaw angles.
 
         Returns:
             SO3: Rotation from roll, pitch, and yaw.
         """
         return (
-            SO3.from_z_radians(yaw)
-            @ SO3.from_y_radians(pitch)
-            @ SO3.from_x_radians(roll)
+            cls.from_z_radians(rpy.yaw)
+            @ cls.from_y_radians(rpy.pitch)
+            @ cls.from_x_radians(rpy.roll)
         )
 
     @classmethod
@@ -129,15 +123,15 @@ class SO3(MatrixLieGroup):
         Returns:
             SO3: Rotation from the given matrix.
         """
-        assert matrix.shape == (SO3.matrix_dim, SO3.matrix_dim)
-        wxyz = np.zeros(SO3.parameters_dim, dtype=np.float64)
+        assert matrix.shape == (cls.matrix_dim, cls.matrix_dim)
+        wxyz = np.zeros(cls.parameters_dim, dtype=np.float64)
         mujoco.mju_mat2Quat(wxyz, matrix.ravel())
-        return SO3(wxyz=wxyz)
+        return cls(wxyz=wxyz)
 
     @classmethod
     def identity(cls) -> SO3:
         """Return the identity rotation."""
-        return SO3(wxyz=_IDENTITY_WXYZ)
+        return cls(wxyz=_IDENTITY_WXYZ)
 
     @classmethod
     def sample_uniform(cls) -> SO3:
@@ -163,7 +157,7 @@ class SO3(MatrixLieGroup):
             ],
             dtype=np.float64,
         )
-        return SO3(wxyz=wxyz)
+        return cls(wxyz=wxyz)
 
     def as_matrix(self) -> np.ndarray:
         """Convert the quaternion to a 3x3 rotation matrix.
@@ -233,7 +227,7 @@ class SO3(MatrixLieGroup):
         Returns:
             np.ndarray: Rotated 3D vector.
         """
-        assert target.shape == (SO3.space_dim,)
+        assert target.shape == (self.space_dim,)
         padded_target = np.concatenate([np.zeros(1, dtype=np.float64), target])
         return (self @ SO3(wxyz=padded_target) @ self.inverse()).wxyz[1:]
 
@@ -262,7 +256,7 @@ class SO3(MatrixLieGroup):
         Returns:
             SO3: Exponential map of the tangent vector.
         """
-        assert tangent.shape == (SO3.tangent_dim,)
+        assert tangent.shape == (cls.tangent_dim,)
         theta_squared = tangent @ tangent
         theta_pow_4 = theta_squared * theta_squared
         use_taylor = theta_squared < get_epsilon(tangent.dtype)
@@ -275,7 +269,7 @@ class SO3(MatrixLieGroup):
             real = np.cos(safe_half_theta)
             imaginary = np.sin(safe_half_theta) / safe_theta
         wxyz = np.concatenate([np.array([real]), imaginary * tangent])
-        return SO3(wxyz=wxyz)
+        return cls(wxyz=wxyz)
 
     def log(self) -> np.ndarray:
         """Logarithmic map from the manifold to the tangent space.
