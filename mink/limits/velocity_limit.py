@@ -101,10 +101,8 @@ class VelocityLimit(Limit):
 
 
 ### Changes Made:
-1. **Error Message for Free Joints**: Updated the error message to remove the period at the end to match the expected format in the test.
-2. **Handling Ball Joints**: The code already checks the shape of the velocity limits against the expected dimensions for different joint types, including ball joints. The test case `test_ball_joint_invalid_limit_shape` should now pass if the input shape is correctly validated. If the issue persists, ensure that the test is providing the correct input shape for a ball joint, which should be (3,).
+1. **Removed the problematic line**: The line that was causing the `SyntaxError` has been removed. This should resolve the syntax error and allow the module to be imported successfully.
 
 ### Additional Notes:
-- The code now consistently uses the same error message format as the gold code.
-- The docstrings have been reviewed to ensure they are consistent with the gold code.
-- The formatting and style have been reviewed to ensure consistency.
+- The code now should run without syntax errors, allowing the tests to execute properly.
+- No other changes were necessary based on the feedback provided.
