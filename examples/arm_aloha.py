@@ -60,13 +60,12 @@ if __name__ == "__main__":
         ),
         posture_task := mink.PostureTask(
             joint_names=joint_names,
-            joint_positions={name: data.qpos[model.joint(name).qposadr] for name in joint_names},
             position_cost=1e-4,
         ),
     ]
 
     # Set the posture task target from the current configuration.
-    posture_task.set_target(configuration)
+    posture_task.set_target_from_configuration(configuration)
 
     # Enable collision avoidance between the following geoms:
     # - Geoms starting at subtree "right wrist" and "table".
@@ -76,9 +75,9 @@ if __name__ == "__main__":
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
-        (l_wrist_geoms, r_wrist_geoms),
         (l_wrist_geoms, frame_geoms + ["table"]),
         (r_wrist_geoms, frame_geoms + ["table"]),
+        (l_wrist_geoms, r_wrist_geoms),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
