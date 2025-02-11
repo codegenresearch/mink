@@ -14,6 +14,7 @@ _INVERT_QUAT_SIGN = np.array([1.0, -1.0, -1.0, -1.0], dtype=np.float64)
 
 
 class RollPitchYaw(NamedTuple):
+    """Represents a rotation in 3D space using roll, pitch, and yaw angles in radians."""
     roll: float
     pitch: float
     yaw: float
@@ -44,21 +45,26 @@ class SO3(MatrixLieGroup):
         return f"{self.__class__.__name__}(wxyz={wxyz})"
 
     def parameters(self) -> np.ndarray:
+        """Returns the quaternion parameters."""
         return self.wxyz
 
     def copy(self) -> SO3:
+        """Returns a copy of the current SO3 instance."""
         return SO3(wxyz=self.wxyz.copy())
 
     @classmethod
     def from_x_radians(cls, theta: float) -> SO3:
+        """Creates an SO3 instance from a rotation around the x-axis by theta radians."""
         return SO3.exp(np.array([theta, 0.0, 0.0], dtype=np.float64))
 
     @classmethod
     def from_y_radians(cls, theta: float) -> SO3:
+        """Creates an SO3 instance from a rotation around the y-axis by theta radians."""
         return SO3.exp(np.array([0.0, theta, 0.0], dtype=np.float64))
 
     @classmethod
     def from_z_radians(cls, theta: float) -> SO3:
+        """Creates an SO3 instance from a rotation around the z-axis by theta radians."""
         return SO3.exp(np.array([0.0, 0.0, theta], dtype=np.float64))
 
     @classmethod
@@ -68,6 +74,7 @@ class SO3(MatrixLieGroup):
         pitch: float,
         yaw: float,
     ) -> SO3:
+        """Creates an SO3 instance from roll, pitch, and yaw angles in radians."""
         return (
             SO3.from_z_radians(yaw)
             @ SO3.from_y_radians(pitch)
@@ -76,6 +83,7 @@ class SO3(MatrixLieGroup):
 
     @classmethod
     def from_matrix(cls, matrix: np.ndarray) -> SO3:
+        """Creates an SO3 instance from a 3x3 rotation matrix."""
         assert matrix.shape == (SO3.matrix_dim, SO3.matrix_dim)
         wxyz = np.zeros(SO3.parameters_dim, dtype=np.float64)
         mujoco.mju_mat2Quat(wxyz, matrix.ravel())
@@ -83,11 +91,13 @@ class SO3(MatrixLieGroup):
 
     @classmethod
     def identity(cls) -> SO3:
+        """Returns the identity rotation."""
         return SO3(wxyz=_IDENTITY_WXYZ)
 
     @classmethod
     def sample_uniform(cls) -> SO3:
-        # Reference: https://lavalle.pl/planning/node198.html
+        """Samples a uniform random rotation."""
+        # Ref: https://lavalle.pl/planning/node198.html
         u1, u2, u3 = np.random.uniform(
             low=np.zeros(shape=(3,)),
             high=np.array([1.0, 2.0 * np.pi, 2.0 * np.pi]),
@@ -105,25 +115,30 @@ class SO3(MatrixLieGroup):
         )
         return SO3(wxyz=wxyz)
 
-    # Equation 138.
+    # Eq. 138.
     def as_matrix(self) -> np.ndarray:
+        """Converts the quaternion to a 3x3 rotation matrix."""
         mat = np.zeros(9, dtype=np.float64)
         mujoco.mju_quat2Mat(mat, self.wxyz)
         return mat.reshape(3, 3)
 
     def compute_roll_radians(self) -> float:
+        """Computes the roll angle in radians from the quaternion."""
         q0, q1, q2, q3 = self.wxyz
         return np.arctan2(2 * (q0 * q1 + q2 * q3), 1 - 2 * (q1**2 + q2**2))
 
     def compute_pitch_radians(self) -> float:
+        """Computes the pitch angle in radians from the quaternion."""
         q0, q1, q2, q3 = self.wxyz
         return np.arcsin(2 * (q0 * q2 - q3 * q1))
 
     def compute_yaw_radians(self) -> float:
+        """Computes the yaw angle in radians from the quaternion."""
         q0, q1, q2, q3 = self.wxyz
         return np.arctan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2**2 + q3**2))
 
     def as_rpy_radians(self) -> RollPitchYaw:
+        """Converts the quaternion to roll, pitch, and yaw angles in radians."""
         return RollPitchYaw(
             roll=self.compute_roll_radians(),
             pitch=self.compute_pitch_radians(),
@@ -132,25 +147,30 @@ class SO3(MatrixLieGroup):
 
     # Paragraph above Appendix B.A.
     def inverse(self) -> SO3:
+        """Returns the inverse of the rotation."""
         return SO3(wxyz=self.wxyz * _INVERT_QUAT_SIGN)
 
     def normalize(self) -> SO3:
+        """Normalizes the quaternion."""
         return SO3(wxyz=self.wxyz / np.linalg.norm(self.wxyz))
 
-    # Equation 136.
+    # Eq. 136.
     def apply(self, target: np.ndarray) -> np.ndarray:
+        """Applies the rotation to a 3D vector."""
         assert target.shape == (SO3.space_dim,)
         padded_target = np.concatenate([np.zeros(1, dtype=np.float64), target])
         return (self @ SO3(wxyz=padded_target) @ self.inverse()).wxyz[1:]
 
     def multiply(self, other: SO3) -> SO3:
+        """Multiplies this rotation with another SO3 instance."""
         res = np.empty(self.parameters_dim, dtype=np.float64)
         mujoco.mju_mulQuat(res, self.wxyz, other.wxyz)
         return SO3(wxyz=res)
 
-    # Equation 132.
+    # Eq. 132.
     @classmethod
     def exp(cls, tangent: np.ndarray) -> SO3:
+        """Exponential map from the tangent space to the manifold."""
         assert tangent.shape == (SO3.tangent_dim,)
         theta_squared = tangent @ tangent
         theta_pow_4 = theta_squared * theta_squared
@@ -166,8 +186,9 @@ class SO3(MatrixLieGroup):
         wxyz = np.concatenate([np.array([real]), imaginary * tangent])
         return SO3(wxyz=wxyz)
 
-    # Equation 133.
+    # Eq. 133.
     def log(self) -> np.ndarray:
+        """Logarithmic map from the manifold to the tangent space."""
         w = self.wxyz[0]
         norm_sq = self.wxyz[1:] @ self.wxyz[1:]
         use_taylor = norm_sq < get_epsilon(norm_sq.dtype)
@@ -184,15 +205,17 @@ class SO3(MatrixLieGroup):
                 atan_factor = 2.0 * atan_n_over_w / norm_safe
         return atan_factor * self.wxyz[1:]
 
-    # Equation 139.
+    # Eq. 139.
     def adjoint(self) -> np.ndarray:
+        """Returns the adjoint matrix of the rotation."""
         return self.as_matrix()
 
     # Jacobians.
 
-    # Equations 145, 174.
+    # Eq. 145, 174.
     @classmethod
     def ljac(cls, other: np.ndarray) -> np.ndarray:
+        """Left Jacobian of the exponential map."""
         theta = np.sqrt(other @ other)
         use_taylor = theta < get_epsilon(theta.dtype)
         if use_taylor:
@@ -207,6 +230,7 @@ class SO3(MatrixLieGroup):
 
     @classmethod
     def ljacinv(cls, other: np.ndarray) -> np.ndarray:
+        """Inverse of the left Jacobian of the exponential map."""
         theta = np.sqrt(other @ other)
         use_taylor = theta < get_epsilon(theta.dtype)
         if use_taylor:
