@@ -1,16 +1,16 @@
 # Configuration file for the Sphinx documentation builder.
 #
-# For a comprehensive list of built-in configuration values, refer to the official documentation:
+# For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Project Information -----------------------------------------------------
+# -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "mink"
 copyright = "2024, Kevin Zakka"
 author = "Kevin Zakka"
 
-# -- General Configuration ---------------------------------------------------
+# -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
@@ -39,8 +39,8 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": True,
-    "exclude-members": "__weakref__",
+    "inherited-members": None,
+    "exclude-members": "module",
 }
 
 # Autodoc type aliases
@@ -48,7 +48,7 @@ autodoc_type_aliases = {
     "MyType": "int",
 }
 
-# -- Options for HTML Output -------------------------------------------------
+# -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_rtd_theme"
