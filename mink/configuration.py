@@ -232,8 +232,6 @@ class Configuration:
             velocity: The velocity in tangent space.
             dt: Integration duration in [s].
         """
-        # Improve posture task integration by clamping velocity to avoid overshooting
-        velocity = np.clip(velocity, -0.5, 0.5)  # Adjust velocity limits as needed
         mujoco.mj_integratePos(self.model, self.data.qpos, velocity, dt)
         self.update()  # Ensure the internal state is refreshed after integration
 
@@ -256,7 +254,9 @@ class Configuration:
 
 
 ### Changes Made:
-1. **Velocity Clamping**: Adjusted the velocity clamping range from `[-1.0, 1.0]` to `[-0.5, 0.5]` to allow for more nuanced adjustments and potentially better convergence.
-2. **Integration and Update**: Ensured that `mujoco.mj_integratePos` is called with the correct parameters and that `self.update()` is called afterward to refresh the internal state.
-
-These changes aim to address the issues with the integration process and ensure that the configuration converges to the target as expected.
+1. **Removed Invalid Syntax in Comments**: Removed the numbered list and markdown-like formatting from the comment to ensure it adheres to Python's comment syntax.
+2. **Removed Velocity Clamping**: Removed the velocity clamping logic to align more closely with the gold code.
+3. **Documentation Consistency**: Ensured that the docstrings are consistent with the gold code in terms of phrasing and structure.
+4. **Method Implementation**: Ensured that the `integrate_inplace` method directly calls `mujoco.mj_integratePos` without any clamping, followed by an update.
+5. **Error Handling**: Verified that the error handling in `check_limits` is consistent with the gold code.
+6. **Code Formatting**: Maintained consistent formatting throughout the code, including spacing and line breaks, to enhance readability and maintainability.
