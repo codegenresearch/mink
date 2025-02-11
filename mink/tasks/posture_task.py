@@ -57,8 +57,7 @@ class PostureTask(Task):
         self.target_q = None
 
         # Identify the indices of free joint dimensions
-        _, v_ids_or_none = get_freejoint_dims(model)
-        self._v_ids = np.asarray(v_ids_or_none) if v_ids_or_none else None
+        _, self._v_ids = get_freejoint_dims(model)
 
         self.k = model.nv
         self.nq = model.nq
