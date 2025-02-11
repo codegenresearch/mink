@@ -39,7 +39,7 @@ autodoc_default_options = {
     "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": True,
+    "inherited-members": None,
     "exclude-members": "__weakref__",
 }
 
