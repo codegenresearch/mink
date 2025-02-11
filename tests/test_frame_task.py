@@ -46,7 +46,7 @@ class TestFrameTask(absltest.TestCase):
             )
         self.assertEqual(
             str(cm.exception),
-            "FrameTask position_cost must be a scalar or a vector of shape (3,). Got (2,)",
+            "FrameTask position_cost must be a scalar or a vector of shape (1,) (aka identical cost for all coordinates) or (3,). Got (2,)",
         )
 
         with self.assertRaises(TaskDefinitionError) as cm:
@@ -58,7 +58,7 @@ class TestFrameTask(absltest.TestCase):
             )
         self.assertEqual(
             str(cm.exception),
-            "FrameTask orientation_cost must be a scalar or a vector of shape (3,). Got (2,)",
+            "FrameTask orientation_cost must be a scalar or a vector of shape (1,) (aka identical cost for all coordinates) or (3,). Got (2,)",
         )
 
     def test_task_raises_error_if_cost_negative(self):
@@ -197,17 +197,25 @@ class TestFrameTask(absltest.TestCase):
             position_cost=1.0,
             orientation_cost=1.0,
         )
-        with self.assertRaises(InvalidTarget):
+        with self.assertRaises(InvalidTarget) as cm:
             task.set_target(SE3.from_rotation_and_translation(
                 rotation=SO3.identity(),
                 translation=np.random.rand(4),  # Invalid translation shape
             ))
+        self.assertEqual(
+            str(cm.exception),
+            "Expected target translation to have shape (3,) but got (4,)",
+        )
 
-        with self.assertRaises(InvalidTarget):
+        with self.assertRaises(InvalidTarget) as cm:
             task.set_target(SE3.from_rotation_and_translation(
                 rotation=np.random.rand(4),  # Invalid rotation shape
                 translation=np.random.rand(3),
             ))
+        self.assertEqual(
+            str(cm.exception),
+            "Expected target rotation to have shape (4,) but got (4,)",
+        )
 
     def test_zero_cost_same_as_disabling_task(self):
         task = FrameTask(
