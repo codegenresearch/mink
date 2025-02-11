@@ -7,6 +7,8 @@ References:
 - For more information on the Mujoco library, see: https://mujoco.readthedocs.io/
 """
 
+from __future__ import annotations
+
 from typing import Optional
 
 import mujoco
@@ -66,8 +68,7 @@ class PostureTask(Task):
         self.target_q = None
 
         # Determine the indices of the free joint dimensions, if any
-        _, v_ids_or_none = get_freejoint_dims(model)
-        self._v_ids = np.asarray(v_ids_or_none) if v_ids_or_none else None
+        self._v_ids = np.asarray(v_ids) if (v_ids := get_freejoint_dims(model)[1]) else None
 
         # Set the number of degrees of freedom and total number of joint angles
         self.k = model.nv
@@ -77,7 +78,7 @@ class PostureTask(Task):
         """Set the target posture for the robot.
 
         Args:
-            target_q: Desired joint configuration. Must be a 1D array with length equal to the number of joint angles.
+            target_q: Desired joint configuration.
 
         Raises:
             InvalidTarget: If the target posture does not have the correct shape.
@@ -90,10 +91,10 @@ class PostureTask(Task):
         self.target_q = target_q.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
-        r"""Set the target posture from the current configuration of the robot.
+        """Set the target posture from the current configuration of the robot.
 
         Args:
-            configuration: Current robot configuration :math:`q`.
+            configuration: Current robot configuration.
         """
         self.set_target(configuration.q)
 
@@ -109,7 +110,7 @@ class PostureTask(Task):
         where :math:`q^*` is the target posture and :math:`q` is the current posture.
 
         Args:
-            configuration: Current robot configuration :math:`q`.
+            configuration: Current robot configuration.
 
         Returns:
             Posture task error vector :math:`e(q)`.
@@ -142,7 +143,7 @@ class PostureTask(Task):
         The task Jacobian is the negative identity matrix :math:`-I_{n_v}`, where :math:`n_v` is the number of degrees of freedom.
 
         Args:
-            configuration: Current robot configuration :math:`q`.
+            configuration: Current robot configuration.
 
         Returns:
             Posture task Jacobian :math:`J(q)`.
