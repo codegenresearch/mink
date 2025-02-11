@@ -8,14 +8,11 @@ from mink.lie import utils
 
 class TestUtils(absltest.TestCase):
     def test_skew_throws_assertion_error_if_shape_invalid(self):
-        invalid_input: np.ndarray = np.zeros((5,))
         with self.assertRaises(AssertionError):
-            utils.skew(invalid_input)
+            utils.skew(np.zeros((5,)))
 
     def test_skew_equals_negative(self):
-        random_vector: np.ndarray = np.random.randn(3)
-        skew_matrix: np.ndarray = utils.skew(random_vector)
-        np.testing.assert_allclose(skew_matrix.T, -skew_matrix)
+        np.testing.assert_allclose(utils.skew(np.random.randn(3)).T, -utils.skew(np.random.randn(3)))
 
 
 if __name__ == "__main__":
