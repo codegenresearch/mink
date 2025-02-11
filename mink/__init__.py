@@ -40,7 +40,6 @@ from .utils import (
     get_freejoint_dims,
     get_subtree_geom_ids,
     move_mocap_to_frame,
-    set_mocap_pose_from_frame,
     pose_from_mocap,
 )
 
@@ -81,6 +80,13 @@ __all__ = (
     "move_mocap_to_frame",
     "get_subtree_geom_ids",
     "get_body_geom_ids",
-    "set_mocap_pose_from_frame",
     "pose_from_mocap",
 )
+
+
+### Additional Steps to Address the ImportError:
+1. **Check `utils.py`**: Ensure that the `set_mocap_pose_from_frame` function is defined in the `utils.py` file.
+2. **Update `__init__.py`**: If the function is defined, update the `__all__` list in the `__init__.py` file to include `set_mocap_pose_from_frame`.
+3. **Consistency**: Verify that there are no naming discrepancies between the function definition and its usage in the import statements.
+
+If `set_mocap_pose_from_frame` is not needed, remove it from the import statement and `__all__` to avoid confusion.
