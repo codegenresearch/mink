@@ -20,7 +20,7 @@ class ComTask(Task):
     in the world frame.
 
     Attributes:
-        target_com: Target position of the CoM.
+        target_com: Target position of the CoM in the world frame.
     """
 
     k: int = 3  # Dimension of the CoM position (x, y, z)
@@ -57,7 +57,7 @@ class ComTask(Task):
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"or ({self.k},). Got {cost.shape}"
+                f"(aka identical cost for all coordinates) or ({self.k},). Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
             raise TaskDefinitionError(f"{self.__class__.__name__} cost must be >= 0")
@@ -97,11 +97,13 @@ class ComTask(Task):
 
             e(q) = c^* - c
 
+        where :math:`c^*` is the target CoM position and :math:`c` is the current CoM position.
+
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Center-of-mass task error vector.
+            Center-of-mass task error vector :math:`e(q)`.
 
         Raises:
             TargetNotSet: If the target CoM position has not been set.
@@ -114,13 +116,19 @@ class ComTask(Task):
         r"""Compute the CoM task Jacobian.
 
         The task Jacobian is the derivative of the CoM position with respect to the
-        current configuration.
+        current configuration:
+
+        .. math::
+
+            J(q) \in \mathbb{R}^{3 \times n_v}
+
+        where :math:`J(q)` is the Jacobian matrix, :math:`n_v` is the number of degrees of freedom.
 
         Args:
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Center-of-mass task Jacobian.
+            Center-of-mass task Jacobian :math:`J(q)`.
 
         Raises:
             TargetNotSet: If the target CoM position has not been set.
