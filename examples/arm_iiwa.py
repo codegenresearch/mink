@@ -18,11 +18,11 @@ import mink
 
 # Define the path to the XML file containing the robot model
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "kuka_iiwa_14" / "scene.xml"
+_XML = _HERE / "kuka_iiwa_14" / "scene.xml"
 
-def main():
+if __name__ == "__main__":
     # Load the MuJoCo model and data
-    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
+    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
     ## =================== ##
@@ -43,7 +43,7 @@ def main():
         posture_task := mink.PostureTask(model=model, cost=1e-2),
     ]
 
-    # Define IK settings
+    # IK settings
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
@@ -72,7 +72,7 @@ def main():
 
         # Main simulation loop
         while viewer.is_running():
-            # Update the task target based on the mocap position
+            # Update task target
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
             end_effector_task.set_target(T_wt)
 
@@ -93,6 +93,3 @@ def main():
             # Synchronize the viewer and sleep to maintain the desired loop rate
             viewer.sync()
             rate.sleep()
-
-if __name__ == "__main__":
-    main()
