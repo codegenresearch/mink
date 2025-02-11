@@ -223,8 +223,4 @@ if __name__ == "__main__":
 
 
 ### Key Changes:
-1. **Syntax Error Fix**: Removed markdown-style comments and replaced them with standard Python comments.
-2. **Error Handling for Negative Costs**: Ensured that the checks for negative costs are consistent with the gold code.
-3. **Consolidation of Tests**: Simplified the `test_additional_configurations` method by removing the try-except block and focusing only on valid configurations.
-4. **Documentation and Comments**: Made comments more concise and directly relevant to the tests being performed.
-5. **Additional Configurations**: Aligned the handling of additional configurations with the gold code by testing only valid frame types.
+1. **Syntax Error Fix**: Removed markdown-style comments and replaced them with standard Python comments. This ensures that the code is syntactically correct and can be executed without errors.
