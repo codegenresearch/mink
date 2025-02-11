@@ -139,6 +139,37 @@ class TestUtils(absltest.TestCase):
         expected_geom_ids = {model.geom(geom_name).id for geom_name in expected_geom_names}
         self.assertSetEqual(actual_geom_ids, expected_geom_ids)
 
+    def test_get_subtree_body_ids(self):
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body name="b1" pos=".1 -.1 0">
+              <joint type="free"/>
+              <geom name="b1/g1" type="sphere" size=".1" mass=".1"/>
+              <geom name="b1/g2" type="sphere" size=".1" mass=".1" pos="0 0 .5"/>
+              <body name="b2">
+                <joint type="hinge" name="hinge_b2" range="0 1.57" limited="true"/>
+                <geom name="b2/g1" type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+            <body name="b3" pos="1 1 1">
+              <joint type="free"/>
+              <geom name="b3/g1" type="sphere" size=".1" mass=".1"/>
+              <body name="b4">
+                <joint type="hinge" name="hinge_b4" range="0 1.57" limited="true"/>
+                <geom name="b4/g1" type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        body_id_b1 = model.body("b1").id
+        actual_body_ids = set(utils.get_subtree_body_ids(model, body_id_b1))
+        expected_body_names = {"b1", "b2"}
+        expected_body_ids = {model.body(body_name).id for body_name in expected_body_names}
+        self.assertSetEqual(actual_body_ids, expected_body_ids)
+
 
 if __name__ == "__main__":
     absltest.main()
