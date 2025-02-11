@@ -91,11 +91,11 @@ class TestConfiguration(absltest.TestCase):
     def test_check_limits(self):
         """Check that an error is raised iff a joint limit is exceeded."""
         configuration = mink.Configuration(self.model, q=self.q_ref)
-        configuration.check_limits()
+        configuration.check_limits(safety_break=False)
         self.q_ref[0] += 1e4  # Move configuration out of bounds.
         configuration.update(q=self.q_ref)
         with self.assertRaises(mink.NotWithinConfigurationLimits):
-            configuration.check_limits()
+            configuration.check_limits(safety_break=False)
 
     def test_check_limits_with_safety_break(self):
         """Check that an error is raised iff a joint limit is exceeded with safety break."""
@@ -105,6 +105,41 @@ class TestConfiguration(absltest.TestCase):
         configuration.update(q=self.q_ref)
         with self.assertRaises(mink.NotWithinConfigurationLimits):
             configuration.check_limits(safety_break=True)
+
+    def test_check_limits_with_freejoint(self):
+        """Check that limits are correctly handled with a free joint configuration."""
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body>
+              <joint type="free" name="floating"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body>
+                <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        configuration = mink.Configuration(model)
+        configuration.check_limits(safety_break=False)
+        configuration.update(q=np.array([0, 0, 0, 0, 0, 0, 0, 1.6]))  # Exceeding hinge limit
+        with self.assertRaises(mink.NotWithinConfigurationLimits):
+            configuration.check_limits(safety_break=False)
+
+    def test_site_jacobian_raises_error_if_frame_name_is_invalid(self):
+        """Raise an error when the requested frame does not exist for site Jacobian."""
+        configuration = mink.Configuration(self.model)
+        with self.assertRaises(mink.InvalidFrame):
+            configuration.get_site_jacobian("invalid_name")
+
+    def test_site_jacobian_raises_error_if_frame_type_is_invalid(self):
+        """Raise an error when the requested frame type is invalid for site Jacobian."""
+        configuration = mink.Configuration(self.model)
+        with self.assertRaises(mink.UnsupportedFrame):
+            configuration.get_site_jacobian("name_does_not_matter", frame_type="joint")
 
 
 if __name__ == "__main__":
