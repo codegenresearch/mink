@@ -68,10 +68,10 @@ class PostureTask(Task):
         self.target_q = target_q.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
-        r"""Set the target posture from the current configuration.
+        """Set the target posture from the current configuration.
 
         Args:
-            configuration: Robot configuration :math:`q`.
+            configuration: Robot configuration.
         """
         self.set_target(configuration.q)
 
@@ -87,10 +87,10 @@ class PostureTask(Task):
         where :math:`q^*` is the target configuration and :math:`q` is the current configuration.
 
         Args:
-            configuration: Robot configuration :math:`q`.
+            configuration: Robot configuration.
 
         Returns:
-            Posture task error vector :math:`e(q)`.
+            Posture task error vector.
         """
         if self.target_q is None:
             raise TargetNotSet(self.__class__.__name__)
@@ -116,10 +116,10 @@ class PostureTask(Task):
         The task Jacobian is the negative identity matrix :math:`-I_{n_v}`.
 
         Args:
-            configuration: Robot configuration :math:`q`.
+            configuration: Robot configuration.
 
         Returns:
-            Posture task Jacobian :math:`J(q)`.
+            Posture task Jacobian.
         """
         if self.target_q is None:
             raise TargetNotSet(self.__class__.__name__)
