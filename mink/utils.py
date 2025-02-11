@@ -19,9 +19,9 @@ def move_mocap_to_frame(
     Args:
         model: Mujoco model.
         data: Mujoco data.
-        mocap_name: Name of the mocap body.
-        frame_name: Name of the target frame.
-        frame_type: Type of the target frame ("body", "geom", or "site").
+        mocap_name: The name of the mocap body.
+        frame_name: The name of the target frame.
+        frame_type: The type of the target frame ("body", "geom", or "site").
     """
     mocap_id = model.body(mocap_name).mocapid[0]
     if mocap_id == -1:
@@ -31,14 +31,14 @@ def move_mocap_to_frame(
     if obj_id == -1:
         raise ValueError(f"Frame '{frame_name}' of type '{frame_type}' not found in the model.")
 
-    frame_pos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
-    frame_xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
+    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
+    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
 
-    data.mocap_pos[mocap_id] = frame_pos.copy()
-    mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], frame_xmat)
+    data.mocap_pos[mocap_id] = xpos.copy()
+    mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
 
 
-def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
+def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
     """Get all floating joint configuration and tangent indices.
 
     Args:
@@ -48,8 +48,8 @@ def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
         A (q_ids, v_ids) pair containing all floating joint indices in the
         configuration and tangent spaces respectively.
     """
-    q_ids: list[int] = []
-    v_ids: list[int] = []
+    q_ids: List[int] = []
+    v_ids: List[int] = []
     for j in range(model.njnt):
         if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE:
             qadr = model.jnt_qposadr[j]
@@ -77,7 +77,7 @@ def custom_configuration_vector(
             defined in the keyframe if provided.
     """
     data = mujoco.MjData(model)
-    if key_name:
+    if key_name is not None:
         key_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
             raise InvalidKeyframe(key_name, model)
@@ -89,7 +89,7 @@ def custom_configuration_vector(
     for joint_name, value in kwargs.items():
         joint = model.joint(joint_name)
         qid = joint.qposadr
-        qdim = joint.dof if hasattr(joint, 'dof') else 1  # Fallback for joints without dof attribute
+        qdim = consts.qpos_width(model.jnt_type[joint.id])
         value = np.atleast_1d(value)
         if value.shape != (qdim,):
             raise ValueError(
