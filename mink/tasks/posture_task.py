@@ -1,5 +1,7 @@
 """Posture task implementation."""
 
+from __future__ import annotations
+
 from typing import Optional
 
 import mujoco
@@ -54,7 +56,7 @@ class PostureTask(Task):
 
         # Identify the indices of free joint dimensions
         _, free_joint_indices = get_freejoint_dims(model)
-        self._free_joint_indices = np.asarray(free_joint_indices) if free_joint_indices else None
+        self._v_ids = np.asarray(free_joint_indices) if free_joint_indices else None
 
         self.k = model.nv
         self.nq = model.nq
@@ -84,15 +86,19 @@ class PostureTask(Task):
         self.set_target(configuration.q)
 
     def compute_error(self, configuration: Configuration) -> np.ndarray:
-        """Compute the error between the current posture and the target posture.
+        r"""Compute the error between the current posture and the target posture.
 
-        The error is calculated using the difference in joint positions.
+        The error is defined as:
+
+        .. math::
+
+            e(q) = q^* \ominus q
 
         Args:
             configuration: Current configuration of the robot.
 
         Returns:
-            Error vector representing the difference between the target and current posture.
+            Posture task error vector :math:`e(q)`.
 
         Raises:
             TargetNotSet: If the target posture has not been set.
@@ -111,21 +117,21 @@ class PostureTask(Task):
         )
 
         # Set the error for free joint dimensions to zero
-        if self._free_joint_indices is not None:
-            qvel[self._free_joint_indices] = 0.0
+        if self._v_ids is not None:
+            qvel[self._v_ids] = 0.0
 
         return qvel
 
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
-        """Compute the Jacobian for the posture task.
+        r"""Compute the Jacobian for the posture task.
 
-        The Jacobian is the negative identity matrix, with zero entries for free joint dimensions.
+        The task Jacobian is the negative identity :math:`I_{n_v}`.
 
         Args:
             configuration: Current configuration of the robot.
 
         Returns:
-            Jacobian matrix for the posture task.
+            Posture task jacobian :math:`J(q)`.
 
         Raises:
             TargetNotSet: If the target posture has not been set.
@@ -137,7 +143,7 @@ class PostureTask(Task):
         jac = -np.eye(configuration.nv)
 
         # Set the Jacobian entries for free joint dimensions to zero
-        if self._free_joint_indices is not None:
-            jac[:, self._free_joint_indices] = 0.0
+        if self._v_ids is not None:
+            jac[:, self._v_ids] = 0.0
 
         return jac
