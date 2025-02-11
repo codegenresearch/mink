@@ -40,8 +40,8 @@ from .utils import (
     get_freejoint_dims,
     get_subtree_geom_ids,
     move_mocap_to_frame,
-    set_mocap_pose_from_frame,
     pose_from_mocap,
+    set_mocap_pose_from_frame,
 )
 
 __version__ = "0.0.2"  # Load version from pyproject.toml
@@ -81,8 +81,8 @@ __all__ = (
     "move_mocap_to_frame",
     "get_subtree_geom_ids",
     "get_body_geom_ids",
-    "set_mocap_pose_from_frame",
     "pose_from_mocap",
+    "set_mocap_pose_from_frame",
 )
 
 
@@ -90,10 +90,13 @@ __all__ = (
 1. **Ensure `set_mocap_pose_from_frame` is Defined in `utils.py`**:
    - Open `mink/utils.py` and verify that the function `set_mocap_pose_from_frame` is defined. If it is not, implement it.
 
-2. **Check for Redundant Imports**:
-   - Review all import statements to ensure they match the gold code exactly, without any unnecessary imports.
+2. **Review Import Statements**:
+   - Compare your import statements with the gold code to ensure there are no extra imports and all necessary imports are included.
 
 3. **Consistent Formatting**:
    - Ensure that the import statements and `__all__` declaration are formatted consistently with the gold code, paying attention to line breaks and parentheses.
 
-By following these steps, you should be able to resolve the `ImportError` and align your code more closely with the gold standard.
+4. **Order of Imports**:
+   - Verify that the order of your imports matches the sequence in the gold code for clarity and organization.
+
+By following these steps, you should be able to refine your code to be more in line with the gold standard.
