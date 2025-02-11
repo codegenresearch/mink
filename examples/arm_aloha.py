@@ -11,7 +11,7 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
 # Single arm joint names.
-_JOINT_NAMES = [
+_JOINT_NAMES: list[str] = [
     "waist",
     "shoulder",
     "elbow",
@@ -22,7 +22,7 @@ _JOINT_NAMES = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
+_VELOCITY_LIMITS: dict[str, float] = {k: np.pi for k in _JOINT_NAMES}
 
 
 if __name__ == "__main__":
@@ -30,8 +30,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = []
-    velocity_limits = {}
+    joint_names: list[str] = []
+    velocity_limits: dict[str, float] = {}
     for prefix in ["left", "right"]:
         for n in _JOINT_NAMES:
             name = f"{prefix}/{n}"
@@ -60,7 +60,7 @@ if __name__ == "__main__":
         ),
         posture_task := mink.PostureTask(
             joint_names=joint_names,
-            joint_positions={name: 0.0 for name in joint_names},
+            joint_positions={name: data.qpos[model.joint(name).qposadr] for name in joint_names},
             position_cost=1e-4,
         ),
     ]
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     # Set the posture task target from the current configuration.
     posture_task.set_target(configuration)
 
-    # Define collision avoidance between the following geoms:
+    # Enable collision avoidance between the following geoms:
     # - Geoms starting at subtree "right wrist" and "table".
     # - Geoms starting at subtree "left wrist" and "table".
     # - Geoms starting at subtree "right wrist" and "left wrist".
