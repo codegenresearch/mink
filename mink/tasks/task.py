@@ -25,7 +25,20 @@ class Objective(NamedTuple):
 class Task(abc.ABC):
     """Abstract base class for kinematic tasks.
 
-    Subclasses must implement the `compute_error` and `compute_jacobian` methods.
+    This class defines the structure for kinematic tasks, which are used to compute
+    the error and Jacobian necessary for inverse kinematics. Subclasses must implement
+    the `compute_error` and `compute_jacobian` methods.
+
+    The task dynamics are defined by the equation:
+
+    .. math::
+
+        J(q) \Delta q = -\alpha e(q)
+
+    where :math:`J(q)` is the task Jacobian, :math:`\Delta q` is the configuration
+    displacement, :math:`\alpha` is the task gain, and :math:`e(q)` is the task error.
+    The Jacobian :math:`J(q)` is the derivative of the task error with respect to the
+    configuration :math:`q`.
     """
 
     def __init__(
@@ -85,7 +98,7 @@ class Task(abc.ABC):
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Task error vector :math:`e(q)`.
+            Task error vector :math:`e(q) \in \mathbb{R}^{k}`.
         """
         raise NotImplementedError
 
@@ -102,7 +115,7 @@ class Task(abc.ABC):
             configuration: Robot configuration :math:`q`.
 
         Returns:
-            Task jacobian :math:`J(q)`.
+            Task Jacobian matrix :math:`J(q) \in \mathbb{R}^{k \times n_v}`.
         """
         raise NotImplementedError
 
@@ -131,14 +144,14 @@ class Task(abc.ABC):
         jacobian = self.compute_jacobian(configuration)  # (k, nv)
         minus_gain_error = -self.gain * self.compute_error(configuration)  # (k,)
 
-        weight_matrix = np.diag(self.cost)
-        weighted_jacobian = weight_matrix @ jacobian
-        weighted_error = weight_matrix @ minus_gain_error
+        weight = np.diag(self.cost)
+        weighted_jacobian = weight @ jacobian
+        weighted_error = weight @ minus_gain_error
 
         mu = self.lm_damping * weighted_error @ weighted_error
-        identity_matrix = np.eye(configuration.model.nv)
+        eye_tg = np.eye(configuration.model.nv)
 
-        H = weighted_jacobian.T @ weighted_jacobian + mu * identity_matrix  # (nv, nv)
+        H = weighted_jacobian.T @ weighted_jacobian + mu * eye_tg  # (nv, nv)
         c = -weighted_error.T @ weighted_jacobian  # (nv,)
 
         return Objective(H, c)
