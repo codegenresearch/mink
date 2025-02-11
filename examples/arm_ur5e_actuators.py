@@ -10,12 +10,21 @@ import mink
 _HERE = Path(__file__).parent
 _XML_PATH = _HERE / "universal_robots_ur5e" / "scene.xml"
 
-def setup_collision_avoidance(model):
+def setup_configuration_and_limits(model):
+    configuration = mink.Configuration(model)
+    
+    end_effector_task = mink.FrameTask(
+        frame_name="attachment_site",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    
     wrist_3_geoms = mink.get_body_geom_ids(model, model.body("wrist_3_link").id)
     collision_pairs = [(wrist_3_geoms, ["floor", "wall"])]
-    return mink.CollisionAvoidanceLimit(model=model, geom_pairs=collision_pairs)
-
-def setup_velocity_limit(model):
+    collision_avoidance_limit = mink.CollisionAvoidanceLimit(model=model, geom_pairs=collision_pairs)
+    
     max_velocities = {
         "shoulder_pan": np.pi,
         "shoulder_lift": np.pi,
@@ -24,40 +33,27 @@ def setup_velocity_limit(model):
         "wrist_2": np.pi,
         "wrist_3": np.pi,
     }
-    return mink.VelocityLimit(model, max_velocities)
-
-def setup_tasks(model):
-    return [
-        mink.FrameTask(
-            frame_name="attachment_site",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-    ]
-
-def setup_limits(model, configuration):
-    collision_avoidance_limit = setup_collision_avoidance(model)
-    velocity_limit = setup_velocity_limit(model)
-    return [
+    velocity_limit = mink.VelocityLimit(model, max_velocities)
+    
+    limits = [
         mink.ConfigurationLimit(model=configuration.model),
         collision_avoidance_limit,
         velocity_limit,
     ]
+    
+    return configuration, [end_effector_task], limits
 
 def main():
     model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
     data = mujoco.MjData(model)
 
-    configuration = mink.Configuration(model)
-    tasks = setup_tasks(model)
-    limits = setup_limits(model, configuration)
+    configuration, tasks, limits = setup_configuration_and_limits(model)
+    end_effector_task = tasks[0]
 
     solver = "quadprog"
-    position_threshold = 1e-4
-    orientation_threshold = 1e-4
-    max_iterations = 20
+    pos_threshold = 1e-4
+    ori_threshold = 1e-4
+    max_iters = 20
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -69,27 +65,27 @@ def main():
 
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
-        rate_limiter = RateLimiter(frequency=500.0)
+        rate = RateLimiter(frequency=500.0, warn=False)
         while viewer.is_running():
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
-            tasks[0].set_target(T_wt)
+            end_effector_task.set_target(T_wt)
 
-            for _ in range(max_iterations):
-                velocity = mink.solve_ik(
-                    configuration, tasks, rate_limiter.dt, solver, damping=1e-3, limits=limits
+            for _ in range(max_iters):
+                vel = mink.solve_ik(
+                    configuration, tasks, rate.dt, solver, damping=1e-3, limits=limits
                 )
-                configuration.integrate_inplace(velocity, rate_limiter.dt)
-                error = tasks[0].compute_error(configuration)
-                position_achieved = np.linalg.norm(error[:3]) <= position_threshold
-                orientation_achieved = np.linalg.norm(error[3:]) <= orientation_threshold
-                if position_achieved and orientation_achieved:
+                configuration.integrate_inplace(vel, rate.dt)
+                err = end_effector_task.compute_error(configuration)
+                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
+                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
+                if pos_achieved and ori_achieved:
                     break
 
             data.ctrl = configuration.q
             mujoco.mj_step(model, data)
 
             viewer.sync()
-            rate_limiter.sleep()
+            rate.sleep()
 
 if __name__ == "__main__":
     main()
