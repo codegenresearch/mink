@@ -38,13 +38,13 @@ class Configuration:
         self,
         model: mujoco.MjModel,
         q: Optional[np.ndarray] = None,
-    ):
+    ) -> None:
         """Constructor.
 
         Args:
             model: Mujoco model.
-            q: Configuration to initialize from. If None, the configuration is
-                initialized to the default configuration `qpos0`.
+            q: Configuration to initialize from. If None, the configuration
+                is initialized to the default configuration `qpos0`.
         """
         self.model = model
         self.data = mujoco.MjData(model)
