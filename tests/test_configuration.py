@@ -57,19 +57,19 @@ class TestConfiguration(absltest.TestCase):
         )
 
     def test_site_transform_raises_error_if_frame_name_is_invalid(self):
-        """Test that an error is raised when the requested frame does not exist."""
+        """Raise an error when the requested frame does not exist."""
         configuration = mink.Configuration(self.model)
         with self.assertRaises(mink.InvalidFrame):
             configuration.get_transform_frame_to_world("invalid_name", "site")
 
     def test_site_transform_raises_error_if_frame_type_is_invalid(self):
-        """Test that an error is raised when the requested frame type is invalid."""
+        """Raise an error when the requested frame type is invalid."""
         configuration = mink.Configuration(self.model)
         with self.assertRaises(mink.UnsupportedFrame):
             configuration.get_transform_frame_to_world("name_does_not_matter", "joint")
 
     def test_update_raises_error_if_keyframe_is_invalid(self):
-        """Test that an error is raised when the requested keyframe does not exist."""
+        """Raise an error when the requested keyframe does not exist."""
         configuration = mink.Configuration(self.model)
         with self.assertRaises(mink.InvalidKeyframe):
             configuration.update_from_keyframe("invalid_keyframe")
@@ -91,6 +91,33 @@ class TestConfiguration(absltest.TestCase):
         # Inplace integration should change qpos.
         configuration.integrate_inplace(qvel, dt)
         np.testing.assert_almost_equal(configuration.q, expected_qpos)
+
+    def test_site_jacobian(self):
+        """Test that the site Jacobian is correctly computed."""
+        site_name = "attachment_site"
+        configuration = mink.Configuration(self.model)
+
+        # Randomly sample a joint configuration.
+        np.random.seed(12345)
+        configuration.data.qpos = np.random.uniform(*configuration.model.jnt_range.T)
+        configuration.update()
+
+        jacobian = configuration.get_frame_jacobian(site_name, "site")
+
+        expected_jacobian = configuration.data.get_site_jacp(site_name)
+        np.testing.assert_almost_equal(jacobian, expected_jacobian)
+
+    def test_site_jacobian_raises_error_if_frame_name_is_invalid(self):
+        """Raise an error when the requested frame does not exist."""
+        configuration = mink.Configuration(self.model)
+        with self.assertRaises(mink.InvalidFrame):
+            configuration.get_frame_jacobian("invalid_name", "site")
+
+    def test_site_jacobian_raises_error_if_frame_type_is_invalid(self):
+        """Raise an error when the requested frame type is invalid."""
+        configuration = mink.Configuration(self.model)
+        with self.assertRaises(mink.UnsupportedFrame):
+            configuration.get_frame_jacobian("name_does_not_matter", "joint")
 
     def test_check_limits(self):
         """Test that an error is raised if a joint limit is exceeded."""
