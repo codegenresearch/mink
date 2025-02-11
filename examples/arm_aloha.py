@@ -33,31 +33,30 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Collect joint and actuator IDs for both arms.
-    joint_names = [f"{prefix}/{name}" for prefix in ["left", "right"] for name in _JOINT_NAMES]
-    velocity_limits = {name: _VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
-    dof_ids = np.array([model.joint(name).id for name in joint_names])
-    actuator_ids = np.array([model.actuator(name).id for name in joint_names])
+    joint_names: list[str] = [f"{prefix}/{name}" for prefix in ["left", "right"] for name in _JOINT_NAMES]
+    velocity_limits: dict[str, float] = {name: _VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
+    dof_ids: np.ndarray = np.array([model.joint(name).id for name in joint_names])
+    actuator_ids: np.ndarray = np.array([model.actuator(name).id for name in joint_names])
 
     # Initialize the configuration for IK.
     configuration = mink.Configuration(model)
 
     # Define IK tasks for both arms' end effectors.
-    tasks = [
-        mink.FrameTask(
-            frame_name="left/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-        mink.FrameTask(
-            frame_name="right/gripper",
-            frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
-        ),
-    ]
+    l_ee_task = mink.FrameTask(
+        frame_name="left/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    r_ee_task = mink.FrameTask(
+        frame_name="right/gripper",
+        frame_type="site",
+        position_cost=1.0,
+        orientation_cost=1.0,
+        lm_damping=1.0,
+    )
+    tasks = [l_ee_task, r_ee_task]
 
     # Set up collision avoidance between the wrists and the table, and between the two wrists.
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
@@ -107,8 +106,8 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update the targets for both end effectors.
-            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Solve IK and integrate the solution.
             for i in range(max_iters):
@@ -123,10 +122,10 @@ if __name__ == "__main__":
                 configuration.integrate_inplace(vel, rate.dt)
 
                 # Check if both end effectors have reached their targets.
-                l_err = tasks[0].compute_error(configuration)
+                l_err = l_ee_task.compute_error(configuration)
                 l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
                 l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = tasks[1].compute_error(configuration)
+                r_err = r_ee_task.compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
                 if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
