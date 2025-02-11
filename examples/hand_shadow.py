@@ -9,7 +9,7 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "shadow_hand" / "scene_left.xml"
 
-RATE_LIMITER_FREQUENCY = 1000.0
+RATE_LIMITER_FREQUENCY = 500.0
 RATE_LIMITER_WARN = False
 
 if __name__ == "__main__":
@@ -20,16 +20,16 @@ if __name__ == "__main__":
     posture_task = mink.PostureTask(model, cost=1e-2)
 
     fingers = ["thumb", "first", "middle", "ring", "little"]
-    finger_tasks = [
-        mink.FrameTask(
+    finger_tasks = []
+    for finger in fingers:
+        task = mink.FrameTask(
             frame_name=finger,
             frame_type="site",
             position_cost=1.0,
             orientation_cost=0.0,
             lm_damping=1.0,
         )
-        for finger in fingers
-    ]
+        finger_tasks.append(task)
 
     tasks = [
         posture_task,
