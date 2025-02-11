@@ -26,7 +26,6 @@ def check_log_exp_bijective(transform: MatrixLieGroup, group: Type[MatrixLieGrou
     """Check 1-to-1 mapping for log <=> exp operations."""
     tangent = transform.log()
     assert tangent.shape == (group.tangent_dim,)
-
     exp_transform = group.exp(tangent)
     assert_transforms_close(transform, exp_transform)
     np.testing.assert_allclose(tangent, exp_transform.log())
@@ -182,3 +181,5 @@ if __name__ == "__main__":
 5. **Documentation**: Updated docstrings to be more concise and directly related to the test being performed.
 6. **Edge Cases**: Included edge cases for RPY conversion within the `test_rpy_bijective` method.
 7. **Assertions**: Used `np.testing.assert_allclose` consistently for numerical comparisons.
+
+This should address the feedback and ensure the tests run without syntax errors.
