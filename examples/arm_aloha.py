@@ -1,31 +1,35 @@
 from pathlib import Path
-
 import mujoco
 import mujoco.viewer
 import numpy as np
 from loop_rate_limiters import RateLimiter
-
 import mink
 
 _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
 # Single arm joint names.
-_JOINT_NAMES = {
+_JOINT_NAMES = [
     "waist",
     "shoulder",
     "elbow",
     "forearm_roll",
     "wrist_angle",
     "wrist_rotate",
-}
+]
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
 _VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
 
 
-def test_body_ids(model):
+def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData) -> None:
+    """Compensate for gravity by setting the control to the gravity forces."""
+    mujoco.mj_rneUnconstrained(model, data)
+    data.ctrl[:] = data.qfrc_grav
+
+
+def test_body_ids(model: mujoco.MjModel) -> None:
     assert set(model.body(name).id for name in ["left/wrist_link", "right/wrist_link"]) == {
         model.body("left/wrist_link").id,
         model.body("right/wrist_link").id,
@@ -44,12 +48,12 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = set()
+    joint_names = []
     velocity_limits = {}
-    for prefix in {"left", "right"}:
+    for prefix in ["left", "right"]:
         for n in _JOINT_NAMES:
             name = f"{prefix}/{n}"
-            joint_names.add(name)
+            joint_names.append(name)
             velocity_limits[name] = _VELOCITY_LIMITS[n]
     dof_ids = np.array([model.joint(name).id for name in joint_names])
     actuator_ids = np.array([model.actuator(name).id for name in joint_names])
@@ -78,34 +82,34 @@ if __name__ == "__main__":
     # geoms starting at subtree "right wrist" - "table",
     # geoms starting at subtree "left wrist"  - "table",
     # geoms starting at subtree "right wrist" - geoms starting at subtree "left wrist".
-    l_wrist_geoms = set(mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id))
-    r_wrist_geoms = set(mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id))
-    l_geoms = set(mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id))
-    r_geoms = set(mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id))
-    frame_geoms = set(mink.get_body_geom_ids(model, model.body("metal_frame").id))
-    collision_pairs = {
+    l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
+    r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
+    l_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
+    r_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
+    frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
+    collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),
-        (l_geoms | r_geoms, frame_geoms | {"table"}),
-    }
+        (l_geoms + r_geoms, frame_geoms + ["table"]),
+    ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=collision_pairs,  # type: ignore
+        geom_pairs=collision_pairs,
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
 
-    limits = {
+    limits = [
         mink.ConfigurationLimit(model=model),
         mink.VelocityLimit(model, velocity_limits),
         collision_avoidance_limit,
-    }
+    ]
 
     l_mid = model.body("left/target").mocapid[0]
     r_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
-    pos_threshold = 1e-2
-    ori_threshold = 1e-2
-    max_iters = 2
+    pos_threshold = 1e-4
+    ori_threshold = 1e-4
+    max_iters = 20
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -155,6 +159,8 @@ if __name__ == "__main__":
                     break
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
+            compensate_gravity(model, data)
+
             mujoco.mj_step(model, data)
 
             # Visualize at fixed FPS.
