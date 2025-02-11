@@ -7,6 +7,7 @@ from robot_descriptions.loaders.mujoco import load_robot_description
 
 from mink import Configuration
 from mink.limits import LimitDefinitionError, VelocityLimit
+from mink.utils import get_freejoint_dims
 
 
 class TestVelocityLimit(absltest.TestCase):
@@ -14,19 +15,12 @@ class TestVelocityLimit(absltest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.model = load_robot_description("ur5e_mj_description")
+        cls.model = load_robot_description("g1_mj_description")
 
     def setUp(self):
         self.configuration = Configuration(self.model)
-        self.configuration.update_from_keyframe("home")
-        self.velocities = {
-            "shoulder_pan_joint": np.pi,
-            "shoulder_lift_joint": np.pi,
-            "elbow_joint": np.pi,
-            "wrist_1_joint": np.pi,
-            "wrist_2_joint": np.pi,
-            "wrist_3_joint": np.pi,
-        }
+        self.configuration.update_from_keyframe("stand")
+        self.velocities = {self.model.joint(i).name: np.pi for i in range(1, self.model.njnt)}
 
     def test_dimensions(self):
         limit = VelocityLimit(self.model, self.velocities)
@@ -34,6 +28,11 @@ class TestVelocityLimit(absltest.TestCase):
         nb = nv - len(get_freejoint_dims(self.model)[1])
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+
+    def test_indices(self):
+        limit = VelocityLimit(self.model, self.velocities)
+        expected_indices = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
+        self.assertTrue(np.allclose(limit.indices, expected_indices))
 
     def test_model_with_no_limit(self):
         empty_model = mujoco.MjModel.from_xml_string("<mujoco><compiler angle='radian'/></mujoco>")
