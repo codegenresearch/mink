@@ -60,58 +60,6 @@ def compute_contact_normal_jacobian(model: mujoco.MjModel, data: mujoco.MjData, 
     return contact.normal @ (jac2 - jac1)
 
 
-def is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
-    """Check if the geoms are welded together.
-
-    Args:
-        model: MuJoCo model.
-        geom_id1: ID of the first geom.
-        geom_id2: ID of the second geom.
-
-    Returns:
-        True if the geoms are part of the same body or weld, False otherwise.
-    """
-    body1 = model.geom_bodyid[geom_id1]
-    body2 = model.geom_bodyid[geom_id2]
-    weld1 = model.body_weldid[body1]
-    weld2 = model.body_weldid[body2]
-    return weld1 == weld2
-
-
-def are_geom_bodies_parent_child(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
-    """Check if the geom bodies have a parent-child relationship.
-
-    Args:
-        model: MuJoCo model.
-        geom_id1: ID of the first geom.
-        geom_id2: ID of the second geom.
-
-    Returns:
-        True if the geom bodies have a parent-child relationship, False otherwise.
-    """
-    body_id1 = model.geom_bodyid[geom_id1]
-    body_id2 = model.geom_bodyid[geom_id2]
-    weld_parent_id1 = model.body_parentid[model.body_weldid[body_id1]]
-    weld_parent_id2 = model.body_parentid[model.body_weldid[body_id2]]
-    return weld_parent_id1 == model.body_weldid[body_id2] or weld_parent_id2 == model.body_weldid[body_id1]
-
-
-def is_pass_contype_conaffinity_check(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
-    """Check if the geoms pass the contype/conaffinity check.
-
-    Args:
-        model: MuJoCo model.
-        geom_id1: ID of the first geom.
-        geom_id2: ID of the second geom.
-
-    Returns:
-        True if the geoms pass the contype/conaffinity check, False otherwise.
-    """
-    return bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2]) or bool(
-        model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1]
-    )
-
-
 def validate_se3_transformations(mocap_data: np.ndarray) -> bool:
     """Validate SE3 transformations from mocap data.
 
@@ -280,9 +228,53 @@ class CollisionAvoidanceLimit(Limit):
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
                 if (
-                    not is_welded_together(self.model, geom_a, geom_b)
-                    and not are_geom_bodies_parent_child(self.model, geom_a, geom_b)
-                    and is_pass_contype_conaffinity_check(self.model, geom_a, geom_b)
+                    not self._is_welded_together(geom_a, geom_b)
+                    and not self._are_geom_bodies_parent_child(geom_a, geom_b)
+                    and self._is_pass_contype_conaffinity_check(geom_a, geom_b)
                 ):
                     geom_id_pairs.append((min(geom_a, geom_b), max(geom_a, geom_b)))
         return geom_id_pairs
+
+    def _is_welded_together(self, geom_id1: int, geom_id2: int) -> bool:
+        """Check if the geoms are welded together.
+
+        Args:
+            geom_id1: ID of the first geom.
+            geom_id2: ID of the second geom.
+
+        Returns:
+            True if the geoms are part of the same body or weld, False otherwise.
+        """
+        body1 = self.model.geom_bodyid[geom_id1]
+        body2 = self.model.geom_bodyid[geom_id2]
+        return self.model.body_weldid[body1] == self.model.body_weldid[body2]
+
+    def _are_geom_bodies_parent_child(self, geom_id1: int, geom_id2: int) -> bool:
+        """Check if the geom bodies have a parent-child relationship.
+
+        Args:
+            geom_id1: ID of the first geom.
+            geom_id2: ID of the second geom.
+
+        Returns:
+            True if the geom bodies have a parent-child relationship, False otherwise.
+        """
+        body_id1 = self.model.geom_bodyid[geom_id1]
+        body_id2 = self.model.geom_bodyid[geom_id2]
+        weld_parent_id1 = self.model.body_parentid[self.model.body_weldid[body_id1]]
+        weld_parent_id2 = self.model.body_parentid[self.model.body_weldid[body_id2]]
+        return weld_parent_id1 == self.model.body_weldid[body_id2] or weld_parent_id2 == self.model.body_weldid[body_id1]
+
+    def _is_pass_contype_conaffinity_check(self, geom_id1: int, geom_id2: int) -> bool:
+        """Check if the geoms pass the contype/conaffinity check.
+
+        Args:
+            geom_id1: ID of the first geom.
+            geom_id2: ID of the second geom.
+
+        Returns:
+            True if the geoms pass the contype/conaffinity check, False otherwise.
+        """
+        return bool(self.model.geom_contype[geom_id1] & self.model.geom_conaffinity[geom_id2]) or bool(
+            self.model.geom_contype[geom_id2] & self.model.geom_conaffinity[geom_id1]
+        )
