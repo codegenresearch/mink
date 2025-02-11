@@ -39,11 +39,26 @@ def get_subtree_geom_ids(model: mujoco.MjModel, body_name: str) -> list[int]:
         geom_ids.extend(model.body_geomadr[body_id] + np.arange(model.body_geomnum[body_id]))
     return geom_ids
 
-def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, subtree_ids: list[int]) -> np.ndarray:
-    """Compute forces to counteract gravity for the specified subtree."""
+def compensate_gravity(model: mujoco.MjModel, data: mujoco.MjData, subtree_ids: list[int], qfrc_applied: np.ndarray = None) -> np.ndarray:
+    """
+    Compute forces to counteract gravity for the specified subtree.
+
+    Parameters:
+    - model (mujoco.MjModel): The MuJoCo model.
+    - data (mujoco.MjData): The MuJoCo data.
+    - subtree_ids (list[int]): List of body IDs in the subtree.
+    - qfrc_applied (np.ndarray, optional): Array to store applied forces. Defaults to None.
+
+    Returns:
+    - np.ndarray: Gravity compensation forces.
+    """
+    if qfrc_applied is None:
+        qfrc_applied = np.zeros(model.nu)
+    
     gravity_compensation = np.zeros(model.nu)
     for body_id in subtree_ids:
         gravity_compensation += data.qfrc_bias[model.body_dofadr[body_id]:model.body_dofadr[body_id] + model.body_dofnum[body_id]]
+    
     return gravity_compensation
 
 def test_get_subtree_body_ids():
@@ -101,18 +116,18 @@ if __name__ == "__main__":
     # geoms starting at subtree "right wrist" - "table",
     # geoms starting at subtree "left wrist"  - "table",
     # geoms starting at subtree "right wrist" - geoms starting at subtree "left wrist".
-    l_wrist_geoms = get_subtree_geom_ids(model, "left/wrist_link")
-    r_wrist_geoms = get_subtree_geom_ids(model, "right/wrist_link")
-    l_geoms = get_subtree_geom_ids(model, "left/upper_arm_link")
-    r_geoms = get_subtree_geom_ids(model, "right/upper_arm_link")
-    frame_geoms = get_subtree_geom_ids(model, "metal_frame")
+    l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
+    r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
+    l_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
+    r_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
+    frame_geoms = mink.get_subtree_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
         (l_wrist_geoms, r_wrist_geoms),
         (l_geoms + r_geoms, frame_geoms + ["table"]),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=collision_pairs,  # type: ignore
+        geom_pairs=collision_pairs,
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
@@ -126,8 +141,8 @@ if __name__ == "__main__":
     l_mid = model.body("left/target").mocapid[0]
     r_mid = model.body("right/target").mocapid[0]
     solver = "quadprog"
-    pos_threshold = 1e-3
-    ori_threshold = 1e-3
+    pos_threshold = 5e-3
+    ori_threshold = 5e-3
     max_iters = 5
 
     with mujoco.viewer.launch_passive(
