@@ -13,17 +13,23 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "boston_dynamics_spot" / "scene.xml"
 
 if __name__ == "__main__":
-    # Load the MuJoCo model and data from the XML file
+    ## =================== ##
+    ## Load Model and Data ##
+    ## =================== ##
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Setup IK configuration
+    ## =================== ##
+    ## Setup IK Configuration ##
+    ## =================== ##
     configuration = mink.Configuration(model)
 
     # Define foot names
     feet = ["FL", "FR", "HR", "HL"]
 
-    # Define tasks for IK
+    ## =================== ##
+    ## Define Tasks for IK ##
+    ## =================== ##
     base_task = mink.FrameTask(
         frame_name="body",
         frame_type="body",
@@ -52,23 +58,24 @@ if __name__ == "__main__":
 
     tasks = [base_task, posture_task, *feet_tasks, eef_task]
 
-    # Define mocap IDs for targets
+    ## =================== ##
+    ## Define Mocap IDs for Targets ##
+    ## =================== ##
     base_mid = model.body("body_target").mocapid[0]
     feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
     eef_mid = model.body("EE_target").mocapid[0]
 
-    # IK settings with validation
+    ## =================== ##
+    ## IK Settings ##
+    ## =================== ##
     solver = "quadprog"
     pos_threshold = 1e-4
     ori_threshold = 1e-4
     max_iters = 20
 
-    if pos_threshold <= 0 or ori_threshold <= 0:
-        raise ValueError("Position and orientation thresholds must be greater than zero.")
-    if max_iters <= 0:
-        raise ValueError("Maximum iterations must be greater than zero.")
-
-    # Launch the MuJoCo viewer
+    ## =================== ##
+    ## Launch MuJoCo Viewer ##
+    ## =================== ##
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
