@@ -113,7 +113,7 @@ if __name__ == "__main__":
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
-        geom_pairs=set(collision_pairs),  # Use set for comparison
+        geom_pairs=collision_pairs,  # Use list for comparison
         minimum_distance_from_collisions=0.05,
         collision_detection_distance=0.1,
     )
@@ -130,6 +130,10 @@ if __name__ == "__main__":
     pos_threshold = 5e-3
     ori_threshold = 5e-3
     max_iters = 5
+
+    # Define subtree IDs for gravity compensation
+    left_subtree_id = model.body("left/base_link").id
+    right_subtree_id = model.body("right/base_link").id
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -170,16 +174,11 @@ if __name__ == "__main__":
                 r_err = r_ee_task.compute_error(configuration)
                 r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
                 r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
-                if (
-                    l_pos_achieved
-                    and l_ori_achieved
-                    and r_pos_achieved
-                    and r_ori_achieved
-                ):
+                if l_pos_achieved and l_ori_achieved and r_pos_achieved and r_ori_achieved:
                     break
 
             data.ctrl[actuator_ids] = configuration.q[dof_ids]
-            compensate_gravity(model, data, [model.body("left/base_link").id, model.body("right/base_link").id])
+            compensate_gravity(model, data, [left_subtree_id, right_subtree_id])
 
             mujoco.mj_step(model, data)
 
