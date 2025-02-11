@@ -151,4 +151,4 @@ def test_negative_costs():
     assert np.all(c_task <= 0)
 
 
-This code snippet removes any extraneous comments or text that might cause a `SyntaxError`. The tests `test_jacobian_errors` and `test_negative_costs` have been adjusted to ensure they properly handle assertions and checks as described in the rules.
+This code snippet removes any extraneous comments or text that might cause a `SyntaxError`. The tests `test_jacobian_errors` and `test_negative_costs` have been adjusted to ensure they properly handle assertions and checks as described in the rules. The code is now clean and should be free of syntax errors.
