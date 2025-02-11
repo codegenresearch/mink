@@ -31,8 +31,8 @@ def get_direct_and_descendant_geoms(model, body_id):
     while stack:
         current_body_id = stack.pop()
         for child_id in range(model.body_childadr[current_body_id], model.body_childadr[current_body_id + 1]):
-            stack.append(child_id)
-            for geom_id in range(model.geom_bodyidadr[child_id], model.geom_bodyidadr[child_id + 1]):
+            stack.append(model.bodyid2bodyid[child_id])
+            for geom_id in range(model.geom_bodyadr[child_id], model.geom_bodyadr[child_id + 1]):
                 descendant_geoms.append(geom_id)
 
     return direct_geoms, descendant_geoms
@@ -231,6 +231,63 @@ class TestUtils(absltest.TestCase):
         expected_body_names = ["b1", "b2"]
         expected_body_ids = {model.body(g).id for g in expected_body_names}
         self.assertSetEqual(set(actual_body_ids), expected_body_ids)
+
+    def test_get_subtree_geom_ids_no_geoms(self):
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body name="b1" pos=".1 -.1 0">
+              <joint type="free"/>
+              <body name="b2">
+                <joint type="hinge" range="0 1.57" limited="true"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        b1_id = model.body("b1").id
+        actual_geom_ids = utils.get_subtree_geom_ids(model, b1_id)
+        self.assertListEqual(actual_geom_ids, [])
+
+    def test_get_subtree_body_ids_nonexistent_body(self):
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body name="b1" pos=".1 -.1 0">
+              <joint type="free"/>
+              <geom type="sphere" size=".1" mass=".1"/>
+              <body name="b2">
+                <joint type="hinge" range="0 1.57" limited="true"/>
+                <geom type="sphere" size=".1" mass=".1"/>
+              </body>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        with self.assertRaises(KeyError):
+            utils.get_subtree_body_ids(model, model.body("nonexistent").id)
+
+    def test_get_direct_and_descendant_geoms_no_children(self):
+        xml_str = """
+        <mujoco>
+          <worldbody>
+            <body name="b1" pos=".1 -.1 0">
+              <joint type="free"/>
+              <geom name="b1/g1" type="sphere" size=".1" mass=".1"/>
+              <geom name="b1/g2" type="sphere" size=".1" mass=".1" pos="0 0 .5"/>
+            </body>
+          </worldbody>
+        </mujoco>
+        """
+        model = mujoco.MjModel.from_xml_string(xml_str)
+        b1_id = model.body("b1").id
+        direct_geoms, descendant_geoms = get_direct_and_descendant_geoms(model, b1_id)
+        direct_geom_names = ["b1/g1", "b1/g2"]
+        expected_direct_geom_ids = {model.geom(g).id for g in direct_geom_names}
+        self.assertSetEqual(set(direct_geoms), expected_direct_geom_ids)
+        self.assertListEqual(descendant_geoms, list(expected_direct_geom_ids))
 
 
 if __name__ == "__main__":
