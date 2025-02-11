@@ -130,7 +130,9 @@ class TestConfiguration(absltest.TestCase):
 
         jacobian = configuration.get_frame_jacobian(site_name, "site")
 
-        expected_jacobian = configuration.data.get_site_jacp(site_name)
+        # Correctly compute the expected Jacobian using mujoco functions
+        mujoco.mj_jacSite(self.model, configuration.data, site_name)
+        expected_jacobian = configuration.data.site_jacp
         np.testing.assert_almost_equal(jacobian, expected_jacobian)
 
     def test_get_frame_jacobian_raises_error_if_frame_name_is_invalid(self):
