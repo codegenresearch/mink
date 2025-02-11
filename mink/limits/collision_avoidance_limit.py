@@ -45,7 +45,7 @@ class Contact:
     @property
     def inactive(self) -> bool:
         """Indicates if the contact is inactive."""
-        return self.dist == self.distmax and not self.fromto.any()
+        return self.dist == self.distmax
 
 
 def compute_contact_normal_jacobian(
@@ -222,9 +222,9 @@ class CollisionAvoidanceLimit(Limit):
         """
         upper_bound = np.full((self.max_num_contacts,), np.inf)
         coefficient_matrix = np.zeros((self.max_num_contacts, self.model.nv))
-        for idx, (geom1, geom2) in enumerate(self.geom_id_pairs):
+        for idx, (geom1_id, geom2_id) in enumerate(self.geom_id_pairs):
             contact = self._compute_contact_with_minimum_distance(
-                configuration.data, geom1, geom2
+                configuration.data, geom1_id, geom2_id
             )
             if contact.inactive:
                 continue
@@ -243,14 +243,14 @@ class CollisionAvoidanceLimit(Limit):
     # Private methods.
 
     def _compute_contact_with_minimum_distance(
-        self, data: mujoco.MjData, geom1: int, geom2: int
+        self, data: mujoco.MjData, geom1_id: int, geom2_id: int
     ) -> Contact:
         """Computes the contact with the minimum distance between two geoms.
 
         Args:
             data: The MuJoCo data.
-            geom1: The ID of the first geom.
-            geom2: The ID of the second geom.
+            geom1_id: The ID of the first geom.
+            geom2_id: The ID of the second geom.
 
         Returns:
             A Contact object representing the contact between the two geoms.
@@ -259,16 +259,16 @@ class CollisionAvoidanceLimit(Limit):
         dist = mujoco.mj_geomDistance(
             self.model,
             data,
-            geom1,
-            geom2,
+            geom1_id,
+            geom2_id,
             self.collision_detection_distance,
             fromto,
         )
         return Contact(
-            dist, fromto, geom1, geom2, self.collision_detection_distance
+            dist, fromto, geom1_id, geom2_id, self.collision_detection_distance
         )
 
-    def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> list[int]:
+    def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
         """Converts a list of geoms (specified by ID or name) to a list of IDs.
 
         Args:
@@ -286,7 +286,7 @@ class CollisionAvoidanceLimit(Limit):
                 geom_ids.append(self.model.geom(geom).id)
         return geom_ids
 
-    def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs):
+    def _collision_pairs_to_geom_id_pairs(self, collision_pairs: CollisionPairs) -> List[tuple[List[int], List[int]]]:
         """Converts collision pairs to geom ID pairs.
 
         Args:
@@ -304,7 +304,7 @@ class CollisionAvoidanceLimit(Limit):
             geom_id_pairs.append((geom_ids_1, geom_ids_2))
         return geom_id_pairs
 
-    def _construct_geom_id_pairs(self, geom_pairs):
+    def _construct_geom_id_pairs(self, geom_pairs: CollisionPairs) -> List[tuple[int, int]]:
         """Constructs a set of geom ID pairs for all possible geom-geom collisions.
 
         The contacts are added based on the following heuristics:
