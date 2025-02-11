@@ -36,7 +36,7 @@ class TestUtils(absltest.TestCase):
                 left_ankle_pitch_joint=(0.1, 0.1),
             )
 
-    def test_custom_configuration_vector_with_custom_joints(self):
+    def test_custom_configuration_vector(self):
         custom_joints = dict(
             left_ankle_pitch_joint=0.2,  # Hinge.
             right_ankle_roll_joint=0.1,  # Slide.
@@ -58,7 +58,7 @@ class TestUtils(absltest.TestCase):
                 "unused_frame_type",
             )
 
-    def test_move_mocap_to_frame_successfully(self):
+    def test_move_mocap_to_frame(self):
         xml_str = """
         <mujoco>
           <worldbody>
@@ -80,22 +80,22 @@ class TestUtils(absltest.TestCase):
         data = mujoco.MjData(model)
         mujoco.mj_forward(model, data)
 
-        target_body_pos = data.body("test").xpos
-        target_body_quat = np.empty(4)
-        mujoco.mju_mat2Quat(target_body_quat, data.body("test").xmat)
+        body_pos = data.body("test").xpos
+        body_quat = np.empty(4)
+        mujoco.mju_mat2Quat(body_quat, data.body("test").xmat)
 
         # Initially, mocap position and orientation should not match the target body's.
         with np.testing.assert_raises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xpos, target_body_pos)
+            np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
         with np.testing.assert_raises(AssertionError):
-            np.testing.assert_allclose(data.body("mocap").xquat, target_body_quat)
+            np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
 
         utils.move_mocap_to_frame(model, data, "mocap", "test", "body")
         mujoco.mj_forward(model, data)
 
         # After moving, mocap position and orientation should match the target body's.
-        np.testing.assert_allclose(data.body("mocap").xpos, target_body_pos)
-        np.testing.assert_allclose(data.body("mocap").xquat, target_body_quat)
+        np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
+        np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
 
     def test_get_freejoint_dimensions(self):
         q_indices, v_indices = utils.get_freejoint_dims(self.model)
@@ -117,7 +117,7 @@ class TestUtils(absltest.TestCase):
               <geom name="b1/g1" type="sphere" size=".1" mass=".1"/>
               <geom name="b1/g2" type="sphere" size=".1" mass=".1" pos="0 0 .5"/>
               <body name="b2">
-                <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>
+                <joint type="hinge" name="hinge_b2" range="0 1.57" limited="true"/>
                 <geom name="b2/g1" type="sphere" size=".1" mass=".1"/>
               </body>
             </body>
@@ -125,7 +125,7 @@ class TestUtils(absltest.TestCase):
               <joint type="free"/>
               <geom name="b3/g1" type="sphere" size=".1" mass=".1"/>
               <body name="b4">
-                <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>
+                <joint type="hinge" name="hinge_b4" range="0 1.57" limited="true"/>
                 <geom name="b4/g1" type="sphere" size=".1" mass=".1"/>
               </body>
             </body>
@@ -134,10 +134,10 @@ class TestUtils(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         body_id_b1 = model.body("b1").id
-        actual_geom_ids = utils.get_subtree_geom_ids(model, body_id_b1)
-        expected_geom_names = ["b1/g1", "b1/g2", "b2/g1"]
-        expected_geom_ids = [model.geom(geom_name).id for geom_name in expected_geom_names]
-        self.assertListEqual(actual_geom_ids, expected_geom_ids)
+        actual_geom_ids = set(utils.get_subtree_geom_ids(model, body_id_b1))
+        expected_geom_names = {"b1/g1", "b1/g2", "b2/g1"}
+        expected_geom_ids = {model.geom(geom_name).id for geom_name in expected_geom_names}
+        self.assertSetEqual(actual_geom_ids, expected_geom_ids)
 
 
 if __name__ == "__main__":
