@@ -1,4 +1,4 @@
-"""All kinematic limits derive from the :class:`Limit` base class, which supports posture tasks and enhanced collision avoidance mechanisms."""
+"""All kinematic limits derive from the :class:`Limit` base class."""
 
 import abc
 from typing import NamedTuple, Optional
@@ -11,19 +11,11 @@ from ..configuration import Configuration
 class Constraint(NamedTuple):
     r"""Linear inequality constraint of the form :math:`G(q) \Delta q \leq h(q)`.
 
-    This constraint is used to enforce kinematic limits and can be extended to include posture tasks and collision avoidance.
-
-    Attributes:
-        G: Coefficient matrix of the inequality constraint. Shape (nv, nv).
-        h: Constant vector of the inequality constraint. Shape (nv,).
-
     Inactive if G and h are None.
     """
 
     G: Optional[np.ndarray] = None
-    """Coefficient matrix of the inequality constraint. Shape (nv, nv)."""
     h: Optional[np.ndarray] = None
-    """Constant vector of the inequality constraint. Shape (nv,)."""
 
     @property
     def inactive(self) -> bool:
@@ -36,11 +28,7 @@ class Limit(abc.ABC):
 
     Subclasses must implement the :py:meth:`~Limit.compute_qp_inequalities` method
     which takes in the current robot configuration and integration time step and
-    returns an instance of :class:`Constraint`. This base class can be extended to
-    include posture tasks and improved collision avoidance mechanisms.
-
-    Methods:
-        compute_qp_inequalities: Computes the kinematic limits as linearized QP inequalities.
+    returns an instance of :class:`Constraint`.
     """
 
     @abc.abstractmethod
@@ -57,14 +45,13 @@ class Limit(abc.ABC):
 
         where :math:`q \in {\cal C}` is the robot's configuration and
         :math:`\Delta q \in T_q({\cal C})` is the displacement in the tangent
-        space at :math:`q`. This method can be extended to include posture tasks and
-        collision avoidance.
+        space at :math:`q`.
 
         Args:
             configuration: Robot configuration :math:`q`.
             dt: Integration time step in [s].
 
         Returns:
-            Pair :math:`(G, h)` representing the inequality constraint.
+            Pair :math:`(G, h)`.
         """
         raise NotImplementedError
