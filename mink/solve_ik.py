@@ -159,4 +159,4 @@ def validate_task_target(task: Task, configuration: Configuration) -> None:
         raise ValueError(f"Task target is not reachable: {e}")
 
 
-This code snippet removes the stray text comment that was causing the `SyntaxError`. The code should now be syntactically correct and ready for testing.
+This code snippet removes any stray text comments that might have been causing the `SyntaxError`. The code should now be syntactically correct and ready for testing.
