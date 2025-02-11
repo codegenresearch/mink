@@ -18,11 +18,11 @@ class VelocityLimit(Limit):
     Floating base joints are ignored.
 
     Attributes:
-        indices: Tangent indices corresponding to velocity-limited joints. Shape: (n,)
+        indices: Tangent indices corresponding to velocity-limited joints. Shape (nb,)
         limit: Maximum allowed velocity magnitude for velocity-limited joints, in
-            [m]/[s] for slide joints and [rad]/[s] for hinge joints. Shape: (n,)
+            [m]/[s] for slide joints and [rad]/[s] for hinge joints. Shape (nb,)
         projection_matrix: Projection from tangent space to subspace with
-            velocity-limited joints. Shape: (n, nv)
+            velocity-limited joints. Shape (nb, nv)
     """
 
     indices: np.ndarray
@@ -46,10 +46,10 @@ class VelocityLimit(Limit):
         for joint_name, max_vel in velocities.items():
             jid = model.joint(joint_name).id
             jnt_type = model.jnt_type[jid]
-            vdim = dof_width(jnt_type)
-            vadr = model.jnt_dofadr[jid]
             if jnt_type == mujoco.mjtJoint.mjJNT_FREE:
                 raise LimitDefinitionError(f"Free joint {joint_name} is not supported")
+            vdim = dof_width(jnt_type)
+            vadr = model.jnt_dofadr[jid]
             max_vel = np.atleast_1d(max_vel)
             if max_vel.shape != (vdim,):
                 raise LimitDefinitionError(
@@ -69,7 +69,7 @@ class VelocityLimit(Limit):
 
     def compute_qp_inequalities(
         self, configuration: Configuration, dt: float
-    ) -> Constraint:
+    ) -> Optional[Constraint]:
         r"""Compute the configuration-dependent joint velocity limits.
 
         The limits are defined as:
@@ -89,12 +89,12 @@ class VelocityLimit(Limit):
 
         Returns:
             Pair :math:`(G, h)` representing the inequality constraint as
-            :math:`G \Delta q \leq h`, where :math:`G` has shape (2n, nv) and :math:`h`
-            has shape (2n,). Returns an empty constraint if there are no limits.
+            :math:`G \Delta q \leq h`, where :math:`G` has shape (2nb, nv) and :math:`h`
+            has shape (2nb,). Returns `None` if there are no limits.
         """
         del configuration  # Unused.
         if self.projection_matrix is None:
-            return Constraint()
+            return None
         G = np.vstack([self.projection_matrix, -self.projection_matrix])
         h = np.hstack([dt * self.limit, dt * self.limit])
         return Constraint(G=G, h=h)
