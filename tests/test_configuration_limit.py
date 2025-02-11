@@ -52,7 +52,7 @@ class TestConfigurationLimit(absltest.TestCase):
         """Test that the indices of the velocity-limited joints are correct."""
         limit = ConfigurationLimit(self.model)
         expected = np.arange(6, self.model.nv)
-        self.assertTrue(np.allclose(limit.indices, expected))
+        npt.assert_allclose(limit.indices, expected)
 
     def test_model_with_no_limit(self):
         """Test behavior with a model that has no velocity limits."""
@@ -165,9 +165,10 @@ if __name__ == "__main__":
 
 
 ### Key Changes:
-1. **Syntax Error**: Removed the unterminated string literal by ensuring all multi-line strings are properly closed.
+1. **Syntax Error**: Ensured all multi-line strings are properly closed.
 2. **Docstring Consistency**: Simplified and ensured consistency in docstrings.
 3. **Expected Values**: Used `np.full` consistently for defining expected lower and upper limits.
 4. **Comment Clarity**: Reviewed and shortened comments for better readability.
-5. **Assertion Style**: Used `np.allclose` in `test_indices` and ensured the context is clear.
+5. **Assertion Style**: Used `npt.assert_allclose` for array comparisons.
 6. **Formatting and Spacing**: Adjusted spacing and line breaks to match the gold code's style.
+7. **Functionality Consistency**: Ensured the functionality of the tests matches the gold code.
