@@ -1,5 +1,7 @@
 """Posture task implementation."""
 
+from __future__ import annotations
+
 from typing import Optional
 
 import mujoco
@@ -66,28 +68,34 @@ class PostureTask(Task):
         self.target_q = target_q.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
-        """Set the target posture from the current configuration.
+        r"""Set the target posture from the current configuration.
 
         Args:
-            configuration: Robot configuration.
+            configuration: Robot configuration :math:`q`.
         """
         self.set_target(configuration.q)
 
     def compute_error(self, configuration: Configuration) -> np.ndarray:
-        """Compute the posture task error.
+        r"""Compute the posture task error.
 
-        The error is the difference between the target and current joint positions.
+        The error is defined as:
+
+        .. math::
+
+            e(q) = q^* - q
+
+        where :math:`q^*` is the target configuration and :math:`q` is the current configuration.
 
         Args:
-            configuration: Robot configuration.
+            configuration: Robot configuration :math:`q`.
 
         Returns:
-            Posture task error vector.
+            Posture task error vector :math:`e(q)`.
         """
         if self.target_q is None:
             raise TargetNotSet(self.__class__.__name__)
 
-        # Calculate the difference between target and current joint positions.
+        # NOTE: mj_differentiatePos calculates qpos2 - qpos1.
         qvel = np.empty(configuration.nv)
         mujoco.mj_differentiatePos(
             m=configuration.model,
@@ -103,15 +111,15 @@ class PostureTask(Task):
         return qvel
 
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
-        """Compute the posture task Jacobian.
+        r"""Compute the posture task Jacobian.
 
-        The task Jacobian is the negative identity matrix.
+        The task Jacobian is the negative identity matrix :math:`-I_{n_v}`.
 
         Args:
-            configuration: Robot configuration.
+            configuration: Robot configuration :math:`q`.
 
         Returns:
-            Posture task Jacobian.
+            Posture task Jacobian :math:`J(q)`.
         """
         if self.target_q is None:
             raise TargetNotSet(self.__class__.__name__)
