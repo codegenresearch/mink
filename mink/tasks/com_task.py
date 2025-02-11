@@ -77,10 +77,10 @@ class ComTask(Task):
         self.target_com = target_com.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
-        """Set the target CoM from a given robot configuration.
+        """Set the target CoM from a given robot configuration :math:`q`.
 
         Args:
-            configuration: Robot configuration.
+            configuration: Robot configuration :math:`q`.
         """
         self.set_target(configuration.data.subtree_com[1])
 
@@ -91,7 +91,7 @@ class ComTask(Task):
         the current CoM position.
 
         Args:
-            configuration: Robot configuration.
+            configuration: Robot configuration :math:`q`.
 
         Returns:
             Center-of-mass task error vector.
@@ -104,10 +104,10 @@ class ComTask(Task):
         """Compute the CoM task Jacobian.
 
         The task Jacobian is the derivative of the CoM position with respect to the
-        current configuration.
+        current configuration :math:`q`.
 
         Args:
-            configuration: Robot configuration.
+            configuration: Robot configuration :math:`q`.
 
         Returns:
             Center-of-mass task Jacobian.
