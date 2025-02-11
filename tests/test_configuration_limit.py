@@ -1,7 +1,6 @@
 """Tests for configuration_limit.py.
 
-This module contains tests for the ConfigurationLimit class, which defines
-inequality constraints on joint configurations in a robot model.
+This module contains tests for the ConfigurationLimit class.
 """
 
 import mujoco
@@ -16,7 +15,7 @@ from mink.utils import get_freejoint_dims
 
 
 class TestConfigurationLimit(absltest.TestCase):
-    """Test suite for the ConfigurationLimit class."""
+    """Test configuration limit."""
 
     @classmethod
     def setUpClass(cls):
@@ -68,6 +67,7 @@ class TestConfigurationLimit(absltest.TestCase):
         """Test behavior with a model that has a subset of velocity-limited joints."""
         xml_str = """
         <mujoco>
+          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="hinge" name="hinge_unlimited"/>
@@ -82,15 +82,20 @@ class TestConfigurationLimit(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         limit = ConfigurationLimit(model)
-        nb = 1  # Only one limited joint.
+        nb = 1  # 1 limited joint.
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+        self.assertTrue(np.allclose(limit.lower, np.full(nv, -np.inf)))
+        self.assertTrue(np.allclose(limit.upper, np.full(nv, np.inf)))
+        self.assertTrue(np.allclose(limit.lower[limit.indices], 0.0))
+        self.assertTrue(np.allclose(limit.upper[limit.indices], 1.57))
 
     def test_freejoint_ignored(self):
         """Test that free joints are ignored in the velocity limits."""
         xml_str = """
         <mujoco>
+          <compiler angle="radian"/>
           <worldbody>
             <body>
               <joint type="free" name="floating"/>
@@ -105,10 +110,14 @@ class TestConfigurationLimit(absltest.TestCase):
         """
         model = mujoco.MjModel.from_xml_string(xml_str)
         limit = ConfigurationLimit(model)
-        nb = 1  # Only one limited joint.
+        nb = 1  # 1 limited joint.
         nv = model.nv
         self.assertEqual(limit.projection_matrix.shape, (nb, nv))
         self.assertEqual(len(limit.indices), nb)
+        self.assertTrue(np.allclose(limit.lower, np.full(nv, -np.inf)))
+        self.assertTrue(np.allclose(limit.upper, np.full(nv, np.inf)))
+        self.assertTrue(np.allclose(limit.lower[limit.indices], 0.0))
+        self.assertTrue(np.allclose(limit.upper[limit.indices], 1.57))
 
     def test_far_from_limit(self, tol=1e-10):
         """Test that the limit has no effect when the configuration is far away."""
