@@ -33,8 +33,13 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Collect joint and actuator IDs for both arms.
-    joint_names: list[str] = [f"{prefix}/{name}" for prefix in ["left", "right"] for name in _JOINT_NAMES]
-    velocity_limits: dict[str, float] = {name: _VELOCITY_LIMITS[name.split('/')[-1]] for name in joint_names}
+    joint_names: list[str] = []
+    velocity_limits: dict[str, float] = {}
+    for prefix in ["left", "right"]:
+        for name in _JOINT_NAMES:
+            joint_name = f"{prefix}/{name}"
+            joint_names.append(joint_name)
+            velocity_limits[joint_name] = _VELOCITY_LIMITS[name]
     dof_ids: np.ndarray = np.array([model.joint(name).id for name in joint_names])
     actuator_ids: np.ndarray = np.array([model.actuator(name).id for name in joint_names])
 
@@ -42,23 +47,28 @@ if __name__ == "__main__":
     configuration = mink.Configuration(model)
 
     # Define IK tasks for both arms' end effectors.
-    l_ee_task = mink.FrameTask(
-        frame_name="left/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    r_ee_task = mink.FrameTask(
-        frame_name="right/gripper",
-        frame_type="site",
-        position_cost=1.0,
-        orientation_cost=1.0,
-        lm_damping=1.0,
-    )
-    tasks = [l_ee_task, r_ee_task]
+    tasks = [
+        l_ee_task := mink.FrameTask(
+            frame_name="left/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+        r_ee_task := mink.FrameTask(
+            frame_name="right/gripper",
+            frame_type="site",
+            position_cost=1.0,
+            orientation_cost=1.0,
+            lm_damping=1.0,
+        ),
+    ]
 
     # Set up collision avoidance between the wrists and the table, and between the two wrists.
+    # Collision pairs:
+    # - Geoms starting at subtree "right wrist" - "table"
+    # - Geoms starting at subtree "left wrist" - "table"
+    # - Geoms starting at subtree "right wrist" - geoms starting at subtree "left wrist"
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
