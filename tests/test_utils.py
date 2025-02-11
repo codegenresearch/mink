@@ -21,7 +21,7 @@ class TestUtils(absltest.TestCase):
         self.q0 = self.data.qpos.copy()
 
     def test_custom_configuration_vector_throws_error_if_keyframe_invalid(self):
-        with np.testing.assert_raises(InvalidKeyframe):
+        with self.assertRaises(InvalidKeyframe):
             utils.custom_configuration_vector(self.model, "stand123")
 
     def test_custom_configuration_vector_from_keyframe(self):
@@ -29,7 +29,7 @@ class TestUtils(absltest.TestCase):
         np.testing.assert_allclose(q, self.model.key("stand").qpos)
 
     def test_custom_configuration_vector_raises_error_if_jnt_shape_invalid(self):
-        with np.testing.assert_raises(ValueError):
+        with self.assertRaises(ValueError):
             utils.custom_configuration_vector(
                 self.model,
                 "stand",
@@ -43,13 +43,13 @@ class TestUtils(absltest.TestCase):
         )
         q = utils.custom_configuration_vector(self.model, **custom_joints)
         q_expected = self.q0.copy()
-        for joint_name, value in custom_joints.items():
-            qid = self.model.jnt_qposadr[self.model.joint(joint_name).id]
+        for name, value in custom_joints.items():
+            qid = self.model.jnt_qposadr[self.model.joint(name).id]
             q_expected[qid] = value
         np.testing.assert_array_almost_equal(q, q_expected)
 
     def test_move_mocap_to_frame_throws_error_if_body_not_mocap(self):
-        with np.testing.assert_raises(InvalidMocapBody):
+        with self.assertRaises(InvalidMocapBody):
             utils.move_mocap_to_frame(
                 self.model,
                 self.data,
@@ -85,9 +85,9 @@ class TestUtils(absltest.TestCase):
         mujoco.mju_mat2Quat(body_quat, data.body("test").xmat)
 
         # Initially, mocap position and orientation should not match the target body's.
-        with np.testing.assert_raises(AssertionError):
+        with self.assertRaises(AssertionError):
             np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
-        with np.testing.assert_raises(AssertionError):
+        with self.assertRaises(AssertionError):
             np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
 
         utils.move_mocap_to_frame(model, data, "mocap", "test", "body")
@@ -97,7 +97,7 @@ class TestUtils(absltest.TestCase):
         np.testing.assert_allclose(data.body("mocap").xpos, body_pos)
         np.testing.assert_allclose(data.body("mocap").xquat, body_quat)
 
-    def test_get_freejoint_dimensions(self):
+    def test_get_freejoint_dims(self):
         q_indices, v_indices = utils.get_freejoint_dims(self.model)
         np.testing.assert_allclose(
             np.asarray(q_indices),
@@ -176,9 +176,10 @@ class TestUtils(absltest.TestCase):
           <worldbody>
             <body name="b1" pos=".1 -.1 0">
               <joint type="free"/>
-              <body name="b2">
-                <joint type="hinge" name="hinge_b2" range="0 1.57" limited="true"/>
-              </body>
+              <geom type="sphere" size=".1" mass=".1"/>  <!-- Ensure body has a geom for mass -->
+            </body>
+            <body name="b2">
+              <joint type="hinge" name="hinge_b2" range="0 1.57" limited="true"/>
             </body>
           </worldbody>
         </mujoco>
@@ -186,8 +187,14 @@ class TestUtils(absltest.TestCase):
         model = mujoco.MjModel.from_xml_string(xml_str)
         body_id_b1 = model.body("b1").id
         actual_geom_ids = utils.get_subtree_geom_ids(model, body_id_b1)
-        expected_geom_ids = []
-        self.assertListEqual(actual_geom_ids, expected_geom_ids)
+        expected_geom_names = {"b1/g1"}
+        expected_geom_ids = {model.geom(geom_name).id for geom_name in expected_geom_names}
+        self.assertSetEqual(set(actual_geom_ids), expected_geom_ids)
+
+        body_id_b2 = model.body("b2").id
+        actual_geom_ids_b2 = utils.get_subtree_geom_ids(model, body_id_b2)
+        expected_geom_ids_b2 = []
+        self.assertListEqual(actual_geom_ids_b2, expected_geom_ids_b2)
 
 
 if __name__ == "__main__":
