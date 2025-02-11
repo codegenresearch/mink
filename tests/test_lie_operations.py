@@ -125,46 +125,52 @@ class TestGroupSpecificOperations(parameterized.TestCase):
 
     @parameterized.named_parameters(
         ("SO3", SO3),
-        ("SE3", SE3),
     )
-    def test_rpy_bijective(self, group: Type[MatrixLieGroup]):
+    def test_so3_rpy_bijective(self, group: Type[MatrixLieGroup]):
         """Check RPY conversion is bijective for SO3."""
-        if group is SO3:
-            T = group.sample_uniform()
-            assert_transforms_close(T, group.from_rpy_radians(*T.as_rpy_radians()))
+        T = group.sample_uniform()
+        assert_transforms_close(T, group.from_rpy_radians(*T.as_rpy_radians()))
+        rpy = T.as_rpy_radians()
+        T_reconstructed = group.from_rpy_radians(*rpy)
+        assert_transforms_close(T, T_reconstructed)
+
+        # Edge cases
+        edge_cases = [
+            (0, 0, 0),
+            (np.pi/2, 0, 0),
+            (0, np.pi/2, 0),
+            (0, 0, np.pi/2),
+            (np.pi, 0, 0),
+            (0, np.pi, 0),
+            (0, 0, np.pi),
+            (np.pi, np.pi, np.pi),
+        ]
+        for r, p, y in edge_cases:
+            T = group.from_rpy_radians(r, p, y)
             rpy = T.as_rpy_radians()
             T_reconstructed = group.from_rpy_radians(*rpy)
             assert_transforms_close(T, T_reconstructed)
 
-            # Edge cases
-            edge_cases = [
-                (0, 0, 0),
-                (np.pi/2, 0, 0),
-                (0, np.pi/2, 0),
-                (0, 0, np.pi/2),
-                (np.pi, 0, 0),
-                (0, np.pi, 0),
-                (0, 0, np.pi),
-                (np.pi, np.pi, np.pi),
-            ]
-            for r, p, y in edge_cases:
-                T = group.from_rpy_radians(r, p, y)
-                rpy = T.as_rpy_radians()
-                T_reconstructed = group.from_rpy_radians(*rpy)
-                assert_transforms_close(T, T_reconstructed)
-
-    def test_invalid_shape_log_exp(self):
+    @parameterized.named_parameters(
+        ("SO3", SO3),
+        ("SE3", SE3),
+    )
+    def test_invalid_shape_log_exp(self, group: Type[MatrixLieGroup]):
         """Check that log and exp raise errors for invalid shapes."""
-        T = SO3.sample_uniform()
+        T = group.sample_uniform()
         invalid_tangent = np.random.rand(T.tangent_dim + 1)
         with self.assertRaises(ValueError):
             T.exp(invalid_tangent)
         with self.assertRaises(ValueError):
             T.log(invalid_tangent)
 
-    def test_copy_operation(self):
+    @parameterized.named_parameters(
+        ("SO3", SO3),
+        ("SE3", SE3),
+    )
+    def test_copy_operation(self, group: Type[MatrixLieGroup]):
         """Check that copying a transformation results in an identical transformation."""
-        T = SO3.sample_uniform()
+        T = group.sample_uniform()
         T_copy = T.copy()
         assert_transforms_close(T, T_copy)
 
@@ -174,12 +180,13 @@ if __name__ == "__main__":
 
 
 ### Key Changes:
-1. **Removed Invalid Comment**: Removed the line that was causing the `SyntaxError`.
-2. **Consolidated RPY Bijective Tests**: Combined the RPY bijective tests into a single method within `TestGroupSpecificOperations` to reduce redundancy.
+1. **Removed Invalid Comment**: Removed the invalid comment that was causing the `SyntaxError`.
+2. **Consolidated RPY Bijective Tests**: Ensured that the RPY bijective tests are specific to `SO3` and properly parameterized.
 3. **Error Handling**: Used `self.assertRaises` for error handling tests to maintain consistency.
 4. **Class Structure**: Ensured that `TestGroupSpecificOperations` inherits from `parameterized.TestCase` and properly uses parameterization.
 5. **Documentation**: Updated docstrings to be more concise and directly related to the test being performed.
-6. **Edge Cases**: Included edge cases for RPY conversion within the `test_rpy_bijective` method.
+6. **Edge Cases**: Included edge cases for RPY conversion within the `test_so3_rpy_bijective` method.
 7. **Assertions**: Used `np.testing.assert_allclose` consistently for numerical comparisons.
+8. **Specificity in Tests**: Ensured that tests for `SO3` and `SE3` are specific and parameterized appropriately.
 
 This should address the feedback and ensure the tests run without syntax errors.
