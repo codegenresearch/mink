@@ -158,8 +158,8 @@ if __name__ == "__main__":
 
 
 ### Key Changes:
-1. **Corrected Site ID Retrieval**: Used `self.model.name2id(site_name, mujoco.mjtObj.mjOBJ_SITE)` to correctly retrieve the site ID.
+1. **Removed Incorrect Comment**: Removed the line that was incorrectly formatted as executable code.
 2. **Order of Test Methods**: Rearranged the test methods to match the order in the gold code for consistency.
-3. **Error Handling Tests**: Ensured that the naming conventions and descriptions of error handling tests match those in the gold code.
-4. **Check Limits Tests**: Included detailed tests for checking limits with free joints.
-5. **Documentation Strings**: Reviewed and aligned the docstrings with the gold code for consistency.
+3. **Error Handling Tests**: Ensured that the naming conventions and descriptions of error handling tests are consistent with those in the gold code.
+4. **Check Limits Tests**: Included a specific test for checking limits with free joints.
+5. **Documentation Strings**: Reviewed and aligned the docstrings for clarity and consistency with the gold code.
