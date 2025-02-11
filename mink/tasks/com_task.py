@@ -1,9 +1,12 @@
 """Center-of-mass task implementation."""
 
+from __future__ import annotations
+
 from typing import Optional
 
 import mujoco
 import numpy as np
+import numpy.typing as npt
 
 from ..configuration import Configuration
 from .exceptions import InvalidTarget, TargetNotSet, TaskDefinitionError
@@ -11,14 +14,18 @@ from .task import Task
 
 
 class ComTask(Task):
-    """Regulate the center-of-mass (CoM) of a robot."""
+    """Regulate the center-of-mass (CoM) of a robot.
+
+    Attributes:
+        target_com: Target position of the CoM in the world frame.
+    """
 
     k: int = 3
     target_com: Optional[np.ndarray]
 
     def __init__(
         self,
-        cost,
+        cost: npt.ArrayLike,
         gain: float = 1.0,
         lm_damping: float = 0.0,
     ):
@@ -27,27 +34,39 @@ class ComTask(Task):
 
         self.set_cost(cost)
 
-    def set_cost(self, cost) -> None:
+    def set_cost(self, cost: npt.ArrayLike) -> None:
         """Set a new cost for all CoM coordinates.
 
-        The cost must be a vector of shape (1,) (identical cost for all coordinates)
+        The cost must be a vector of shape (1,) (aka identical cost for all coordinates)
         or (3,). All cost values must be non-negative.
+
+        Args:
+            cost: New cost values for the CoM task.
+
+        Raises:
+            TaskDefinitionError: If the cost shape is invalid or contains negative values.
         """
         cost = np.atleast_1d(cost)
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"(identical cost for all coordinates) or ({self.k},). "
+                f"(aka identical cost for all coordinates) or ({self.k},). "
                 f"Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
             raise TaskDefinitionError(f"{self.__class__.__name__} cost must be >= 0")
         self.cost[:] = cost
 
-    def set_target(self, target_com) -> None:
+    def set_target(self, target_com: npt.ArrayLike) -> None:
         """Set the target CoM position in the world frame.
 
         The target CoM must be a vector of shape (3,).
+
+        Args:
+            target_com: Desired center-of-mass position in the world frame.
+
+        Raises:
+            InvalidTarget: If the target CoM shape is invalid.
         """
         target_com = np.atleast_1d(target_com)
         if target_com.ndim != 1 or target_com.shape[0] != self.k:
@@ -58,7 +77,11 @@ class ComTask(Task):
         self.target_com = target_com.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
-        """Set the target CoM from a given robot configuration."""
+        """Set the target CoM from a given robot configuration.
+
+        Args:
+            configuration: Robot configuration.
+        """
         self.set_target(configuration.data.subtree_com[1])
 
     def compute_error(self, configuration: Configuration) -> np.ndarray:
