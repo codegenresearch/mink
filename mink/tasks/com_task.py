@@ -37,7 +37,7 @@ class ComTask(Task):
     def set_cost(self, cost: npt.ArrayLike) -> None:
         """Set a new cost for all CoM coordinates.
 
-        The cost must be a vector of shape (1,) (identical cost for all coordinates)
+        The cost must be a vector of shape (1,) (aka identical cost for all coordinates)
         or (3,). All cost values must be non-negative.
 
         Args:
@@ -50,7 +50,7 @@ class ComTask(Task):
         if cost.ndim != 1 or cost.shape[0] not in (1, self.k):
             raise TaskDefinitionError(
                 f"{self.__class__.__name__} cost must be a vector of shape (1,) "
-                f"(identical cost for all coordinates) or ({self.k},). "
+                f"(aka identical cost for all coordinates) or ({self.k},). "
                 f"Got {cost.shape}"
             )
         if not np.all(cost >= 0.0):
