@@ -18,7 +18,7 @@ CollisionPairs = Sequence[CollisionPair]
 
 
 @dataclass(frozen=True)
-class _Contact:
+class Contact:
     dist: float
     fromto: np.ndarray
     geom1: int
@@ -35,7 +35,7 @@ class _Contact:
         return self.dist == self.distmax and not self.fromto.any()
 
 
-def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
+def is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> bool:
     """Returns true if the geoms are part of the same body, or if their bodies are
     welded together."""
     body1 = model.geom_bodyid[geom_id1]
@@ -45,7 +45,7 @@ def _is_welded_together(model: mujoco.MjModel, geom_id1: int, geom_id2: int) -> 
     return weld1 == weld2
 
 
-def _are_geom_bodies_parent_child(
+def are_geom_bodies_parent_child(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
     """Returns true if the geom bodies have a parent-child relationship."""
@@ -69,13 +69,45 @@ def _are_geom_bodies_parent_child(
     return cond1 or cond2
 
 
-def _is_pass_contype_conaffinity_check(
+def is_pass_contype_conaffinity_check(
     model: mujoco.MjModel, geom_id1: int, geom_id2: int
 ) -> bool:
     """Returns true if the geoms pass the contype/conaffinity check."""
     cond1 = bool(model.geom_contype[geom_id1] & model.geom_conaffinity[geom_id2])
     cond2 = bool(model.geom_contype[geom_id2] & model.geom_conaffinity[geom_id1])
     return cond1 or cond2
+
+
+def compute_contact_normal_jacobian(
+    model: mujoco.MjModel, data: mujoco.MjData, contact: Contact
+) -> np.ndarray:
+    """Computes the Jacobian mapping joint velocities to the normal component of
+    the relative Cartesian linear velocity between the geom pair.
+
+    The Jacobian-velocity relationship is given as:
+
+        J dq = n^T (v_2 - v_1)
+
+    where:
+    * J is the computed Jacobian.
+    * dq is the joint velocity vector.
+    * n^T is the transpose of the normal pointing from contact.geom1 to
+        contact.geom2.
+    *  v_1, v_2 are the linear components of the Cartesian velocity of the two
+        closest points in contact.geom1 and contact.geom2.
+
+    Note: n^T (v_2 - v_1) is a scalar that is positive if the geoms are moving away
+    from each other, and negative if they are moving towards each other.
+    """
+    geom1_body = model.geom_bodyid[contact.geom1]
+    geom2_body = model.geom_bodyid[contact.geom2]
+    geom1_contact_pos = contact.fromto[:3]
+    geom2_contact_pos = contact.fromto[3:]
+    jac2 = np.empty((3, model.nv))
+    mujoco.mj_jac(model, data, jac2, None, geom2_contact_pos, geom2_body)
+    jac1 = np.empty((3, model.nv))
+    mujoco.mj_jac(model, data, jac1, None, geom1_contact_pos, geom1_body)
+    return contact.normal @ (jac2 - jac1)
 
 
 class CollisionAvoidanceLimit(Limit):
@@ -166,7 +198,7 @@ class CollisionAvoidanceLimit(Limit):
                 upper_bound[idx] = (self.gain * dist / dt) + self.bound_relaxation
             else:
                 upper_bound[idx] = self.bound_relaxation
-            jac = self._compute_contact_normal_jacobian(configuration.data, contact)
+            jac = compute_contact_normal_jacobian(self.model, configuration.data, contact)
             coefficient_matrix[idx] = -jac
         return Constraint(G=coefficient_matrix, h=upper_bound)
 
@@ -174,7 +206,7 @@ class CollisionAvoidanceLimit(Limit):
 
     def _compute_contact_with_minimum_distance(
         self, data: mujoco.MjData, geom1_id: int, geom2_id: int
-    ) -> _Contact:
+    ) -> Contact:
         """Returns the smallest signed distance between a geom pair."""
         fromto = np.empty(6)
         dist = mujoco.mj_geomDistance(
@@ -185,40 +217,9 @@ class CollisionAvoidanceLimit(Limit):
             self.collision_detection_distance,
             fromto,
         )
-        return _Contact(
+        return Contact(
             dist, fromto, geom1_id, geom2_id, self.collision_detection_distance
         )
-
-    def _compute_contact_normal_jacobian(
-        self, data: mujoco.MjData, contact: _Contact
-    ) -> np.ndarray:
-        """Computes the Jacobian mapping joint velocities to the normal component of
-        the relative Cartesian linear velocity between the geom pair.
-
-        The Jacobian-velocity relationship is given as:
-
-            J dq = n^T (v_2 - v_1)
-
-        where:
-        * J is the computed Jacobian.
-        * dq is the joint velocity vector.
-        * n^T is the transpose of the normal pointing from contact.geom1 to
-            contact.geom2.
-        *  v_1, v_2 are the linear components of the Cartesian velocity of the two
-            closest points in contact.geom1 and contact.geom2.
-
-        Note: n^T (v_2 - v_1) is a scalar that is positive if the geoms are moving away
-        from each other, and negative if they are moving towards each other.
-        """
-        geom1_body = self.model.geom_bodyid[contact.geom1]
-        geom2_body = self.model.geom_bodyid[contact.geom2]
-        geom1_contact_pos = contact.fromto[:3]
-        geom2_contact_pos = contact.fromto[3:]
-        jac2 = np.empty((3, self.model.nv))
-        mujoco.mj_jac(self.model, data, jac2, None, geom2_contact_pos, geom2_body)
-        jac1 = np.empty((3, self.model.nv))
-        mujoco.mj_jac(self.model, data, jac1, None, geom1_contact_pos, geom1_body)
-        return contact.normal @ (jac2 - jac1)
 
     def _homogenize_geom_id_list(self, geom_list: GeomSequence) -> List[int]:
         """Take a heterogeneous list of geoms (specified via ID or name) and return
@@ -258,11 +259,11 @@ class CollisionAvoidanceLimit(Limit):
         geom_id_pairs = []
         for id_pair in self._collision_pairs_to_geom_id_pairs(geom_pairs):
             for geom_a, geom_b in itertools.product(*id_pair):
-                weld_body_cond = not _is_welded_together(self.model, geom_a, geom_b)
-                parent_child_cond = not _are_geom_bodies_parent_child(
+                weld_body_cond = not is_welded_together(self.model, geom_a, geom_b)
+                parent_child_cond = not are_geom_bodies_parent_child(
                     self.model, geom_a, geom_b
                 )
-                contype_conaffinity_cond = _is_pass_contype_conaffinity_check(
+                contype_conaffinity_cond = is_pass_contype_conaffinity_check(
                     self.model, geom_a, geom_b
                 )
                 if weld_body_cond and parent_child_cond and contype_conaffinity_cond:
