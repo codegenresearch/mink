@@ -18,17 +18,17 @@ class TestUtils(absltest.TestCase):
 
     def setUp(self):
         self.data = mujoco.MjData(self.model)
-        self.initial_configuration = self.data.qpos.copy()
+        self.q0 = self.data.qpos.copy()
 
-    def test_custom_configuration_vector_raises_error_for_invalid_keyframe(self):
+    def test_custom_configuration_vector_throws_error_if_keyframe_invalid(self):
         with self.assertRaises(InvalidKeyframe):
             utils.custom_configuration_vector(self.model, "stand123")
 
-    def test_custom_configuration_vector_from_valid_keyframe(self):
+    def test_custom_configuration_vector_from_keyframe(self):
         q = utils.custom_configuration_vector(self.model, "stand")
         np.testing.assert_allclose(q, self.model.key("stand").qpos)
 
-    def test_custom_configuration_vector_raises_error_for_invalid_joint_shape(self):
+    def test_custom_configuration_vector_raises_error_if_jnt_shape_invalid(self):
         with self.assertRaises(ValueError):
             utils.custom_configuration_vector(
                 self.model,
@@ -37,18 +37,18 @@ class TestUtils(absltest.TestCase):
             )
 
     def test_custom_configuration_vector_with_custom_joints(self):
-        custom_joints = {
-            "left_ankle_pitch_joint": 0.2,  # Hinge.
-            "right_ankle_roll_joint": 0.1,  # Slide.
-        }
+        custom_joints = dict(
+            left_ankle_pitch_joint=0.2,  # Hinge.
+            right_ankle_roll_joint=0.1,  # Slide.
+        )
         q = utils.custom_configuration_vector(self.model, **custom_joints)
-        q_expected = self.initial_configuration.copy()
+        q_expected = self.q0.copy()
         for joint_name, value in custom_joints.items():
             joint_id = self.model.jnt_qposadr[self.model.joint(joint_name).id]
             q_expected[joint_id] = value
         np.testing.assert_array_almost_equal(q, q_expected)
 
-    def test_move_mocap_to_frame_raises_error_for_non_mocap_body(self):
+    def test_move_mocap_to_frame_throws_error_if_body_not_mocap(self):
         with self.assertRaises(InvalidMocapBody):
             utils.move_mocap_to_frame(
                 self.model,
@@ -117,7 +117,7 @@ class TestUtils(absltest.TestCase):
               <geom name="b1/g1" type="sphere" size=".1" mass=".1"/>
               <geom name="b1/g2" type="sphere" size=".1" mass=".1" pos="0 0 .5"/>
               <body name="b2">
-                <joint type="hinge" range="0 1.57" limited="true"/>
+                <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>
                 <geom name="b2/g1" type="sphere" size=".1" mass=".1"/>
               </body>
             </body>
@@ -125,7 +125,7 @@ class TestUtils(absltest.TestCase):
               <joint type="free"/>
               <geom name="b3/g1" type="sphere" size=".1" mass=".1"/>
               <body name="b4">
-                <joint type="hinge" range="0 1.57" limited="true"/>
+                <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>
                 <geom name="b4/g1" type="sphere" size=".1" mass=".1"/>
               </body>
             </body>
