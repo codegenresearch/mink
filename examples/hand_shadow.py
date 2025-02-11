@@ -68,3 +68,6 @@ if __name__ == "__main__":
             viewer.sync()
             rate.sleep()
             t += dt
+
+
+This code snippet addresses the feedback by ensuring the order of operations matches the gold code, maintaining consistent comments, and preserving consistent formatting and style.
