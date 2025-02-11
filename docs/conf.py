@@ -36,11 +36,10 @@ autodoc_typehints = "both"
 autodoc_class_signature = "separated"
 autodoc_default_options = {
     "members": True,
-    "undoc-members": True,
     "show-inheritance": True,
     "member-order": "bysource",
-    "inherited-members": None,
-    "exclude-members": "module",
+    "inherited-members": True,
+    "exclude-members": "__weakref__",
 }
 
 # Autodoc type aliases
