@@ -11,7 +11,7 @@ _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
 # Single arm joint names.
-_JOINT_NAMES = [
+_JOINT_NAMES: list[str] = [
     "waist",
     "shoulder",
     "elbow",
@@ -22,7 +22,7 @@ _JOINT_NAMES = [
 
 # Single arm velocity limits, taken from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
+_VELOCITY_LIMITS: dict[str, float] = {k: np.pi for k in _JOINT_NAMES}
 
 
 if __name__ == "__main__":
@@ -30,8 +30,8 @@ if __name__ == "__main__":
     data = mujoco.MjData(model)
 
     # Get the dof and actuator ids for the joints we wish to control.
-    joint_names = []
-    velocity_limits = {}
+    joint_names: list[str] = []
+    velocity_limits: dict[str, float] = {}
     for prefix in ["left", "right"]:
         for n in _JOINT_NAMES:
             name = f"{prefix}/{n}"
@@ -75,17 +75,13 @@ if __name__ == "__main__":
     # - Geoms starting at subtree "right wrist" and "table".
     # - Geoms starting at subtree "left wrist" and "table".
     # - Geoms starting at subtree "right wrist" and "left wrist".
-    # - Geoms starting at subtree "right upper arm" and "left upper arm".
     l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
     r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
-    l_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("left/upper_arm_link").id)
-    r_upper_arm_geoms = mink.get_subtree_geom_ids(model, model.body("right/upper_arm_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
         (l_wrist_geoms, frame_geoms + ["table"]),
         (r_wrist_geoms, frame_geoms + ["table"]),
         (l_wrist_geoms, r_wrist_geoms),
-        (l_upper_arm_geoms, r_upper_arm_geoms),
     ]
     collision_avoidance_limit = mink.CollisionAvoidanceLimit(
         model=model,
