@@ -7,55 +7,39 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML = _HERE / "unitree_h1" / "scene.xml"
+_XML_PATH = _HERE / "unitree_h1" / "scene.xml"
 
+def create_frame_task(frame_name, frame_type, position_cost, orientation_cost, lm_damping=None):
+    return mink.FrameTask(
+        frame_name=frame_name,
+        frame_type=frame_type,
+        position_cost=position_cost,
+        orientation_cost=orientation_cost,
+        lm_damping=lm_damping,
+    )
 
 if __name__ == "__main__":
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
-
+    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
     configuration = mink.Configuration(model)
 
-    feet = ["right_foot", "left_foot"]
-    hands = ["right_wrist", "left_wrist"]
+    FEET = ["right_foot", "left_foot"]
+    HANDS = ["right_wrist", "left_wrist"]
 
     tasks = [
-        pelvis_orientation_task := mink.FrameTask(
-            frame_name="pelvis",
-            frame_type="body",
-            position_cost=0.0,
-            orientation_cost=10.0,
-        ),
-        posture_task := mink.PostureTask(model, cost=1.0),
-        com_task := mink.ComTask(cost=200.0),
+        create_frame_task("pelvis", "body", 0.0, 10.0),
+        mink.PostureTask(model, cost=1.0),
+        mink.ComTask(cost=200.0),
     ]
 
-    feet_tasks = []
-    for foot in feet:
-        task = mink.FrameTask(
-            frame_name=foot,
-            frame_type="site",
-            position_cost=200.0,
-            orientation_cost=10.0,
-            lm_damping=1.0,
-        )
-        feet_tasks.append(task)
+    feet_tasks = [create_frame_task(foot, "site", 200.0, 10.0, lm_damping=1.0) for foot in FEET]
     tasks.extend(feet_tasks)
 
-    hand_tasks = []
-    for hand in hands:
-        task = mink.FrameTask(
-            frame_name=hand,
-            frame_type="site",
-            position_cost=200.0,
-            orientation_cost=0.0,
-            lm_damping=1.0,
-        )
-        hand_tasks.append(task)
+    hand_tasks = [create_frame_task(hand, "site", 200.0, 0.0, lm_damping=1.0) for hand in HANDS]
     tasks.extend(hand_tasks)
 
     com_mid = model.body("com_target").mocapid[0]
-    feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
-    hands_mid = [model.body(f"{hand}_target").mocapid[0] for hand in hands]
+    feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in FEET]
+    hands_mid = [model.body(f"{hand}_target").mocapid[0] for hand in HANDS]
 
     model = configuration.model
     data = configuration.data
@@ -68,11 +52,11 @@ if __name__ == "__main__":
 
         # Initialize to the home keyframe.
         configuration.update_from_keyframe("stand")
-        posture_task.set_target_from_configuration(configuration)
-        pelvis_orientation_task.set_target_from_configuration(configuration)
+        tasks[1].set_target_from_configuration(configuration)  # posture_task
+        tasks[0].set_target_from_configuration(configuration)  # pelvis_orientation_task
 
         # Initialize mocap bodies at their respective sites.
-        for hand, foot in zip(hands, feet):
+        for hand, foot in zip(HANDS, FEET):
             mink.move_mocap_to_frame(model, data, f"{foot}_target", foot, "site")
             mink.move_mocap_to_frame(model, data, f"{hand}_target", hand, "site")
         data.mocap_pos[com_mid] = data.subtree_com[1]
@@ -80,7 +64,7 @@ if __name__ == "__main__":
         rate = RateLimiter(frequency=200.0, warn=False)
         while viewer.is_running():
             # Update task targets.
-            com_task.set_target(data.mocap_pos[com_mid])
+            tasks[2].set_target(data.mocap_pos[com_mid])  # com_task
             for i, (hand_task, foot_task) in enumerate(zip(hand_tasks, feet_tasks)):
                 foot_task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
                 hand_task.set_target(mink.SE3.from_mocap_id(data, hands_mid[i]))
