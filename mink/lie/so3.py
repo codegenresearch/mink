@@ -14,8 +14,6 @@ _INVERT_QUAT_SIGN = np.array([1.0, -1.0, -1.0, -1.0], dtype=np.float64)
 
 
 class RollPitchYaw(NamedTuple):
-    """Struct containing roll, pitch, and yaw Euler angles."""
-
     roll: float
     pitch: float
     yaw: float
@@ -23,11 +21,7 @@ class RollPitchYaw(NamedTuple):
 
 @dataclass(frozen=True)
 class SO3(MatrixLieGroup):
-    """Special orthogonal group for 3D rotations.
-
-    Internal parameterization is (qw, qx, qy, qz). Tangent parameterization is
-    (omega_x, omega_y, omega_z).
-    """
+    """Special orthogonal group for 3D rotations.\n\n    Internal parameterization is (qw, qx, qy, qz). Tangent parameterization is\n    (omega_x, omega_y, omega_z).\n    """
 
     wxyz: np.ndarray
     matrix_dim: int = 3
