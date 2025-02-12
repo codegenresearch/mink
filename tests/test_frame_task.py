@@ -5,7 +5,7 @@ from absl.testing import absltest
 from robot_descriptions.loaders.mujoco import load_robot_description
 
 from mink import SE3, SO3, Configuration
-from mink.tasks import FrameTask, TargetNotSet, TaskDefinitionError
+from mink.tasks import FrameTask, TargetNotSet, TaskDefinitionError, InvalidTarget
 
 
 class TestFrameTask(absltest.TestCase):
@@ -37,36 +37,52 @@ class TestFrameTask(absltest.TestCase):
         np.testing.assert_array_equal(task.cost, np.array([1, 2, 3, 5, 6, 7]))
 
     def test_task_raises_error_if_cost_dim_invalid(self):
-        with self.assertRaises(TaskDefinitionError):
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=[1.0, 2.0],
                 orientation_cost=2.0,
             )
-        with self.assertRaises(TaskDefinitionError):
+        self.assertEqual(
+            str(cm.exception),
+            "FrameTask position_cost must be a scalar or vector of shape (3,). Got (2,)",
+        )
+
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=7.0,
                 orientation_cost=[2.0, 5.0],
             )
+        self.assertEqual(
+            str(cm.exception),
+            "FrameTask orientation_cost must be a scalar or vector of shape (3,). Got (2,)",
+        )
 
     def test_task_raises_error_if_cost_negative(self):
-        with self.assertRaises(TaskDefinitionError):
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
                 position_cost=1.0,
                 orientation_cost=-1.0,
             )
-        with self.assertRaises(TaskDefinitionError):
+        self.assertEqual(
+            str(cm.exception), "FrameTask orientation_cost must be >= 0"
+        )
+
+        with self.assertRaises(TaskDefinitionError) as cm:
             FrameTask(
                 frame_name="pelvis",
                 frame_type="body",
-                position_cost=[-1.0, -1.0, -1.0],
+                position_cost=[-1.0, 1.5],
                 orientation_cost=[1, 2, 3],
             )
+        self.assertEqual(
+            str(cm.exception), "FrameTask position_cost must be >= 0"
+        )
 
     def test_error_without_target(self):
         task = FrameTask(
@@ -75,8 +91,9 @@ class TestFrameTask(absltest.TestCase):
             position_cost=1.0,
             orientation_cost=1.0,
         )
-        with self.assertRaises(TargetNotSet):
+        with self.assertRaises(TargetNotSet) as cm:
             task.compute_error(self.configuration)
+        self.assertEqual(str(cm.exception), "No target set for FrameTask")
 
     def test_jacobian_without_target(self):
         task = FrameTask(
@@ -85,8 +102,9 @@ class TestFrameTask(absltest.TestCase):
             position_cost=1.0,
             orientation_cost=1.0,
         )
-        with self.assertRaises(TargetNotSet):
+        with self.assertRaises(TargetNotSet) as cm:
             task.compute_jacobian(self.configuration)
+        self.assertEqual(str(cm.exception), "No target set for FrameTask")
 
     def test_set_target_from_configuration(self):
         task = FrameTask(
@@ -171,6 +189,101 @@ class TestFrameTask(absltest.TestCase):
         H_2, c_2 = task.compute_qp_objective(self.configuration)
         self.assertTrue(np.allclose(H_1, H_2))
         self.assertTrue(np.allclose(c_1, c_2))
+
+    def test_invalid_target_translation(self):
+        task = FrameTask(
+            frame_name="pelvis",
+            frame_type="body",
+            position_cost=1.0,
+            orientation_cost=1.0,
+        )
+        invalid_target = SE3.from_rotation_and_translation(
+            rotation=SO3.identity(),
+            translation=np.random.rand(5),  # Invalid shape
+        )
+        with self.assertRaises(InvalidTarget) as cm:
+            task.set_target(invalid_target)
+        expected_error_message = (
+            "Expected target SE3 to have translation shape (3,) but got (5,)"
+        )
+        self.assertEqual(str(cm.exception), expected_error_message)
+
+    def test_invalid_target_rotation(self):
+        task = FrameTask(
+            frame_name="pelvis",
+            frame_type="body",
+            position_cost=1.0,
+            orientation_cost=1.0,
+        )
+        invalid_target = SE3.from_rotation_and_translation(
+            rotation=SO3(np.random.rand(5)),  # Invalid shape
+            translation=np.random.rand(3),
+        )
+        with self.assertRaises(InvalidTarget) as cm:
+            task.set_target(invalid_target)
+        expected_error_message = (
+            "Expected target SE3 to have rotation wxyz shape (4,) but got (5,)"
+        )
+        self.assertEqual(str(cm.exception), expected_error_message)
+
+    def test_large_lm_damping_effect(self):
+        """Levenberg-Marquardt damping increases the diagonal of H when the error is non-zero."""
+        task = FrameTask(
+            frame_name="pelvis",
+            frame_type="body",
+            position_cost=1.0,
+            orientation_cost=1.0,
+        )
+        transform_target_to_frame = SE3.from_rotation_and_translation(
+            rotation=SO3.identity(),
+            translation=np.array([0.1, 0.1, 0.1]),  # Non-zero error
+        )
+        target = (
+            self.configuration.get_transform_frame_to_world("pelvis", "body")
+            @ transform_target_to_frame
+        )
+        task.set_target(target)
+        task.lm_damping = 0.0
+        H_1, c_1 = task.compute_qp_objective(self.configuration)
+        task.lm_damping = 1.0
+        H_2, c_2 = task.compute_qp_objective(self.configuration)
+        self.assertFalse(np.allclose(H_1, H_2))
+        self.assertTrue(np.allclose(c_1, c_2))
+
+    def test_nonzero_error_with_large_position_cost(self):
+        task = FrameTask(
+            frame_name="pelvis",
+            frame_type="body",
+            position_cost=100.0,
+            orientation_cost=1.0,
+        )
+        transform_target_to_frame = SE3.from_rotation_and_translation(
+            rotation=SO3.identity(),
+            translation=np.array([0.1, 0.1, 0.1]),  # Non-zero error
+        )
+        target = (
+            self.configuration.get_transform_frame_to_world("pelvis", "body")
+            @ transform_target_to_frame
+        )
+        task.set_target(target)
+        error = task.compute_error(self.configuration)
+        self.assertGreater(np.linalg.norm(error[:3]), 0)
+
+    def test_nonzero_error_with_large_orientation_cost(self):
+        task = FrameTask(
+            frame_name="pelvis",
+            frame_type="body",
+            position_cost=1.0,
+            orientation_cost=100.0,
+        )
+        target_rotation = SO3.from_x_radians(np.pi / 4)  # Non-zero orientation error
+        target = SE3.from_rotation_and_translation(
+            rotation=target_rotation,
+            translation=np.array([0.0, 0.0, 0.0]),  # Zero position error
+        )
+        task.set_target(target)
+        error = task.compute_error(self.configuration)
+        self.assertGreater(np.linalg.norm(error[3:]), 0)
 
 
 if __name__ == "__main__":
