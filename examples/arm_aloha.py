@@ -10,7 +10,7 @@ import mink
 _HERE = Path(__file__).parent
 _XML = _HERE / "aloha" / "scene.xml"
 
-# Single arm joint names.
+# Joint names for a single arm.
 _JOINT_NAMES = [
     "waist",
     "shoulder",
@@ -20,37 +20,36 @@ _JOINT_NAMES = [
     "wrist_rotate",
 ]
 
-# Single arm velocity limits, taken from:
+# Velocity limits for each joint, sourced from:
 # https://github.com/Interbotix/interbotix_ros_manipulators/blob/main/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
-_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
+_JOINT_VELOCITY_LIMITS = {k: np.pi for k in _JOINT_NAMES}
 
 
 if __name__ == "__main__":
     model = mujoco.MjModel.from_xml_path(_XML.as_posix())
     data = mujoco.MjData(model)
 
-    # Get the dof and actuator ids for the joints we wish to control.
-    joint_names: list[str] = []
-    velocity_limits: dict[str, float] = {}
+    # Collect joint and actuator IDs for both arms.
+    joint_ids = {}
+    actuator_ids = {}
     for prefix in ["left", "right"]:
-        for n in _JOINT_NAMES:
-            name = f"{prefix}/{n}"
-            joint_names.append(name)
-            velocity_limits[name] = _VELOCITY_LIMITS[n]
-    dof_ids = np.array([model.joint(name).id for name in joint_names])
-    actuator_ids = np.array([model.actuator(name).id for name in joint_names])
+        for joint_name in _JOINT_NAMES:
+            full_joint_name = f"{prefix}/{joint_name}"
+            joint_ids[full_joint_name] = model.joint(full_joint_name).id
+            actuator_ids[full_joint_name] = model.actuator(full_joint_name).id
 
     configuration = mink.Configuration(model)
 
+    # Define tasks for both left and right end-effectors.
     tasks = [
-        l_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="left/gripper",
             frame_type="site",
             position_cost=1.0,
             orientation_cost=1.0,
             lm_damping=1.0,
         ),
-        r_ee_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="right/gripper",
             frame_type="site",
             position_cost=1.0,
@@ -59,60 +58,60 @@ if __name__ == "__main__":
         ),
     ]
 
-    # Enable collision avoidance between the following geoms:
-    # geoms starting at subtree "right wrist" - "table",
-    # geoms starting at subtree "left wrist"  - "table",
-    # geoms starting at subtree "right wrist" - geoms starting at subtree "left wrist".
-    l_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
-    r_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
+    # Define collision pairs for collision avoidance.
+    left_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("left/wrist_link").id)
+    right_wrist_geoms = mink.get_subtree_geom_ids(model, model.body("right/wrist_link").id)
     frame_geoms = mink.get_body_geom_ids(model, model.body("metal_frame").id)
     collision_pairs = [
-        (l_wrist_geoms, r_wrist_geoms),
-        (l_wrist_geoms + r_wrist_geoms, frame_geoms + ["table"]),
+        (left_wrist_geoms, right_wrist_geoms),
+        (left_wrist_geoms + right_wrist_geoms, frame_geoms + ["table"]),
     ]
-    collision_avoidance_limit = mink.CollisionAvoidanceLimit(
-        model=model,
-        geom_pairs=collision_pairs,  # type: ignore
-        minimum_distance_from_collisions=0.05,
-        collision_detection_distance=0.1,
-    )
 
+    # Set up limits for configuration, velocity, and collision avoidance.
     limits = [
         mink.ConfigurationLimit(model=model),
-        mink.VelocityLimit(model, velocity_limits),
-        collision_avoidance_limit,
+        mink.VelocityLimit(model, _JOINT_VELOCITY_LIMITS),
+        mink.CollisionAvoidanceLimit(
+            model=model,
+            geom_pairs=collision_pairs,
+            minimum_distance_from_collisions=0.05,
+            collision_detection_distance=0.1,
+        ),
     ]
 
-    l_mid = model.body("left/target").mocapid[0]
-    r_mid = model.body("right/target").mocapid[0]
+    # Mocap IDs for left and right targets.
+    left_target_mid = model.body("left/target").mocapid[0]
+    right_target_mid = model.body("right/target").mocapid[0]
+
+    # IK settings.
     solver = "quadprog"
-    pos_threshold = 1e-4
-    ori_threshold = 1e-4
-    max_iters = 20
+    position_threshold = 1e-4
+    orientation_threshold = 1e-4
+    max_iterations = 20
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
         mujoco.mjv_defaultFreeCamera(model, viewer.cam)
 
-        # Initialize to the home keyframe.
+        # Initialize to the neutral keyframe.
         mujoco.mj_resetDataKeyframe(model, data, model.key("neutral_pose").id)
         configuration.update(data.qpos)
         mujoco.mj_forward(model, data)
 
-        # Initialize mocap targets at the end-effector site.
+        # Position mocap targets at the end-effector sites.
         mink.move_mocap_to_frame(model, data, "left/target", "left/gripper", "site")
         mink.move_mocap_to_frame(model, data, "right/target", "right/gripper", "site")
 
         rate = RateLimiter(frequency=200.0)
         while viewer.is_running():
             # Update task targets.
-            l_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
-            r_ee_task.set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
+            tasks[0].set_target(mink.SE3.from_mocap_name(model, data, "left/target"))
+            tasks[1].set_target(mink.SE3.from_mocap_name(model, data, "right/target"))
 
             # Compute velocity and integrate into the next configuration.
-            for i in range(max_iters):
-                vel = mink.solve_ik(
+            for iteration in range(max_iterations):
+                velocity = mink.solve_ik(
                     configuration,
                     tasks,
                     rate.dt,
@@ -120,25 +119,29 @@ if __name__ == "__main__":
                     limits=limits,
                     damping=1e-3,
                 )
-                configuration.integrate_inplace(vel, rate.dt)
+                configuration.integrate_inplace(velocity, rate.dt)
 
-                l_err = l_ee_task.compute_error(configuration)
-                l_pos_achieved = np.linalg.norm(l_err[:3]) <= pos_threshold
-                l_ori_achieved = np.linalg.norm(l_err[3:]) <= ori_threshold
-                r_err = l_ee_task.compute_error(configuration)
-                r_pos_achieved = np.linalg.norm(r_err[:3]) <= pos_threshold
-                r_ori_achieved = np.linalg.norm(r_err[3:]) <= ori_threshold
+                left_error = tasks[0].compute_error(configuration)
+                left_position_achieved = np.linalg.norm(left_error[:3]) <= position_threshold
+                left_orientation_achieved = np.linalg.norm(left_error[3:]) <= orientation_threshold
+
+                right_error = tasks[1].compute_error(configuration)
+                right_position_achieved = np.linalg.norm(right_error[:3]) <= position_threshold
+                right_orientation_achieved = np.linalg.norm(right_error[3:]) <= orientation_threshold
+
                 if (
-                    l_pos_achieved
-                    and l_ori_achieved
-                    and r_pos_achieved
-                    and r_ori_achieved
+                    left_position_achieved
+                    and left_orientation_achieved
+                    and right_position_achieved
+                    and right_orientation_achieved
                 ):
+                    print(f"Exiting after {iteration} iterations.")
                     break
 
-            data.ctrl[actuator_ids] = configuration.q[dof_ids]
+            # Apply control to the actuators.
+            data.ctrl[list(actuator_ids.values())] = configuration.q[list(joint_ids.values())]
             mujoco.mj_step(model, data)
 
-            # Visualize at fixed FPS.
+            # Sync viewer and sleep to maintain frame rate.
             viewer.sync()
             rate.sleep()
