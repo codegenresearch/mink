@@ -8,38 +8,39 @@ from loop_rate_limiters import RateLimiter
 import mink
 
 _HERE = Path(__file__).parent
-_XML = _HERE / "kuka_iiwa_14" / "scene.xml"
+_XML_PATH = _HERE / "kuka_iiwa_14" / "scene.xml"
 
+# IK solver settings
+SOLVER = "quadprog"
+POSITION_THRESHOLD = 1e-4
+ORIENTATION_THRESHOLD = 1e-4
+MAX_ITERATIONS = 20
+DAMPING = 1e-3
 
-if __name__ == "__main__":
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
+# Task costs
+END_EFFECTOR_POSITION_COST = 1.0
+END_EFFECTOR_ORIENTATION_COST = 1.0
+POSTURE_COST = 1e-2
+
+def main():
+    model = mujoco.MjModel.from_xml_path(_XML_PATH.as_posix())
     data = mujoco.MjData(model)
 
-    ## =================== ##
-    ## Setup IK.
-    ## =================== ##
-
+    # Setup IK
     configuration = mink.Configuration(model)
 
     tasks = [
-        end_effector_task := mink.FrameTask(
+        mink.FrameTask(
             frame_name="attachment_site",
             frame_type="site",
-            position_cost=1.0,
-            orientation_cost=1.0,
-            lm_damping=1.0,
+            position_cost=END_EFFECTOR_POSITION_COST,
+            orientation_cost=END_EFFECTOR_ORIENTATION_COST,
+            lm_damping=DAMPING,
         ),
-        posture_task := mink.PostureTask(model=model, cost=1e-2),
+        mink.PostureTask(model=model, cost=POSTURE_COST),
     ]
 
-    ## =================== ##
-
-    # IK settings.
-    solver = "quadprog"
-    pos_threshold = 1e-4
-    ori_threshold = 1e-4
-    max_iters = 20
-
+    # Viewer setup
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
     ) as viewer:
@@ -47,31 +48,34 @@ if __name__ == "__main__":
 
         mujoco.mj_resetDataKeyframe(model, data, model.key("home").id)
         configuration.update(data.qpos)
-        posture_task.set_target_from_configuration(configuration)
+        tasks[1].set_target_from_configuration(configuration)
         mujoco.mj_forward(model, data)
 
-        # Initialize the mocap target at the end-effector site.
+        # Initialize the mocap target at the end-effector site
         mink.move_mocap_to_frame(model, data, "target", "attachment_site", "site")
 
-        rate = RateLimiter(frequency=500.0, warn=False)
+        rate_limiter = RateLimiter(frequency=500.0, warn=False)
         while viewer.is_running():
-            # Update task target.
+            # Update task target
             T_wt = mink.SE3.from_mocap_name(model, data, "target")
-            end_effector_task.set_target(T_wt)
+            tasks[0].set_target(T_wt)
 
-            # Compute velocity and integrate into the next configuration.
-            for i in range(max_iters):
-                vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-3)
-                configuration.integrate_inplace(vel, rate.dt)
-                err = end_effector_task.compute_error(configuration)
-                pos_achieved = np.linalg.norm(err[:3]) <= pos_threshold
-                ori_achieved = np.linalg.norm(err[3:]) <= ori_threshold
-                if pos_achieved and ori_achieved:
+            # Compute velocity and integrate into the next configuration
+            for _ in range(MAX_ITERATIONS):
+                velocity = mink.solve_ik(configuration, tasks, rate_limiter.dt, SOLVER, DAMPING)
+                configuration.integrate_inplace(velocity, rate_limiter.dt)
+                error = tasks[0].compute_error(configuration)
+                position_achieved = np.linalg.norm(error[:3]) <= POSITION_THRESHOLD
+                orientation_achieved = np.linalg.norm(error[3:]) <= ORIENTATION_THRESHOLD
+                if position_achieved and orientation_achieved:
                     break
 
             data.ctrl = configuration.q
             mujoco.mj_step(model, data)
 
-            # Visualize at fixed FPS.
+            # Visualize at fixed FPS
             viewer.sync()
-            rate.sleep()
+            rate_limiter.sleep()
+
+if __name__ == "__main__":
+    main()
