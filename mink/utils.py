@@ -14,15 +14,7 @@ def move_mocap_to_frame(
     frame_name: str,
     frame_type: str,
 ) -> None:
-    """Initialize mocap body pose at a desired frame.
-
-    Args:
-        model: Mujoco model.
-        data: Mujoco data.
-        mocap_name: The name of the mocap body.
-        frame_name: The desired frame name.
-        frame_type: The desired frame type. Can be "body", "geom" or "site".
-    """
+    """Initialize mocap body pose at a desired frame.\n\n    Args:\n        model: Mujoco model.\n        data: Mujoco data.\n        mocap_name: The name of the mocap body.\n        frame_name: The desired frame name.\n        frame_type: The desired frame type. Can be "body", "geom" or "site".\n    """
     mocap_id = model.body(mocap_name).mocapid[0]
     if mocap_id == -1:
         raise InvalidMocapBody(mocap_name, model)
@@ -36,15 +28,7 @@ def move_mocap_to_frame(
 
 
 def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
-    """Get all floating joint configuration and tangent indices.
-
-    Args:
-        model: Mujoco model.
-
-    Returns:
-        A (q_ids, v_ids) pair containing all floating joint indices in the
-        configuration and tangent spaces respectively.
-    """
+    """Get all floating joint configuration and tangent indices.\n\n    Args:\n        model: Mujoco model.\n\n    Returns:\n        A (q_ids, v_ids) pair containing all floating joint indices in the\n        configuration and tangent spaces respectively.\n    """
     q_ids: list[int] = []
     v_ids: list[int] = []
     for j in range(model.njnt):
@@ -61,19 +45,7 @@ def custom_configuration_vector(
     key_name: Optional[str] = None,
     **kwargs,
 ) -> np.ndarray:
-    """Generate a configuration vector where named joints have specific values.
-
-    Args:
-        model: Mujoco model.
-        key_name: Optional keyframe name to initialize the configuration vector from.
-            Otherwise, the default pose `qpos0` is used.
-        kwargs: Custom values for joint coordinates.
-
-    Returns:
-        Configuration vector where named joints have the values specified in
-            keyword arguments, and other joints have their neutral value or value
-            defined in the keyframe if provided.
-    """
+    """Generate a configuration vector where named joints have specific values.\n\n    Args:\n        model: Mujoco model.\n        key_name: Optional keyframe name to initialize the configuration vector from.\n            Otherwise, the default pose `qpos0` is used.\n        kwargs: Custom values for joint coordinates.\n\n    Returns:\n        Configuration vector where named joints have the values specified in\n            keyword arguments, and other joints have their neutral value or value\n            defined in the keyframe if provided.\n    """
     data = mujoco.MjData(model)
     if key_name is not None:
         key_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, key_name)
@@ -97,78 +69,24 @@ def custom_configuration_vector(
     return q
 
 
-def get_body_body_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get immediate children bodies belonging to a given body.
+def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
+    """Get all geoms belonging to subtree starting at a given body.\n\n    Args:\n        model: Mujoco model.\n        body_id: ID of body where subtree starts.\n\n    Returns:\n        A list containing all subtree geom ids.\n    """
 
-    Args:
-        model: Mujoco model.
-        body_id: ID of body.
+    def gather_geoms(body_id: int) -> list[int]:
+        geoms: list[int] = []
+        geom_start = model.body_geomadr[body_id]
+        geom_end = geom_start + model.body_geomnum[body_id]
+        geoms.extend(range(geom_start, geom_end))
+        children = [i for i in range(model.nbody) if model.body_parentid[i] == body_id]
+        for child_id in children:
+            geoms.extend(gather_geoms(child_id))
+        return geoms
 
-    Returns:
-        A list containing all child body ids.
-    """
-    return [
-        i
-        for i in range(model.nbody)
-        if model.body_parentid[i] == body_id
-        and body_id != i  # Exclude the body itself.
-    ]
-
-
-def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get all bodies belonging to subtree starting at a given body.
-
-    Args:
-        model: Mujoco model.
-        body_id: ID of body where subtree starts.
-
-    Returns:
-        A list containing all subtree body ids.
-    """
-    body_ids: list[int] = []
-    stack = [body_id]
-    while stack:
-        body_id = stack.pop()
-        body_ids.append(body_id)
-        stack += get_body_body_ids(model, body_id)
-    return body_ids
+    return gather_geoms(body_id)
 
 
 def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get immediate geoms belonging to a given body.
-
-    Here, immediate geoms are those directly attached to the body and not its
-    descendants.
-
-    Args:
-        model: Mujoco model.
-        body_id: ID of body.
-
-    Returns:
-        A list containing all body geom ids.
-    """
+    """Get all geoms belonging to a given body.\n\n    Args:\n        model: Mujoco model.\n        body_id: ID of body.\n\n    Returns:\n        A list containing all body geom ids.\n    """
     geom_start = model.body_geomadr[body_id]
     geom_end = geom_start + model.body_geomnum[body_id]
     return list(range(geom_start, geom_end))
-
-
-def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get all geoms belonging to subtree starting at a given body.
-
-    Here, a subtree is defined as the kinematic tree starting at the body and including
-    all its descendants.
-
-    Args:
-        model: Mujoco model.
-        body_id: ID of body where subtree starts.
-
-    Returns:
-        A list containing all subtree geom ids.
-    """
-    geom_ids: list[int] = []
-    stack = [body_id]
-    while stack:
-        body_id = stack.pop()
-        geom_ids.extend(get_body_geom_ids(model, body_id))
-        stack += get_body_body_ids(model, body_id)
-    return geom_ids
