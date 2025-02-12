@@ -1,7 +1,5 @@
 """Frame task implementation."""
 
-from __future__ import annotations
-
 from typing import Optional
 
 import numpy as np
@@ -14,11 +12,10 @@ from .task import Task
 
 
 class FrameTask(Task):
-    """Regulate the pose of a frame expressed in the world frame.
+    """Regulate the pose of a robot frame in the world frame.
 
     Attributes:
-        frame_name: Name of the frame to regulate, typically the name of body, geom
-            or site in the robot model.
+        frame_name: Name of the frame to regulate.
         frame_type: The frame type: `body`, `geom` or `site`.
         transform_frame_to_world: Target pose of the frame.
     """
@@ -74,7 +71,7 @@ class FrameTask(Task):
         self.cost[3:] = orientation_cost
 
     def set_target(self, transform_target_to_world: SE3) -> None:
-        """Set the target pose.
+        """Set the target pose in the world frame.
 
         Args:
             transform_target_to_world: Transform from the task target frame to the
@@ -123,9 +120,6 @@ class FrameTask(Task):
 
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the frame task Jacobian.
-
-        The derivation of the formula for this Jacobian is detailed in
-        [FrameTaskJacobian]_.
 
         Args:
             configuration: Robot configuration :math:`q`.
