@@ -1,7 +1,5 @@
 """Posture task implementation."""
 
-from __future__ import annotations
-
 from typing import Optional
 
 import mujoco
@@ -68,7 +66,7 @@ class PostureTask(Task):
         self.target_q = target_q.copy()
 
     def set_target_from_configuration(self, configuration: Configuration) -> None:
-        """Set the target posture from the current configuration.
+        r"""Set the target posture from the current configuration.
 
         Args:
             configuration: Robot configuration :math:`q`.
@@ -111,11 +109,7 @@ class PostureTask(Task):
     def compute_jacobian(self, configuration: Configuration) -> np.ndarray:
         r"""Compute the posture task Jacobian.
 
-        The task Jacobian is defined as:
-
-        .. math::
-
-            J(q) = I_{n_v}
+        The task Jacobian is the identity :math:`I_{n_v}`.
 
         Args:
             configuration: Robot configuration :math:`q`.
