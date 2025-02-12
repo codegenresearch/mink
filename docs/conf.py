@@ -1,18 +1,19 @@
 # Configuration file for the Sphinx documentation builder.
 #
-# For the full list of built-in configuration values, see the documentation:
+# For a comprehensive list of built-in configuration values, refer to the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Project information -----------------------------------------------------
+# -- Project Information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "mink"
-copyright = "2024, Kevin Zakka"
-author = "Kevin Zakka"
+project_name = "mink"
+project_copyright = "2024, Kevin Zakka"
+project_author = "Kevin Zakka"
 
-# -- General configuration ---------------------------------------------------
+# -- General Configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+# List of Sphinx extensions to enable
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
@@ -21,29 +22,29 @@ extensions = [
     "sphinx_favicon",
 ]
 
-autodoc_typehints = "both"
-autodoc_class_signature = "separated"
-autodoc_default_options = {
-    "members": True,
-    "member-order": "bysource",
-    "inherited-members": False,
-    "exclude-members": "__init__, __post_init__, __new__",
-}
+# Template file directories
+templates_directories = ["_templates"]
 
-templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+# Directories to exclude from the build process
+directories_to_exclude = ["_build", "Thumbs.db", ".DS_Store"]
 
-source_suffix = {".rst": "restructuredtext"}
+# Mapping of file extensions to their corresponding source parsers
+source_file_suffixes = {".rst": "restructuredtext"}
 
-pygments_style = "sphinx"
+# Pygments syntax highlighting style
+pygments_syntax_style = "sphinx"
 
-autodoc_type_aliases = {
-    "npt.ArrayLike": "ArrayLike",
-}
+# Disable NumPy style docstrings
+numpy_style_docstrings_enabled = False
 
-# -- Options for HTML output -------------------------------------------------
+# Disable return type annotations in docstrings
+return_type_annotations_enabled = False
+
+# -- Options for HTML Output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+# HTML theme to use for the documentation
+html_documentation_theme = "sphinx_rtd_theme"
 
-htmlhelp_basename = "minkdoc"
+# Base name for the HTML help builder output
+html_help_documentation_base_name = "minkdoc"
