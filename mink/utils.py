@@ -1,10 +1,10 @@
-from typing import Optional
+from typing import Optional, List, Tuple
 
 import mujoco
 import numpy as np
 
 from . import constants as consts
-from .exceptions import InvalidKeyframe, InvalidMocapBody
+from .exceptions import InvalidKeyframe, InvalidMocapBody, MinkError
 
 
 def move_mocap_to_frame(
@@ -14,39 +14,26 @@ def move_mocap_to_frame(
     frame_name: str,
     frame_type: str,
 ) -> None:
-    """Initialize mocap body pose at a desired frame.
-
-    Args:
-        model: Mujoco model.
-        data: Mujoco data.
-        mocap_name: The name of the mocap body.
-        frame_name: The desired frame name.
-        frame_type: The desired frame type. Can be "body", "geom" or "site".
-    """
-    mocap_id = model.body(mocap_name).mocapid[0]
-    if mocap_id == -1:
+    """Initialize mocap body pose at a desired frame.\n\n    Args:\n        model: Mujoco model.\n        data: Mujoco data.\n        mocap_name: The name of the mocap body.\n        frame_name: The desired frame name.\n        frame_type: The desired frame type. Can be "body", "geom", or "site".\n    """
+    mocap_body = model.body(mocap_name)
+    if mocap_body.mocapid[0] == -1:
         raise InvalidMocapBody(mocap_name, model)
 
-    obj_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
-    xpos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[obj_id]
-    xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[obj_id]
+    frame_id = mujoco.mj_name2id(model, consts.FRAME_TO_ENUM[frame_type], frame_name)
+    if frame_id == -1:
+        raise InvalidFrame(frame_name, frame_type, model)
 
-    data.mocap_pos[mocap_id] = xpos.copy()
-    mujoco.mju_mat2Quat(data.mocap_quat[mocap_id], xmat)
+    frame_pos = getattr(data, consts.FRAME_TO_POS_ATTR[frame_type])[frame_id]
+    frame_xmat = getattr(data, consts.FRAME_TO_XMAT_ATTR[frame_type])[frame_id]
+
+    data.mocap_pos[mocap_body.mocapid[0]] = frame_pos.copy()
+    mujoco.mju_mat2Quat(data.mocap_quat[mocap_body.mocapid[0]], frame_xmat)
 
 
-def get_freejoint_dims(model: mujoco.MjModel) -> tuple[list[int], list[int]]:
-    """Get all floating joint configuration and tangent indices.
-
-    Args:
-        model: Mujoco model.
-
-    Returns:
-        A (q_ids, v_ids) pair containing all floating joint indices in the
-        configuration and tangent spaces respectively.
-    """
-    q_ids: list[int] = []
-    v_ids: list[int] = []
+def get_freejoint_dims(model: mujoco.MjModel) -> Tuple[List[int], List[int]]:
+    """Get all floating joint configuration and tangent indices.\n\n    Args:\n        model: Mujoco model.\n\n    Returns:\n        A (q_ids, v_ids) pair containing all floating joint indices in the\n        configuration and tangent spaces respectively.\n    """
+    q_ids: List[int] = []
+    v_ids: List[int] = []
     for j in range(model.njnt):
         if model.jnt_type[j] == mujoco.mjtJoint.mjJNT_FREE:
             qadr = model.jnt_qposadr[j]
@@ -61,114 +48,79 @@ def custom_configuration_vector(
     key_name: Optional[str] = None,
     **kwargs,
 ) -> np.ndarray:
-    """Generate a configuration vector where named joints have specific values.
-
-    Args:
-        model: Mujoco model.
-        key_name: Optional keyframe name to initialize the configuration vector from.
-            Otherwise, the default pose `qpos0` is used.
-        kwargs: Custom values for joint coordinates.
-
-    Returns:
-        Configuration vector where named joints have the values specified in
-            keyword arguments, and other joints have their neutral value or value
-            defined in the keyframe if provided.
-    """
+    """Generate a configuration vector where named joints have specific values.\n\n    Args:\n        model: Mujoco model.\n        key_name: Optional keyframe name to initialize the configuration vector from.\n            Otherwise, the default pose `qpos0` is used.\n        kwargs: Custom values for joint coordinates.\n\n    Returns:\n        Configuration vector where named joints have the values specified in\n            keyword arguments, and other joints have their neutral value or value\n            defined in the keyframe if provided.\n    """
     data = mujoco.MjData(model)
-    if key_name is not None:
+    if key_name:
         key_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY, key_name)
         if key_id == -1:
             raise InvalidKeyframe(key_name, model)
         mujoco.mj_resetDataKeyframe(model, data, key_id)
     else:
         mujoco.mj_resetData(model, data)
+
     q = data.qpos.copy()
     for name, value in kwargs.items():
-        jid = model.joint(name).id
-        jnt_dim = consts.qpos_width(model.jnt_type[jid])
-        qid = model.jnt_qposadr[jid]
+        joint = model.joint(name)
+        qid = model.jnt_qposadr[joint.id]
         value = np.atleast_1d(value)
-        if value.shape != (jnt_dim,):
+        expected_dim = consts.qpos_width(model.jnt_type[joint.id])
+        if value.shape != (expected_dim,):
             raise ValueError(
-                f"Joint {name} should have a qpos value of {jnt_dim,} but "
+                f"Joint {name} should have a qpos value of shape {expected_dim} but "
                 f"got {value.shape}"
             )
-        q[qid : qid + jnt_dim] = value
+        q[qid : qid + expected_dim] = value
     return q
 
 
-def get_body_body_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get immediate children bodies belonging to a given body.
+def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+    """Get all geoms belonging to subtree starting at a given body.\n\n    Args:\n        model: Mujoco model.\n        body_id: ID of body where subtree starts.\n\n    Returns:\n        A list containing all subtree geom ids.\n    """
 
-    Args:
-        model: Mujoco model.
-        body_id: ID of body.
+    def gather_geoms(current_body_id: int) -> List[int]:
+        geoms: List[int] = []
+        geom_start = model.body_geomadr[current_body_id]
+        geom_end = geom_start + model.body_geomnum[current_body_id]
+        geoms.extend(range(geom_start, geom_end))
+        children = [
+            i for i in range(model.nbody) if model.body_parentid[i] == current_body_id
+        ]
+        for child_id in children:
+            geoms.extend(gather_geoms(child_id))
+        return geoms
 
-    Returns:
-        A list containing all child body ids.
-    """
-    return [
-        i
-        for i in range(model.nbody)
-        if model.body_parentid[i] == body_id
-        and body_id != i  # Exclude the body itself.
-    ]
-
-
-def get_subtree_body_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get all bodies belonging to subtree starting at a given body.
-
-    Args:
-        model: Mujoco model.
-        body_id: ID of body where subtree starts.
-
-    Returns:
-        A list containing all subtree body ids.
-    """
-    body_ids: list[int] = []
-    stack = [body_id]
-    while stack:
-        body_id = stack.pop()
-        body_ids.append(body_id)
-        stack += get_body_body_ids(model, body_id)
-    return body_ids
+    return gather_geoms(body_id)
 
 
-def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get immediate geoms belonging to a given body.
-
-    Here, immediate geoms are those directly attached to the body and not its
-    descendants.
-
-    Args:
-        model: Mujoco model.
-        body_id: ID of body.
-
-    Returns:
-        A list containing all body geom ids.
-    """
+def get_body_geom_ids(model: mujoco.MjModel, body_id: int) -> List[int]:
+    """Get all geoms belonging to a given body.\n\n    Args:\n        model: Mujoco model.\n        body_id: ID of body.\n\n    Returns:\n        A list containing all body geom ids.\n    """
     geom_start = model.body_geomadr[body_id]
     geom_end = geom_start + model.body_geomnum[body_id]
     return list(range(geom_start, geom_end))
 
 
-def get_subtree_geom_ids(model: mujoco.MjModel, body_id: int) -> list[int]:
-    """Get all geoms belonging to subtree starting at a given body.
+def apply_gravity_compensation(
+    model: mujoco.MjModel,
+    data: mujoco.MjData,
+    gravity: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Calculate and apply gravity compensation torques.\n\n    Args:\n        model: Mujoco model.\n        data: Mujoco data.\n        gravity: Optional custom gravity vector (3 elements). If None, uses the model's gravity.\n\n    Returns:\n        Array of gravity compensation torques.\n    """
+    if gravity is None:
+        gravity = model.opt.gravity
 
-    Here, a subtree is defined as the kinematic tree starting at the body and including
-    all its descendants.
+    # Ensure the gravity vector has the correct shape
+    if gravity.shape != (3,):
+        raise ValueError("Gravity vector must have 3 elements.")
 
-    Args:
-        model: Mujoco model.
-        body_id: ID of body where subtree starts.
+    mujoco.mj_kinematics(model, data)
+    mujoco.mj_crb(model, data)
 
-    Returns:
-        A list containing all subtree geom ids.
-    """
-    geom_ids: list[int] = []
-    stack = [body_id]
-    while stack:
-        body_id = stack.pop()
-        geom_ids.extend(get_body_geom_ids(model, body_id))
-        stack += get_body_body_ids(model, body_id)
-    return geom_ids
+    # Calculate the gravity compensation torques
+    mujoco.mj_rne(model, data, gravity, np.zeros(6), data.qfrc_bias)
+
+    # Extract the bias forces (gravity compensation torques)
+    gravity_compensation_torques = data.qfrc_bias.copy()
+
+    # Apply the gravity compensation torques
+    data.qfrc_applied += gravity_compensation_torques
+
+    return gravity_compensation_torques
