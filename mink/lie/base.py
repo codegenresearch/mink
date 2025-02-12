@@ -6,14 +6,7 @@ from typing_extensions import Self
 
 
 class MatrixLieGroup(abc.ABC):
-    """Interface definition for matrix Lie groups.
-
-    Attributes:
-        matrix_dim: Dimension of square matrix output.
-        parameters_dim: Dimension of underlying parameters.
-        tangent_dim: Dimension of tangent space.
-        space_dim: Dimension of coordinates that can be transformed.
-    """
+    """Interface definition for matrix Lie groups.\n\n    Attributes:\n        matrix_dim: Dimension of square matrix output.\n        parameters_dim:: Dimension of underlying parameters.\n        tangent_dim:: Dimension of tangent space.\n        space_dim: Dimension of coordinates that can be transformed.\n    """
 
     matrix_dim: int
     parameters_dim: int
