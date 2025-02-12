@@ -6,44 +6,47 @@ from loop_rate_limiters import RateLimiter
 
 import mink
 
-_HERE = Path(__file__).parent
-_XML = _HERE / "unitree_go1" / "scene.xml"
+HERE = Path(__file__).parent
+XML_PATH = HERE / "unitree_go1" / "scene.xml"
 
-
-if __name__ == "__main__":
-    model = mujoco.MjModel.from_xml_path(_XML.as_posix())
-
-    configuration = mink.Configuration(model)
-
-    feet = ["FL", "FR", "RR", "RL"]
-
+def initialize_tasks(model, feet):
     base_task = mink.FrameTask(
         frame_name="trunk",
         frame_type="body",
         position_cost=1.0,
         orientation_cost=1.0,
     )
-
+    
     posture_task = mink.PostureTask(model, cost=1e-5)
-
-    feet_tasks = []
-    for foot in feet:
-        task = mink.FrameTask(
+    
+    feet_tasks = [
+        mink.FrameTask(
             frame_name=foot,
             frame_type="site",
             position_cost=1.0,
             orientation_cost=0.0,
-        )
-        feet_tasks.append(task)
+        ) for foot in feet
+    ]
+    
+    return [base_task, posture_task] + feet_tasks
 
-    tasks = [base_task, posture_task, *feet_tasks]
+def initialize_mocap_positions(model, data, feet):
+    for foot in feet:
+        mink.move_mocap_to_frame(model, data, f"{foot}_target", foot, "site")
+    mink.move_mocap_to_frame(model, data, "trunk_target", "trunk", "body")
 
-    base_mid = model.body("trunk_target").mocapid[0]
-    feet_mid = [model.body(f"{foot}_target").mocapid[0] for foot in feet]
+if __name__ == "__main__":
+    model = mujoco.MjModel.from_xml_path(XML_PATH.as_posix())
+    configuration = mink.Configuration(model)
 
-    model = configuration.model
-    data = configuration.data
-    solver = "quadprog"
+    FEET = ["FL", "FR", "RR", "RL"]
+    tasks = initialize_tasks(model, FEET)
+
+    BASE_MOCAP_ID = model.body("trunk_target").mocapid[0]
+    FEET_MOCAP_IDS = [model.body(f"{foot}_target").mocapid[0] for foot in FEET]
+
+    model, data = configuration.model, configuration.data
+    SOLVER = "quadprog"
 
     with mujoco.viewer.launch_passive(
         model=model, data=data, show_left_ui=False, show_right_ui=False
@@ -52,25 +55,23 @@ if __name__ == "__main__":
 
         # Initialize to the home keyframe.
         configuration.update_from_keyframe("home")
-        posture_task.set_target_from_configuration(configuration)
+        tasks[1].set_target_from_configuration(configuration)
 
         # Initialize mocap bodies at their respective sites.
-        for foot in feet:
-            mink.move_mocap_to_frame(model, data, f"{foot}_target", foot, "site")
-        mink.move_mocap_to_frame(model, data, "trunk_target", "trunk", "body")
+        initialize_mocap_positions(model, data, FEET)
 
-        rate = RateLimiter(frequency=500.0, warn=False)
+        rate_limiter = RateLimiter(frequency=500.0)
         while viewer.is_running():
             # Update task targets.
-            base_task.set_target(mink.SE3.from_mocap_id(data, base_mid))
-            for i, task in enumerate(feet_tasks):
-                task.set_target(mink.SE3.from_mocap_id(data, feet_mid[i]))
+            tasks[0].set_target(mink.SE3.from_mocap_id(data, BASE_MOCAP_ID))
+            for i, task in enumerate(tasks[2:], start=2):
+                task.set_target(mink.SE3.from_mocap_id(data, FEET_MOCAP_IDS[i-2]))
 
             # Compute velocity, integrate and set control signal.
-            vel = mink.solve_ik(configuration, tasks, rate.dt, solver, 1e-5)
-            configuration.integrate_inplace(vel, rate.dt)
+            velocity = mink.solve_ik(configuration, tasks, rate_limiter.dt, SOLVER, 1e-5)
+            configuration.integrate_inplace(velocity, rate_limiter.dt)
             mujoco.mj_camlight(model, data)
 
             # Visualize at fixed FPS.
             viewer.sync()
-            rate.sleep()
+            rate_limiter.sleep()
