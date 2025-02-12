@@ -1,4 +1,4 @@
-"""Tests for collision_avoidance_limit.py."""
+"""Tests for configuration_limit.py."""
 
 import itertools
 
@@ -87,29 +87,4 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         self.assertGreater(data.ncon, 1)
 
         for i in range(data.ncon):
-            # Get MuJoCo's contact normal jacobian.
-            contact = data.contact[i]
-            start_idx = contact.efc_address * nv
-            end_idx = start_idx + nv
-            efc_J = data.efc_J[start_idx:end_idx]
-
-            # Compute the contact Jacobian manually.
-            normal = contact.frame[:3]
-            dist = contact.dist
-            fromto = np.empty((6,), dtype=np.float64)
-            fromto[3:] = contact.pos - 0.5 * dist * normal
-            fromto[:3] = contact.pos + 0.5 * dist * normal
-            contact = Contact(
-                dist=contact.dist,
-                fromto=fromto,
-                geom1=contact.geom1,
-                geom2=contact.geom2,
-                distmax=np.inf,
-            )
-            jac = compute_contact_normal_jacobian(model, data, contact)
-
-            np.testing.assert_allclose(jac, efc_J, atol=1e-7)
-
-
-if __name__ == "__main__":
-    absltest.main()
+            # Get MuJoCo's contact normal jacobian.\n            contact = data.contact[i]\n            start_idx = contact.efc_address * nv\n            end_idx = start_idx + nv\n            efc_J = data.efc_J[start_idx:end_idx]\n\n            # Compute the contact Jacobian manually.\n            normal = contact.frame[:3]\n            dist = contact.dist\n            fromto = np.empty((6,), dtype=np.float64)\n            fromto[3:] = contact.pos - 0.5 * dist * normal\n            fromto[:3] = contact.pos + 0.5 * dist * normal\n            contact = Contact(\n                dist=contact.dist,\n                fromto=fromto,\n                geom1=contact.geom1,\n                geom2=contact.geom2,\n                distmax=np.inf,\n            )\n            jac = compute_contact_normal_jacobian(model, data, contact)\n\n            np.testing.assert_allclose(jac, efc_J, atol=1e-7)\n\n\nif __name__ == "__main__":\n    absltest.main()
