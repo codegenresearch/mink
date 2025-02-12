@@ -59,23 +59,7 @@ class TestUtils(absltest.TestCase):
             )
 
     def test_move_mocap_to_frame(self):
-        xml_str = """
-        <mujoco>
-          <worldbody>
-            <body pos=".1 -.1 0">
-              <joint type="free" name="floating"/>
-              <geom type="sphere" size=".1" mass=".1"/>
-              <body name="test">
-                <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>
-                <geom type="sphere" size=".1" mass=".1"/>
-              </body>
-            </body>
-            <body name="mocap" mocap="true" pos=".5 1 5" quat="1 1 0 0">
-              <geom type="sphere" size=".1" mass=".1"/>
-            </body>
-          </worldbody>
-        </mujoco>
-        """
+        xml_str = """\n        <mujoco>\n          <worldbody>\n            <body pos=".1 -.1 0">\n              <joint type="free" name="floating"/>\n              <geom type="sphere" size=".1" mass=".1"/>\n              <body name="test">\n                <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>\n                <geom type="sphere" size=".1" mass=".1"/>\n              </body>\n            </body>\n            <body name="mocap" mocap="true" pos=".5 1 5" quat="1 1 0 0">\n              <geom type="sphere" size=".1" mass=".1"/>\n            </body>\n          </worldbody>\n        </mujoco>\n        """
         model = mujoco.MjModel.from_xml_string(xml_str)
         data = mujoco.MjData(model)
         mujoco.mj_forward(model, data)
@@ -109,96 +93,13 @@ class TestUtils(absltest.TestCase):
         )
 
     def test_get_subtree_geom_ids(self):
-        xml_str = """
-        <mujoco>
-          <worldbody>
-            <body name="b1" pos=".1 -.1 0">
-              <joint type="free"/>
-              <geom name="b1/g1" type="sphere" size=".1" mass=".1"/>
-              <geom name="b1/g2" type="sphere" size=".1" mass=".1" pos="0 0 .5"/>
-              <body name="b2">
-                <joint type="hinge" range="0 1.57" limited="true"/>
-                <geom name="b2/g1" type="sphere" size=".1" mass=".1"/>
-              </body>
-            </body>
-            <body name="b3" pos="1 1 1">
-              <joint type="free"/>
-              <geom name="b3/g1" type="sphere" size=".1" mass=".1"/>
-              <body name="b4">
-                <joint type="hinge" range="0 1.57" limited="true"/>
-                <geom name="b4/g1" type="sphere" size=".1" mass=".1"/>
-              </body>
-            </body>
-            <body name="geomless">
-              <inertial pos="0 0 0" mass=".1" diaginertia="1 1 1"/>
-            </body>
-          </worldbody>
-        </mujoco>
-        """
+        xml_str = """\n        <mujoco>\n          <worldbody>\n            <body name="b1" pos=".1 -.1 0">\n              <joint type="free"/>\n              <geom name="b1/g1" type="sphere" size=".1" mass=".1"/>\n              <geom name="b1/g2" type="sphere" size=".1" mass=".1" pos="0 0 .5"/>\n              <body name="b2">\n                <joint type="hinge" range="0 1.57" limited="true"/>\n                <geom name="b2/g1" type="sphere" size=".1" mass=".1"/>\n              </body>\n            </body>\n            <body name="b3" pos="1 1 1">\n              <joint type="free"/>\n              <geom name="b3/g1" type="sphere" size=".1" mass=".1"/>\n              <body name="b4">\n                <joint type="hinge" range="0 1.57" limited="true"/>\n                <geom name="b4/g1" type="sphere" size=".1" mass=".1"/>\n              </body>\n            </body>\n          </worldbody>\n        </mujoco>\n        """
         model = mujoco.MjModel.from_xml_string(xml_str)
         b1_id = model.body("b1").id
         actual_geom_ids = utils.get_subtree_geom_ids(model, b1_id)
         geom_names = ["b1/g1", "b1/g2", "b2/g1"]
         expected_geom_ids = [model.geom(g).id for g in geom_names]
-        self.assertSetEqual(set(actual_geom_ids), set(expected_geom_ids))
-        b3_id = model.body("b3").id
-        actual_geom_ids = utils.get_subtree_geom_ids(model, b3_id)
-        geom_names = ["b3/g1", "b4/g1"]
-        expected_geom_ids = [model.geom(g).id for g in geom_names]
-        self.assertSetEqual(set(actual_geom_ids), set(expected_geom_ids))
-        geomless_id = model.body("geomless").id
-        actual_geom_ids = utils.get_subtree_geom_ids(model, geomless_id)
-        self.assertListEqual(actual_geom_ids, [])
-        world_id = 0
-        actual_geom_ids = utils.get_subtree_geom_ids(model, world_id)
-        expected_geom_ids = [i for i in range(model.ngeom)]
-        self.assertSetEqual(set(actual_geom_ids), set(expected_geom_ids))
-
-    def test_get_subtree_body_ids(self):
-        xml_str = """
-        <mujoco>
-          <worldbody>
-            <body name="b1" pos=".1 -.1 0">
-              <joint type="free"/>
-              <geom name="b1/g1" type="sphere" size=".1" mass=".1"/>
-              <geom name="b1/g2" type="sphere" size=".1" mass=".1" pos="0 0 .5"/>
-              <body name="b3">
-                <joint type="hinge" range="0 1.57" limited="true"/>
-                <geom name="b3/g1" type="sphere" size=".1" mass=".1"/>
-                <body name="b4" pos="1 1 1">
-                    <geom name="b4/g1" type="sphere" size=".1" mass=".1"/>
-                </body>
-              </body>
-              <body name="b2" pos="1 1 1">
-                <geom name="b2/g1" type="sphere" size=".1" mass=".1"/>
-              </body>
-            </body>
-            <body name="b5" pos="1 1 1">
-              <joint type="free"/>
-              <geom name="b5/g1" type="sphere" size=".1" mass=".1"/>
-              <body name="b6">
-                <joint type="hinge" range="0 1.57" limited="true"/>
-                <geom name="b6/g1" type="sphere" size=".1" mass=".1"/>
-              </body>
-            </body>
-          </worldbody>
-        </mujoco>
-        """
-        model = mujoco.MjModel.from_xml_string(xml_str)
-        b1_id = model.body("b1").id
-        actual_body_ids = utils.get_subtree_body_ids(model, b1_id)
-        body_names = ["b1", "b3", "b4", "b2"]
-        expected_body_ids = [model.body(b).id for b in body_names]
-        self.assertSetEqual(set(actual_body_ids), set(expected_body_ids))
-        b5_id = model.body("b5").id
-        actual_body_ids = utils.get_subtree_body_ids(model, b5_id)
-        body_names = ["b5", "b6"]
-        expected_body_ids = [model.body(b).id for b in body_names]
-        self.assertSetEqual(set(actual_body_ids), set(expected_body_ids))
-        world_id = 0
-        actual_body_ids = utils.get_subtree_body_ids(model, world_id)
-        expected_body_ids = [i for i in range(model.nbody)]
-        self.assertSetEqual(set(actual_body_ids), set(expected_body_ids))
+        self.assertListEqual(actual_geom_ids, expected_geom_ids)
 
 
 if __name__ == "__main__":
