@@ -1,4 +1,4 @@
-"""Tests lie/utils.py."""
+"""Tests utils.py."""
 
 import numpy as np
 from absl.testing import absltest
