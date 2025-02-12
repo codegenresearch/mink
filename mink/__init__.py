@@ -1,4 +1,4 @@
-"""mink: MuJoCo inverse kinematics."""
+"""mink: MuJoCo inverse kinematics with gravity compensation and testing enhancements."""
 
 from .configuration import Configuration
 from .constants import (
@@ -24,7 +24,7 @@ from .limits import (
     Limit,
     VelocityLimit,
 )
-from .solve_ik import build_ik, solve_ik
+from .solve_ik import build_ik, solve_ik, apply_gravity_compensation
 from .tasks import (
     ComTask,
     DampingTask,
@@ -39,16 +39,19 @@ from .utils import (
     custom_configuration_vector,
     get_body_geom_ids,
     get_freejoint_dims,
-    get_subtree_body_ids,
     get_subtree_geom_ids,
     move_mocap_to_frame,
+    set_mocap_pose_from_frame,
+    pose_from_mocap,
 )
+from .tests import test_gravity_compensation, test_configuration_limits, test_solve_ik
 
 __all__ = (
     "ComTask",
     "Configuration",
     "build_ik",
     "solve_ik",
+    "apply_gravity_compensation",
     "DampingTask",
     "FrameTask",
     "RelativeFrameTask",
@@ -82,5 +85,7 @@ __all__ = (
     "move_mocap_to_frame",
     "get_subtree_geom_ids",
     "get_body_geom_ids",
-    "get_subtree_body_ids",
+    "test_gravity_compensation",
+    "test_configuration_limits",
+    "test_solve_ik",
 )
