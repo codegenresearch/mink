@@ -59,7 +59,7 @@ if __name__ == "__main__":
             mink.move_mocap_to_frame(model, data, f"{foot}_target", foot, "site")
         mink.move_mocap_to_frame(model, data, "trunk_target", "trunk", "body")
 
-        rate = RateLimiter(frequency=500.0, warn=False)
+        rate = RateLimiter(frequency=500.0)
         while viewer.is_running():
             # Update task targets.
             base_task.set_target(mink.SE3.from_mocap_id(data, base_mid))
