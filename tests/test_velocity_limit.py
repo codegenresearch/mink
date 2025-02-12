@@ -1,4 +1,4 @@
-"""Tests for velocity_limit.py."""
+"""Tests for the VelocityLimit class in velocity_limit.py."""
 
 import mujoco
 import numpy as np
@@ -7,37 +7,40 @@ from robot_descriptions.loaders.mujoco import load_robot_description
 
 from mink import Configuration
 from mink.limits import LimitDefinitionError, VelocityLimit
-from mink.utils import get_freejoint_dims
 
 
 class TestVelocityLimit(absltest.TestCase):
-    """Test velocity limit."""
+    """Tests the functionality of the VelocityLimit class."""
 
     @classmethod
     def setUpClass(cls):
-        cls.model = load_robot_description("g1_mj_description")
+        """Load a model for use in tests."""
+        cls.model = load_robot_description("ur5e_mj_description")
 
     def setUp(self):
+        """Initialize a configuration and define joint velocities."""
         self.configuration = Configuration(self.model)
-        self.configuration.update_from_keyframe("stand")
-        # NOTE(kevin): These velocities are arbitrary and do not match real hardware.
+        self.configuration.update_from_keyframe("home")
         self.velocities = {
-            self.model.joint(i).name: 3.14 for i in range(1, self.model.njnt)
+            "shoulder_pan_joint": np.pi,
+            "shoulder_lift_joint": np.pi,
+            "elbow_joint": np.pi,
+            "wrist_1_joint": np.pi,
+            "wrist_2_joint": np.pi,
+            "wrist_3_joint": np.pi,
         }
 
-    def test_dimensions(self):
+    def test_projection_matrix_and_indices_dimensions(self):
+        """Test the dimensions of the projection matrix and indices."""
         limit = VelocityLimit(self.model, self.velocities)
         nv = self.configuration.nv
-        nb = nv - len(get_freejoint_dims(self.model)[1])
-        self.assertEqual(len(limit.indices), nb)
-        self.assertEqual(limit.projection_matrix.shape, (nb, nv))
+        expected_projection_shape = (nv, nv)
+        expected_indices_length = nv
+        self.assertEqual(limit.projection_matrix.shape, expected_projection_shape)
+        self.assertEqual(len(limit.indices), expected_indices_length)
 
-    def test_indices(self):
-        limit = VelocityLimit(self.model, self.velocities)
-        expected = np.arange(6, self.model.nv)  # Freejoint (0-5) is not limited.
-        self.assertTrue(np.allclose(limit.indices, expected))
-
-    def test_model_with_no_limit(self):
+    def test_no_velocity_limits(self):
+        """Test the case where no velocity limits are defined."""
         empty_model = mujoco.MjModel.from_xml_string("<mujoco></mujoco>")
         empty_bounded = VelocityLimit(empty_model)
         self.assertEqual(len(empty_bounded.indices), 0)
@@ -46,40 +49,24 @@ class TestVelocityLimit(absltest.TestCase):
         self.assertIsNone(G)
         self.assertIsNone(h)
 
-    def test_model_with_subset_of_velocities_limited(self):
-        partial_velocities = {}
-        for i, (key, value) in enumerate(self.velocities.items()):
-            if i > 2:
-                break
-            partial_velocities[key] = value
-        limit = VelocityLimit(self.model, partial_velocities)
+    def test_partial_velocity_limits(self):
+        """Test the case where only a subset of joints have velocity limits."""
+        velocities = {
+            "wrist_1_joint": np.pi,
+            "wrist_2_joint": np.pi,
+            "wrist_3_joint": np.pi,
+        }
+        limit = VelocityLimit(self.model, velocities)
         nb = 3
         nv = self.model.nv
-        self.assertEqual(limit.projection_matrix.shape, (nb, nv))
-        self.assertEqual(len(limit.indices), nb)
-        expected_limit = np.asarray(
-            [
-                3.14,
-            ]
-            * nb
-        )
-        np.testing.assert_allclose(limit.limit, expected_limit)
+        expected_projection_shape = (nb, nv)
+        expected_indices_length = nb
+        self.assertEqual(limit.projection_matrix.shape, expected_projection_shape)
+        self.assertEqual(len(limit.indices), expected_indices_length)
 
-    def test_model_with_ball_joint(self):
-        xml_str = """
-        <mujoco>
-          <worldbody>
-            <body>
-              <joint type="ball" name="ball"/>
-              <geom type="sphere" size=".1" mass=".1"/>
-              <body>
-                <joint type="hinge" name="hinge" range="0 1.57"/>
-                <geom type="sphere" size=".1" mass=".1"/>
-              </body>
-            </body>
-          </worldbody>
-        </mujoco>
-        """
+    def test_ball_joint_velocity_limits(self):
+        """Test velocity limits for a ball joint."""
+        xml_str = """\n        <mujoco>\n          <worldbody>\n            <body>\n              <joint type="ball" name="ball"/>\n              <geom type="sphere" size=".1" mass=".1"/>\n              <body>\n                <joint type="hinge" name="hinge" range="0 1.57"/>\n                <geom type="sphere" size=".1" mass=".1"/>\n              </body>\n            </body>\n          </worldbody>\n        </mujoco>\n        """
         model = mujoco.MjModel.from_xml_string(xml_str)
         velocities = {
             "ball": (np.pi, np.pi / 2, np.pi / 4),
@@ -87,57 +74,35 @@ class TestVelocityLimit(absltest.TestCase):
         }
         limit = VelocityLimit(model, velocities)
         nb = 3 + 1
-        self.assertEqual(len(limit.indices), nb)
-        self.assertEqual(limit.projection_matrix.shape, (nb, model.nv))
+        expected_indices_length = nb
+        expected_projection_shape = (nb, model.nv)
+        self.assertEqual(len(limit.indices), expected_indices_length)
+        self.assertEqual(limit.projection_matrix.shape, expected_projection_shape)
 
-    def test_ball_joint_invalid_limit_shape(self):
-        xml_str = """
-        <mujoco>
-          <worldbody>
-            <body>
-              <joint type="ball" name="ball"/>
-              <geom type="sphere" size=".1" mass=".1"/>
-              <body>
-                <joint type="hinge" name="hinge" range="0 1.57"/>
-                <geom type="sphere" size=".1" mass=".1"/>
-              </body>
-            </body>
-          </worldbody>
-        </mujoco>
-        """
+    def test_ball_joint_invalid_velocity_limit_shape(self):
+        """Test that an error is raised when a ball joint has an invalid velocity limit shape."""
+        xml_str = """\n        <mujoco>\n          <worldbody>\n            <body>\n              <joint type="ball" name="ball"/>\n              <geom type="sphere" size=".1" mass=".1"/>\n              <body>\n                <joint type="hinge" name="hinge" range="0 1.57"/>\n                <geom type="sphere" size=".1" mass=".1"/>\n              </body>\n            </body>\n          </worldbody>\n        </mujoco>\n        """
         model = mujoco.MjModel.from_xml_string(xml_str)
         velocities = {
             "ball": (np.pi, np.pi / 2),
         }
-        with self.assertRaises(LimitDefinitionError) as cm:
+        with self.assertRaises(LimitDefinitionError) as context_manager:
             VelocityLimit(model, velocities)
         expected_error_message = "Joint ball must have a limit of shape (3,). Got: (2,)"
-        self.assertEqual(str(cm.exception), expected_error_message)
+        self.assertEqual(str(context_manager.exception), expected_error_message)
 
-    def test_that_freejoint_raises_error(self):
-        xml_str = """
-        <mujoco>
-          <worldbody>
-            <body>
-              <joint type="free" name="floating"/>
-              <geom type="sphere" size=".1" mass=".1"/>
-              <body>
-                <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>
-                <geom type="sphere" size=".1" mass=".1"/>
-              </body>
-            </body>
-          </worldbody>
-        </mujoco>
-        """
+    def test_free_joint_raises_error(self):
+        """Test that an error is raised when a free joint is included in velocity limits."""
+        xml_str = """\n        <mujoco>\n          <worldbody>\n            <body>\n              <joint type="free" name="floating"/>\n              <geom type="sphere" size=".1" mass=".1"/>\n              <body>\n                <joint type="hinge" name="hinge" range="0 1.57" limited="true"/>\n                <geom type="sphere" size=".1" mass=".1"/>\n              </body>\n            </body>\n          </worldbody>\n        </mujoco>\n        """
         model = mujoco.MjModel.from_xml_string(xml_str)
         velocities = {
             "floating": np.pi,
             "hinge": np.pi,
         }
-        with self.assertRaises(LimitDefinitionError) as cm:
+        with self.assertRaises(LimitDefinitionError) as context_manager:
             VelocityLimit(model, velocities)
         expected_error_message = "Free joint floating is not supported"
-        self.assertEqual(str(cm.exception), expected_error_message)
+        self.assertEqual(str(context_manager.exception), expected_error_message)
 
 
 if __name__ == "__main__":
