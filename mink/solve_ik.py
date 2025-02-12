@@ -27,8 +27,8 @@ def _compute_qp_inequalities(
 ) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
     if limits is None:
         limits = [ConfigurationLimit(configuration.model)]
-    G_list: list[np.ndarray] = []
-    h_list: list[np.ndarray] = []
+    G_list = []
+    h_list = []
     for limit in limits:
         inequality = limit.compute_qp_inequalities(configuration, dt)
         if not inequality.inactive:
@@ -47,19 +47,7 @@ def build_ik(
     damping: float = 1e-12,
     limits: Optional[Sequence[Limit]] = None,
 ) -> qpsolvers.Problem:
-    """Build quadratic program from current configuration and tasks.
-
-    Args:
-        configuration: Robot configuration.
-        tasks: List of kinematic tasks.
-        dt: Integration timestep in [s].
-        damping: Levenberg-Marquardt damping.
-        limits: List of limits to enforce. Set to empty list to disable. If None,
-            defaults to a configuration limit.
-
-    Returns:
-        Quadratic program of the inverse kinematics problem.
-    """
+    """Build quadratic program from current configuration and tasks.\n\n    Args:\n        configuration: Robot configuration.\n        tasks: List of kinematic tasks.\n        dt: Integration timestep in [s].\n        damping: Levenberg-Marquardt damping.\n        limits: List of limits to enforce. Set to empty list to disable. If None,\n            defaults to a configuration limit.\n\n    Returns:\n        Quadratic program of the inverse kinematics problem.\n    """
     P, q = _compute_qp_objective(configuration, tasks, damping)
     G, h = _compute_qp_inequalities(configuration, limits, dt)
     return qpsolvers.Problem(P, q, G, h)
@@ -75,27 +63,7 @@ def solve_ik(
     limits: Optional[Sequence[Limit]] = None,
     **kwargs,
 ) -> np.ndarray:
-    """Solve the differential inverse kinematics problem.
-
-    Computes a velocity tangent to the current robot configuration. The computed
-    velocity satisfies at (weighted) best the set of provided kinematic tasks.
-
-    Args:
-        configuration: Robot configuration.
-        tasks: List of kinematic tasks.
-        dt: Integration timestep in [s].
-        solver: Backend quadratic programming (QP) solver.
-        damping: Levenberg-Marquardt damping.
-        safety_break: If True, stop execution and raise an exception if
-            the current configuration is outside limits. If False, print a
-            warning and continue execution.
-        limits: List of limits to enforce. Set to empty list to disable. If None,
-            defaults to a configuration limit.
-        kwargs: Keyword arguments to forward to the backend QP solver.
-
-    Returns:
-        Velocity `v` in tangent space.
-    """
+    """Solve the differential inverse kinematics problem.\n\n    Computes a velocity tangent to the current robot configuration. The computed\n    velocity satisfies at (weighted) best the set of provided kinematic tasks.\n\n    Args:\n        configuration: Robot configuration.\n        tasks: List of kinematic tasks.\n        dt: Integration timestep in [s].\n        solver: Backend quadratic programming (QP) solver.\n        damping: Levenberg-Marquardt damping.\n        safety_break: If True, stop execution and raise an exception if\n            the current configuration is outside limits. If False, print a\n            warning and continue execution.\n        limits: List of limits to enforce. Set to empty list to disable. If None,\n            defaults to a configuration limit.\n        kwargs: Keyword arguments to forward to the backend QP solver.\n\n    Returns:\n        Velocity `v` in tangent space.\n    """
     configuration.check_limits(safety_break=safety_break)
     problem = build_ik(configuration, tasks, dt, damping, limits)
     result = qpsolvers.solve_problem(problem, solver=solver, **kwargs)
