@@ -1,4 +1,4 @@
-"""Tests for collision_avoidance_limit.py."""
+"""Tests for configuration_limit.py."""
 
 import itertools
 
@@ -21,15 +21,15 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.model = load_robot_description("ur5e_mj_description")
+        cls.model = load_robot_description("panda_mj_description")
 
     def setUp(self):
         self.configuration = Configuration(self.model)
         self.configuration.update_from_keyframe("home")
 
     def test_dimensions(self):
-        g1 = get_body_geom_ids(self.model, self.model.body("wrist_2_link").id)
-        g2 = get_body_geom_ids(self.model, self.model.body("upper_arm_link").id)
+        g1 = get_body_geom_ids(self.model, self.model.body("panda_hand").id)
+        g2 = get_body_geom_ids(self.model, self.model.body("table").id)
 
         bound_relaxation = -1e-3
         limit = CollisionAvoidanceLimit(
@@ -63,7 +63,7 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         self.assertEqual(h.shape, (expected_max_num_contacts,))
 
     def test_contact_normal_jac_matches_mujoco(self):
-        model = load_robot_description("ur5e_mj_description")
+        model = load_robot_description("panda_mj_description")
         nv = model.nv
 
         # Options necessary to obtain separation normal + dense matrices.
@@ -81,35 +81,10 @@ class TestCollisionAvoidanceLimit(absltest.TestCase):
         data = mujoco.MjData(model)
 
         # Handcrafted qpos with multiple contacts.
-        qpos_coll = np.asarray([-1.5708, -1.5708, 3.01632, -1.5708, -1.5708, 0])
+        qpos_coll = np.asarray([0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785])
         data.qpos = qpos_coll
         mujoco.mj_forward(model, data)
         self.assertGreater(data.ncon, 1)
 
         for i in range(data.ncon):
-            # Get MuJoCo's contact normal jacobian.
-            contact = data.contact[i]
-            start_idx = contact.efc_address * nv
-            end_idx = start_idx + nv
-            efc_J = data.efc_J[start_idx:end_idx]
-
-            # Compute the contact Jacobian manually.
-            normal = contact.frame[:3]
-            dist = contact.dist
-            fromto = np.empty((6,), dtype=np.float64)
-            fromto[3:] = contact.pos - 0.5 * dist * normal
-            fromto[:3] = contact.pos + 0.5 * dist * normal
-            contact = Contact(
-                dist=contact.dist,
-                fromto=fromto,
-                geom1=contact.geom1,
-                geom2=contact.geom2,
-                distmax=np.inf,
-            )
-            jac = compute_contact_normal_jacobian(model, data, contact)
-
-            np.testing.assert_allclose(jac, efc_J, atol=1e-7)
-
-
-if __name__ == "__main__":
-    absltest.main()
+            # Get MuJoCo's contact normal jacobian.\n            contact = data.contact[i]\n            start_idx = contact.efc_address * nv\n            end_idx = start_idx + nv\n            efc_J = data.efc_J[start_idx:end_idx]\n\n            # Compute the contact Jacobian manually.\n            normal = contact.frame[:3]\n            dist = contact.dist\n            fromto = np.empty((6,), dtype=np.float64)\n            fromto[3:] = contact.pos - 0.5 * dist * normal\n            fromto[:3] = contact.pos + 0.5 * dist * normal\n            contact = Contact(\n                dist=contact.dist,\n                fromto=fromto,\n                geom1=contact.geom1,\n                geom2=contact.geom2,\n                distmax=np.inf,\n            )\n            jac = compute_contact_normal_jacobian(model, data, contact)\n\n            np.testing.assert_allclose(jac, efc_J, atol=1e-7)\n\n\nif __name__ == "__main__":\n    absltest.main()
